@@ -155,3 +155,60 @@ Manual user action:
 1. Review and merge branch backend/scaffold-and-auth into master.
 2. Legal sign-off on DECISION-004 (GPLv3 distribution / public launcher
    source repository model) remains outstanding.
+
+## 2026-09-05 — LAUNCHER CORE SCAFFOLD (C++ / Qt)
+
+Agent/model: local launcher core implementation agent
+Branch: launcher/core-scaffold
+Task: Implement the minimal C++ instance-management and launch-task framework
+(launcher/core, launcher/minecraft, launcher/auth, launcher/launch) with a
+backend auth client replacing Prism's Mojang/MSA flow, and a minimal launch
+sequence. No Microsoft checks.
+Started: 2026-09-05
+Completed: 2026-09-05
+
+Files:
+- launcher/CMakeLists.txt (Qt6 Core/Gui/Widgets/Network; core/minecraft/auth
+  subdirectories)
+- launcher/main.cpp (minimal entry point exercising the instance list)
+- launcher/README.md (structure, compile status, notes)
+- launcher/core/BaseInstance.h/.cpp, InstanceList.h/.cpp,
+  InstancePersistence.h/.cpp, InstanceTypes.h, CMakeLists.txt
+- launcher/minecraft/MinecraftInstance.h/.cpp, PackProfile.h/.cpp,
+  CMakeLists.txt (combined minecraft + launch library)
+- launcher/auth/BackendAuthClient.h/.cpp, SessionManager.h/.cpp,
+  TokenStorage.h/.cpp, CMakeLists.txt
+- launcher/launch/LaunchTask.h/.cpp, LaunchStep.h/.cpp,
+  steps/{ClaimAuthSession,ResolveLibraries,ResolveAssets,ExtractNatives,
+  VerifyJava,LauncherPartLaunch}.h/.cpp, java/{JavaInstall,JavaVersion}.h,
+  java/JavaVersion.cpp
+- Removed obsolete launcher/{core,auth,minecraft}/.gitkeep
+- docs/AI_CONTEXT.md, docs/WORK_STATE.md, docs/PROGRESS.md (this entry),
+  docs/CHANGELOG.md
+
+Tests:
+No Qt toolchain is installed in this environment, so the C++ code could not be
+compiled. Checks performed: CMake configure dry-run reaches the Qt
+find_package step cleanly (proving the CMake structure and MSVC toolchain
+detection are valid; the only failure is the missing Qt 6); the C++ backend
+auth client request/response contract was verified line-by-line against
+server/api/handlers.go; all project-header #include paths were verified to
+resolve; manual review for incomplete-type and upcast issues.
+
+Current status:
+Minimal launcher core scaffold implemented and pushed on branch
+launcher/core-scaffold. Compilation is BLOCKED until Qt 6 is installed
+(no Qt toolchain present). Library/asset download steps are stubs pending
+DECISION-005. Token storage is first-pass plaintext pending OS-protected
+credential storage (docs/AUTH.md).
+
+Next:
+Install Qt 6 and compile/verify the launcher core; resolve DECISION-005
+(metadata source) to implement library/asset download; owner legal sign-off
+on DECISION-004.
+
+Manual user action:
+1. Install Qt 6 (Core/Gui/Widgets/Network) so the launcher core can be
+   compiled and verified.
+2. Review and merge branch launcher/core-scaffold into master.
+3. Legal sign-off on DECISION-004 remains outstanding.

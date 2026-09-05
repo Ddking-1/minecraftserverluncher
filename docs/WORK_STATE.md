@@ -1,49 +1,62 @@
 ﻿﻿# WORK STATE
 
 Current phase:
-PHASE 1 — BACKEND SCAFFOLD / AUTH API
+PHASE 1 — BACKEND SCAFFOLD / AUTH API + LAUNCHER CORE SCAFFOLD
 
 Current task:
-Backend scaffold and core auth API (Go + SQLite)
+Launcher core scaffold (C++ / Qt): minimal instance management, launch-task
+framework, and backend auth client.
 
 Status:
-BACKEND SCAFFOLD AND AUTH API IMPLEMENTED (branch backend/scaffold-and-auth)
+LAUNCHER CORE SCAFFOLD IMPLEMENTED (branch launcher/core-scaffold).
+Compilation BLOCKED: no Qt 6 toolchain is installed in this environment.
 
 Branch:
-backend/scaffold-and-auth
+launcher/core-scaffold
 
 Last completed step:
-Created the repository scaffold directories (launcher/core, launcher/auth,
-launcher/minecraft, launcher/updates, server/api, server/auth, server/sessions,
-server/devices, server/database, velocity/plugin, tests, docs). Implemented the
-Go + SQLite auth backend under server/: environment-driven config (no
-hardcoded secrets), idempotent SQLite schema, account model with bcrypt
-password hashing, server-side session model with expiry and revocation,
-device identity mapping, and registration/login/refresh/logout/logout-all
-endpoints with per-IP rate limiting. Added minimal tests (auth, database,
-API integration). See server/README.md.
+Implemented the minimal C++ launcher core under launcher/: core/ (BaseInstance,
+InstanceList as a QAbstractListModel, InstancePersistence for instance.json /
+launcher.json / version.json), minecraft/ (MinecraftInstance, PackProfile),
+auth/ (BackendAuthClient matching server/api/handlers.go, TokenStorage,
+SessionManager — replaces Prism's Mojang/MSA flow), and launch/ (LaunchTask /
+LaunchStep framework with ClaimAuthSession, ResolveLibraries, ResolveAssets,
+ExtractNatives, VerifyJava, LauncherPartLaunch steps and Java version helpers).
+Added launcher/CMakeLists.txt (Qt6), a minimal main.cpp, and launcher/README.md.
+The minecraft and launch subsystems are built as one library because
+MinecraftInstance::createLaunchTask assembles the launch steps and the steps
+operate on MinecraftInstance (mutual dependency).
+
+Verification performed: CMake configure dry-run reaches the Qt find_package
+step cleanly (CMake structure and MSVC toolchain detection valid; only failure
+is the missing Qt 6); the C++ auth client request/response contract was
+verified line-by-line against server/api/handlers.go; all project-header
+#include paths verified to resolve; manual review for incomplete-type and
+upcast issues. The C++ code was NOT compiled because no Qt toolchain is
+installed.
 
 Current step:
 None in progress. This task is finished and stopped.
 
 Next step:
-1. Owner: review and merge branch backend/scaffold-and-auth into master.
-2. Owner: legal sign-off on DECISION-004 (manual action).
-3. Resolve DECISION-005 (metadata source; self-hosted mirror recommended).
-4. Launcher bootstrap task: pin the Prism upstream commit, create the public
-   launcher fork repository, record vendored library licenses, produce the
-   trim plan.
-5. Launcher core design task (accounts/sessions/devices, launch
-   authorization, server profiles, updater/integrity, RAM algorithm, UI
-   concept).
+1. Install Qt 6 (Core/Gui/Widgets/Network) and compile/verify the launcher
+   core (manual action).
+2. Owner: review and merge branch launcher/core-scaffold into master.
+3. Owner: legal sign-off on DECISION-004 (manual action).
+4. Resolve DECISION-005 (metadata source; self-hosted mirror recommended) to
+   implement library/asset download (currently stubs).
+5. Implement OS-protected token storage (Windows DPAPI) per docs/AUTH.md
+   (currently first-pass plaintext).
+6. Launcher UI and remaining launcher core design tasks.
 
 Repository facts:
 - default branch: master
 - remote: origin (private GitHub repo Ddking-1/minecraftserverluncher)
 - reference/ is local-only, never committed (DECISION-002)
 - backend source exists under server/ (Go module minecraftserverluncher/server)
-- launcher and velocity directories are scaffolded but empty (no code yet)
+- launcher core scaffold exists under launcher/ (C++ / Qt, not yet compiled)
+- velocity directory is scaffolded but empty (no code yet)
 
 Last commit:
-See docs/PROGRESS.md — backend scaffold and auth API commit on branch
-backend/scaffold-and-auth.
+See docs/PROGRESS.md — launcher core scaffold commit on branch
+launcher/core-scaffold.
