@@ -24,13 +24,23 @@ Component ownership:
 | Geyser / Floodgate | external | integration/dependency, not project code |
 | LimboAPI / LimboAuth / LimboFilter | external | integration/dependency, not project code |
 
+Minimal core boundary (DECISION-003):
+The component-level KEEP / KEEP BUT ADAPT / REPLACE / NOT NEEDED inventory of
+Prism subsystems is defined in `docs/PRISM_MINIMAL_CORE.md` and adopted by
+DECISION-003. Architectural decisions and dependency/licensing risks are
+combined in `docs/PRISM_ARCHITECTURE_REVIEW.md`.
+
 Scope of the first release:
 - first launcher target: Windows 10/11
 - first release exposes one server
 - the internal model must already support additional servers
 
 Blocking checkpoint:
-The Prism Launcher GPL analysis in `docs/LICENSE_AUDIT.md` is unresolved. No launcher implementation may start before it is decided.
+RESOLVED at architecture level (2026-09-05). The Prism/GPL analysis is
+recorded in `docs/PRISM_ARCHITECTURE_REVIEW.md` and DECISION-004 (public
+launcher source repository; private central repository). Production launcher
+implementation may start only after: owner legal sign-off on DECISION-004,
+and resolution of DECISION-005 (metadata source).
 
 ## Core layers
 
@@ -135,6 +145,9 @@ Existing open-source projects must be evaluated before recreating their function
 
 Reference repositories are under `reference/`.
 
+Prism Launcher: evaluated — fork (GPLv3), trimmed per DECISION-003, distributed
+with public source per DECISION-004.
+
 The architecture must clearly state whether each dependency is:
 - external runtime dependency
 - library dependency
@@ -171,15 +184,16 @@ The internal model must not assume there will ever be only one.
 
 ## Architecture status
 
-This document is initially a requirements-backed skeleton.
+Filled in so far:
+- component ownership and the Prism minimal-core boundary
+  (DECISION-003, `docs/PRISM_MINIMAL_CORE.md`)
+- launcher legal/licensing boundaries
+  (DECISION-004, `docs/PRISM_ARCHITECTURE_REVIEW.md`)
 
-Architects MUST fill in:
-- exact components
-- API boundaries
-- protocols
+Still to be filled in before production implementation:
+- launcher core design (accounts/sessions/devices, launch authorization,
+  server profiles, updater/integrity, automatic RAM algorithm)
+- API boundaries and protocols (launcher-backend, Velocity plugin)
 - deployment topology
 - data flow
-- dependency strategy
-- legal boundaries
-
-before production implementation begins.
+- DECISION-005 resolution (metadata source)

@@ -64,3 +64,45 @@ inventory the Prism functionality to retain, define the launcher core boundary.
 Manual user action:
 Review and merge branch architecture/project-state into master (agents must not
 work directly on the default branch).
+
+## 2026-09-05 — PRISM MINIMAL-CORE ARCHITECTURE / LICENSING CHECKPOINT
+
+Agent/model: Prism minimal-core architecture agent
+Branch: architecture/prism-minimal-core
+Task: Determine the minimum Prism functionality required for this project, resolve the Prism licensing boundaries, and define the launcher core boundary (the DECISION-001 checkpoint).
+Started: 2026-09-05
+Completed: 2026-09-05
+
+Files:
+- docs/PRISM_MINIMAL_CORE.md (new — subsystem inventory with KEEP / KEEP BUT ADAPT / REPLACE / NOT NEEDED classifications)
+- docs/PRISM_ARCHITECTURE_REVIEW.md (new — architectural decisions combined with dependency and licensing risks)
+- docs/DECISIONS.md (DECISION-003, DECISION-004, DECISION-005)
+- docs/ARCHITECTURE.md (minimal-core boundary note, checkpoint status, architecture status)
+- docs/LICENSE_AUDIT.md (Prism entry: analysis complete at architecture level, open audit items)
+- docs/AI_CONTEXT.md (phase and repository state synchronized)
+- docs/WORK_STATE.md (task state updated)
+- docs/PROGRESS.md (this entry)
+- docs/CHANGELOG.md (unreleased entry)
+
+Tests:
+No build/test tooling exists in the repository yet (documentation-only change).
+Checks performed: targeted read-only inspection of reference/prism-launcher
+(no recursive scanning, AGENTS.md rule 24); every file path cited in the new
+documents was verified to exist in the snapshot; Prism license verified by
+reading upstream COPYING.md; git status and the full diff reviewed before
+committing.
+
+Current status:
+Checkpoint resolved at architecture level. DECISION-004 still requires owner
+legal sign-off; DECISION-005 (metadata source) is PENDING. No production
+code exists or is approved yet.
+
+Next:
+Owner legal sign-off on DECISION-004; resolve DECISION-005; launcher fork
+bootstrap (pin upstream commit, public launcher repository, vendored license
+audit, trim plan); then launcher core design.
+
+Manual user action:
+1. Legal sign-off on DECISION-004 (GPLv3 distribution / public launcher
+   source repository model).
+2. Review and merge branch architecture/prism-minimal-core into master.
