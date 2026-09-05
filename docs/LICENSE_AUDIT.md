@@ -37,21 +37,33 @@ A required third-party public source repository must not be hidden merely becaus
 ## Prism Launcher
 
 Status:
-LEGAL/ARCHITECTURAL REVIEW REQUIRED
+ANALYSIS COMPLETE (architecture level, 2026-09-05) — resolution recorded in
+`docs/PRISM_ARCHITECTURE_REVIEW.md` and DECISION-004.
+Final owner legal sign-off: still required.
 
-Reason:
-Prism Launcher is GPL-licensed and may impose source-distribution requirements if modified and distributed.
+License: GPL-3.0, with incorporated works recorded in upstream `COPYING.md`
+(PolyMC GPL-3.0; MultiMC Apache-2.0; `libraries/launcher` GPL-3.0 with
+linking exception; libnbt++ LGPL-3.0-or-later; rainbow LGPL-2.1-or-later;
+cmark BSD-2; MinGW-w64 runtime notice; Qt 6 LGPL-3; icon/font licenses —
+details in `docs/PRISM_ARCHITECTURE_REVIEW.md` section 2).
 
-Do not assume:
-"private GitHub repo" = "no GPL obligations".
+Resolved conclusions:
+- modified fork + project launcher core in one executable = one combined
+  GPLv3 work; complete corresponding source must be offered to every
+  recipient of the binaries
+- distribution model: public launcher source repository; the central
+  repository stays private (DECISION-004)
+- backend, Velocity plugin and server-side components are outside the
+  launcher GPL boundary
+- per-release obligations checklist: `docs/PRISM_ARCHITECTURE_REVIEW.md`
+  section 3.4
 
-Before using Prism as a distributed launcher foundation:
-- inspect exact license
-- determine whether modified source must be published
-- determine whether proprietary parts would form a combined work
-- determine whether a separate/public source repository is needed
-- determine required notices
-- determine required source availability
+Open audit items:
+- exact upstream commit NOT pinned: the local snapshot has no VCS metadata;
+  pin a commit before any code copying and record it here
+- record individual licenses of vendored `javacheck`, `LocalPeer`,
+  `murmur2`, `qdcss` before the first launcher build
+- verify presence and license of cmark in the pinned clone
 
 ## AGPL components
 

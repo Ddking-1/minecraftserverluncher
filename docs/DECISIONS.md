@@ -84,6 +84,136 @@ Reversible: yes (may be replaced by pinned submodules)
 
 Legal review required: no
 
+### DECISION-003 — Prism minimal-core boundary
+
+Date: 2026-09-05
+
+Status: APPROVED (architecture baseline)
+
+Decision:
+The launcher core boundary is defined by the component-level inventory in
+`docs/PRISM_MINIMAL_CORE.md`:
+
+- retained (adapted where noted): meta/version/component resolution
+  (Minecraft + Fabric), the instance model, the `net/` download core,
+  library/asset/native download tasks, Java detection and optional runtime
+  download, the launch step framework and the Java process bootstrap,
+  settings/tasks/include infrastructure, minimal console
+- replaced by project-owned launcher core: all Prism auth
+  (MSA/Xbox/Mojang accounts), the ClaimAccount launch step, Prism's updater,
+  the UI, branding
+- not needed: news, screenshots, tools, archive/import, filelink, macsandbox,
+  worlds, launcher-side skins, mod-platform integrations (first release),
+  legacy loaders/assets, offline mode, pre/post-launch commands
+
+Reason:
+Smallest Prism subset that still provides mature instance/version/launch
+logic, per DECISION-001; everything else is replaced by project-owned code
+or removed.
+
+Alternatives:
+- unmodified full Prism (rejected: carries unused subsystems, DECISION-001)
+- full from-scratch rewrite (rejected: cost, DECISION-001)
+
+Consequences:
+- trimming is incremental (build-level exclusion, compile check per step);
+  removed subsystems must not be re-added without a new decision
+- the launch-authorization injection seam (ClaimAccount / LauncherPartLaunch
+  argument assembly / AccountList-AuthSession consumers) is the interface
+  between the Prism core and the project launcher core
+- the metadata source is a separate pending decision (DECISION-005)
+
+Affected files:
+`docs/PRISM_MINIMAL_CORE.md`, `docs/PRISM_ARCHITECTURE_REVIEW.md`, `docs/ARCHITECTURE.md`
+
+Reversible: yes, before implementation
+
+Legal review required: no (licensing handled by DECISION-004)
+
+### DECISION-004 — Launcher GPLv3 distribution and source publication model
+
+Date: 2026-09-05
+
+Status: APPROVED (direction) / LEGAL REVIEW REQUIRED (final sign-off)
+
+Decision:
+- the distributed launcher (Prism fork + project launcher core) is one
+  combined GPLv3 work
+- the launcher source is published in a separate PUBLIC repository; every
+  distributed release binary has a matching source tag
+- the central repository stays private (backend, Velocity plugin,
+  infrastructure, governance docs) and contains nothing whose publication
+  the launcher GPL would require
+- the backend (Go + SQLite) and all server-side components are outside the
+  launcher GPL boundary (separate programs / separate works)
+- Prism/PolyMC/MultiMC and third-party notices are preserved; the per-release
+  obligations checklist is `docs/PRISM_ARCHITECTURE_REVIEW.md` section 3.4
+- client-side launcher logic is treated as public knowledge; security must
+  never depend on launcher-source secrecy (server-side authorization is
+  authoritative)
+
+Reason:
+GPLv3 section 6 requires offering complete corresponding source to every
+recipient of the distributed binaries; players are third-party recipients.
+A public launcher source repository is the lowest-risk compliance model and
+standard practice for Prism forks.
+
+Alternatives:
+- private source with source-on-request (rejected: operationally fragile,
+  compliance risk with anonymous downloads)
+- no GPL launcher at all (rejected: contradicts DECISION-001)
+
+Consequences:
+- launcher core code is project-copyright but GPL-bound at distribution
+  time; code that must stay proprietary must not be linked into the launcher
+  executable
+- creating the public launcher repository requires owner action when
+  implementation starts
+- no secrets, backend code or infrastructure may ever be committed to the
+  launcher repository
+
+Affected files:
+`docs/PRISM_ARCHITECTURE_REVIEW.md`, `docs/LICENSE_AUDIT.md`, `docs/ARCHITECTURE.md`
+
+Reversible: yes, with effort (before first public distribution)
+
+Legal review required: YES (final sign-off before production implementation)
+
+### DECISION-005 — Minecraft/loader metadata source
+
+Date: 2026-09-05
+
+Status: PENDING
+
+Decision:
+Not yet decided. Options:
+- (a) self-hosted mirror of the Prism meta index on project infrastructure
+  (recommended: control, availability, no third-party trust dependency)
+- (b) continue using `https://meta.prismlauncher.org` (zero maintenance,
+  third-party availability/trust dependency)
+- (c) vendored frozen meta snapshot in the launcher repository
+  (deterministic, manual updates)
+
+The endpoint is a build-time variable (`Launcher_META_URL`, upstream
+`CMakeLists.txt:200`), so switching is a build-configuration change, not a
+code rewrite.
+
+Reason:
+The meta index drives Minecraft version and loader resolution; its source
+affects availability, update freshness and trust.
+
+Consequences:
+- must be resolved before the first launcher build
+- if (a): backend/static-hosting scope grows slightly and a sync process is
+  needed
+
+Affected files:
+`docs/PRISM_MINIMAL_CORE.md`, `docs/PRISM_ARCHITECTURE_REVIEW.md`
+
+Reversible: yes
+
+Legal review required: no
+
 ## Rules
 
 Do not silently overwrite decisions.
