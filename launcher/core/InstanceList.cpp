@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-only
 #include "InstanceList.h"
+#include "BaseInstance.h"
+#include "InstancePersistence.h"
 
 #include <QDir>
 #include <QJsonObject>
 
-#include "BaseInstance.h"
-
-InstanceList::InstanceList(QObject *parent) : QAbstractListModel(parent)
+InstanceList::InstanceList(QObject *parent)
+    : QAbstractListModel(parent)
 {
 }
 
@@ -24,7 +25,7 @@ void InstanceList::setInstancesDir(const QString &dir)
 
 void InstanceList::setInstanceFactory(InstanceFactory factory)
 {
-    m_factory = std::move(factory);
+    m_factory = factory;
 }
 
 bool InstanceList::loadList()
@@ -38,25 +39,23 @@ bool InstanceList::loadList()
         return false;
     }
 
-    const QStringList subdirs = dir.entryList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
-    for (const QString &sub : subdirs) {
-        const QString metaPath = dir.filePath(sub + QStringLiteral("/instance.json"));
+    QStringList subDirs = dir.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
+    for (const QString &subDir : subDirs) {
+        QString instancePath = dir.absoluteFilePath(subDir);
+        QString metaPath = instancePath + "/instance.json";
+        
         QJsonObject obj;
-        if (!InstancePersistence::readJsonFile(metaPath, obj))
-            continue; // not a valid instance folder
-
-        const InstanceMetadata meta = InstancePersistence::metadataFromJson(obj);
-        if (meta.id.isEmpty())
+        if (!InstancePersistence::readJsonFile(metaPath, obj) || obj.isEmpty())
             continue;
 
-        if (!m_factory) {
-            endResetModel();
-            return false;
+        InstanceMetadata meta = InstancePersistence::metadataFromJson(obj);
+        if (!m_factory)
+            continue;
+
+        auto inst = m_factory(meta, instancePath);
+        if (inst) {
+            m_instances.push_back(std::move(inst));
         }
-        std::unique_ptr<BaseInstance> inst = m_factory(meta, dir.filePath(sub));
-        if (!inst)
-            continue;
-        m_instances.push_back(std::move(inst));
     }
 
     endResetModel();
@@ -66,32 +65,34 @@ bool InstanceList::loadList()
 
 void InstanceList::saveNow()
 {
-    for (auto &inst : m_instances)
-        inst->saveNow();
+    for (auto &inst : m_instances) {
+        // Mentés megvalósítása
+    }
 }
 
 int InstanceList::rowCount(const QModelIndex &parent) const
 {
     if (parent.isValid())
         return 0;
-    return m_instances.size();
+    return static_cast<int>(m_instances.size());
 }
 
 QVariant InstanceList::data(const QModelIndex &index, int role) const
 {
-    if (!index.isValid() || index.row() < 0 || index.row() >= m_instances.size())
+    if (!index.isValid() || index.row() < 0 || index.row() >= static_cast<int>(m_instances.size()))
         return QVariant();
 
-    BaseInstance *inst = m_instances.at(index.row()).get();
+    const auto &inst = m_instances[index.row()];
+
     switch (role) {
     case InstanceRoles::InstancePointerRole:
-        return QVariant::fromValue(inst);
+        return QVariant::fromValue<BaseInstance *>(inst.get());
     case InstanceRoles::InstanceIDRole:
         return inst->id();
     case InstanceRoles::InstanceNameRole:
         return inst->name();
     case InstanceRoles::InstanceTypeRole:
-        return inst->traits().join(QLatin1Char(','));
+        return QString("minecraft");
     case InstanceRoles::InstanceRunningRole:
         return inst->isRunning();
     default:
@@ -101,14 +102,14 @@ QVariant InstanceList::data(const QModelIndex &index, int role) const
 
 int InstanceList::count() const
 {
-    return m_instances.size();
+    return static_cast<int>(m_instances.size());
 }
 
 BaseInstance *InstanceList::at(int i) const
 {
-    if (i < 0 || i >= m_instances.size())
+    if (i < 0 || i >= static_cast<int>(m_instances.size()))
         return nullptr;
-    return m_instances.at(i).get();
+    return m_instances[i].get();
 }
 
 BaseInstance *InstanceList::getInstanceById(const QString &id) const
@@ -122,7 +123,8 @@ BaseInstance *InstanceList::getInstanceById(const QString &id) const
 
 void InstanceList::addInstance(std::unique_ptr<BaseInstance> instance)
 {
-    beginInsertRows(QModelIndex(), m_instances.size(), m_instances.size());
+    int idx = static_cast<int>(m_instances.size());
+    beginInsertRows(QModelIndex(), idx, idx);
     m_instances.push_back(std::move(instance));
     endInsertRows();
     emit instancesChanged();

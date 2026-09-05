@@ -34,7 +34,7 @@ void LaunchTask::abort()
 {
     if (m_state == State::Finished || m_state == State::Aborted || m_state == State::Failed)
         return;
-    if (m_currentStep >= 0 && m_currentStep < m_steps.size())
+    if (m_currentStep >= 0 && m_currentStep < static_cast<int>(m_steps.size()))
         m_steps.at(m_currentStep)->abort();
     setState(State::Aborted);
 }
@@ -52,7 +52,7 @@ BaseInstance *LaunchTask::instance() const
 void LaunchTask::runNextStep()
 {
     ++m_currentStep;
-    if (m_currentStep >= m_steps.size()) {
+    if (m_currentStep >= static_cast<int>(m_steps.size())) {
         setState(State::Finished);
         emit succeeded();
         return;

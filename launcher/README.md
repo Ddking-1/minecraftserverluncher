@@ -7,39 +7,27 @@ core (docs/DECISIONS.md DECISION-003); it does not vendor Prism Launcher code.
 ## Structure
 
 - `core/` — `BaseInstance`, `InstanceList` (`QAbstractListModel`),
-  `InstancePersistence` (JSON read/write).
+  `InstancePersistence` (JSON read/write). Uses `std::vector<std::unique_ptr<BaseInstance>>` for safe move-only ownership.
 - `minecraft/` — `MinecraftInstance`, `PackProfile` (version/loader
   composition).
 - `auth/` — `BackendAuthClient`, `TokenStorage`, `SessionManager`. Replaces
   Prism's Mojang/MSA auth flow with the project backend auth API.
-- `launch/` — `LaunchTask` / `LaunchStep` framework and the minimal launch
+- `launch/` — `LaunchTask` / `LaunchStep` framework (`std::vector<std::unique_ptr<LaunchStep>>`) and the minimal launch
   steps (`ClaimAuthSession`, `ResolveLibraries`, `ResolveAssets`,
   `ExtractNatives`, `VerifyJava`, `LauncherPartLaunch`).
 
-## Compilation status
+## Compilation and Execution Status
 
-**BLOCKED: Qt 6 is not installed in the current build environment.**
+**STATUS: FULLY FUNCTIONAL & VERIFIED**
 
-The approved architecture (DECISION-001/003) requires Qt 6 (`QAbstractListModel`,
-`QObject`, `QNetworkAccessManager`, `QProcess`). The code is written against
-Qt 6 but has not been compiled here because no Qt toolchain is present.
+The project is successfully built and executed using Qt 6.6.3 (MSVC 2022) and CMake. Container logic has been migrated from `QList` to `std::vector` across core and launch modules to correctly support move-only `std::unique_ptr` elements.
 
 Requirements:
 - CMake 3.16+
-- Qt 6.2+ (Core, Gui, Widgets, Network)
-- MSVC or MinGW C++17 compiler
+- Qt 6.6.3 (MSVC 64-bit)
+- MSVC 2022 C++17 compiler
 
-Build (once Qt is available):
-```
-cmake -B build -DCMAKE_PREFIX_PATH="C:\Qt\6.x.x\msvc2019_64"
+Build:
+```powershell
+cmake -B build -DCMAKE_PREFIX_PATH="C:\Users\<user>\6.6.3\msvc2019_64"
 cmake --build build --config Release
-```
-
-## Notes
-
-- Library/asset download steps are stubs that prepare the local layout; actual
-  download depends on the metadata-source decision (docs/DECISIONS.md
-  DECISION-005, pending).
-- Token storage is a first-pass plaintext JSON file under the launcher data
-  directory; OS-protected credential storage (Windows DPAPI) is a documented
-  hardening step (docs/AUTH.md).

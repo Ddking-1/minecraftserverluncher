@@ -5,6 +5,7 @@
 #include <QDebug>
 #include <QDir>
 
+#include "core/InstancePersistence.h"
 #include "core/BaseInstance.h"
 #include "core/InstanceList.h"
 #include "minecraft/MinecraftInstance.h"

@@ -4,7 +4,7 @@
 
 #include <QObject>
 #include <QString>
-#include <QVector>
+#include <vector>
 #include <memory>
 
 class LaunchStep;
@@ -54,7 +54,7 @@ private:
     void setState(State state);
 
     BaseInstance *m_instance;
-    QVector<std::unique_ptr<LaunchStep>> m_steps;
+    std::vector<std::unique_ptr<LaunchStep>> m_steps;
     int m_currentStep = -1;
     State m_state = State::NotStarted;
 };
