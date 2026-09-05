@@ -1,0 +1,7 @@
+# Runtime artifacts for the Go auth backend.
+# The SQLite database file and compiled binary are never committed.
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+/server

@@ -106,3 +106,52 @@ Manual user action:
 1. Legal sign-off on DECISION-004 (GPLv3 distribution / public launcher
    source repository model).
 2. Review and merge branch architecture/prism-minimal-core into master.
+
+## 2026-09-05 17:02 — BACKEND SCAFFOLD / AUTH API
+
+Agent/model: local backend implementation agent
+Branch: backend/scaffold-and-auth
+Task: Create the repository scaffold and implement the core backend auth API
+(Go + SQLite). No Microsoft auth, UI, Velocity plugin or LimboAuth.
+Started: 2026-09-05
+Completed: 2026-09-05
+
+Files:
+- Scaffold directories (tracked via .gitkeep): launcher/core, launcher/auth,
+  launcher/minecraft, launcher/updates, server/api, server/auth,
+  server/sessions, server/devices, server/database, velocity/plugin, tests
+- server/go.mod, server/go.sum (Go module minecraftserverluncher/server)
+- server/main.go (HTTP server bootstrap)
+- server/config/config.go (environment-driven config; no hardcoded secrets)
+- server/database/database.go, accounts.go, devices.go, sessions.go
+  (SQLite schema init + account/device/session/access-token stores)
+- server/auth/auth.go (bcrypt password hashing, opaque token gen/hash)
+- server/sessions/service.go (session lifecycle)
+- server/devices/service.go (device identity mapping)
+- server/api/handlers.go, ratelimit.go (register/login/refresh/logout/
+  logout-all endpoints, per-IP rate limiting)
+- server/auth/auth_test.go, server/database/database_test.go,
+  server/api/handlers_test.go (minimal tests)
+- server/.env.example, server/.gitignore, server/README.md
+- docs/AI_CONTEXT.md, docs/WORK_STATE.md, docs/PROGRESS.md (this entry),
+  docs/CHANGELOG.md
+
+Tests:
+go build ./... (pass), go vet ./... (pass), go test ./... (pass; 11 tests:
+auth 2, database 5, api integration 4). No test tooling existed before this
+task; the Go checks above are the checks appropriate to the changed area.
+
+Current status:
+Backend scaffold and core auth API implemented and pushed on branch
+backend/scaffold-and-auth. Launcher and Velocity directories are scaffolded
+but empty. No Microsoft auth, UI, Velocity plugin or LimboAuth implemented.
+
+Next:
+Owner review/merge of branch backend/scaffold-and-auth; then launcher
+bootstrap and launcher core design once DECISION-004 sign-off and DECISION-005
+resolution are complete.
+
+Manual user action:
+1. Review and merge branch backend/scaffold-and-auth into master.
+2. Legal sign-off on DECISION-004 (GPLv3 distribution / public launcher
+   source repository model) remains outstanding.

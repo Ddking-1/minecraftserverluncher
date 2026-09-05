@@ -30,3 +30,26 @@ No production functionality is claimed at this stage.
 - Marked the Prism components tightly coupled to Prism UI/auth for replacement: all MSA/Xbox/Mojang auth, the ClaimAccount launch step, Prism's updater, and the UI; documented the launch-authorization injection seam.
 - Recorded DECISION-005 (PENDING): Minecraft/loader metadata source, self-hosted mirror recommended.
 - Updated `docs/ARCHITECTURE.md`, `docs/LICENSE_AUDIT.md`, `docs/AI_CONTEXT.md`, `docs/WORK_STATE.md` and `docs/PROGRESS.md`.
+
+### Backend scaffold and auth API
+
+- Created the repository scaffold directories: `launcher/core`, `launcher/auth`,
+  `launcher/minecraft`, `launcher/updates`, `server/api`, `server/auth`,
+  `server/sessions`, `server/devices`, `server/database`, `velocity/plugin`,
+  `tests` (tracked via `.gitkeep`).
+- Implemented the project-owned Go + SQLite auth backend under `server/`
+  (module `minecraftserverluncher/server`): environment-driven configuration
+  with no hardcoded secrets, idempotent SQLite schema initialization, account
+  model with bcrypt password hashing, server-side session model with expiry
+  and revocation, device identity mapping, and registration/login/refresh/
+  logout/logout-all endpoints with per-IP rate limiting.
+- Tokens are opaque random values; only SHA-256 digests are stored. Access
+  tokens are short-lived (default 15 min); refresh/session lifetime is capped
+  at 30 days per `docs/AUTH.md`. Expiry and revocation are enforced
+  server-side.
+- Added minimal Go tests (auth, database, API integration) and a
+  `server/README.md` documenting layout, security model, configuration and
+  endpoints.
+- Out of scope by design: Microsoft auth, UI, Velocity plugin, LimboAuth.
+- Updated `docs/AI_CONTEXT.md`, `docs/WORK_STATE.md`, `docs/PROGRESS.md` and
+  `docs/CHANGELOG.md`.
