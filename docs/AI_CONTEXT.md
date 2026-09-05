@@ -12,15 +12,16 @@ Java 24
 
 ## Current phase
 
-PHASE 0 — PROJECT GOVERNANCE / ARCHITECTURE
+PHASE 1 — BACKEND SCAFFOLD / AUTH API (IN PROGRESS)
 
 The Prism minimal-core / licensing checkpoint is RESOLVED at architecture
 level (DECISION-003, DECISION-004; see `docs/PRISM_MINIMAL_CORE.md` and
 `docs/PRISM_ARCHITECTURE_REVIEW.md`).
 
-Production implementation remains blocked until:
-- the owner signs off DECISION-004 (GPLv3 distribution model), and
-- DECISION-005 (metadata source) is resolved
+The backend scaffold and core auth API are implemented on branch
+`backend/scaffold-and-auth` (Go + SQLite). Launcher and Velocity work remain
+blocked until the owner signs off DECISION-004 (GPLv3 distribution model)
+and DECISION-005 (metadata source) is resolved.
 
 ## Approved architecture direction
 
@@ -42,11 +43,12 @@ NOT "full Prism Launcher + custom layer". See `docs/DECISIONS.md` DECISION-001.
 
 - Git default branch: `master`
 - Remote: `origin` — private GitHub repository `Ddking-1/minecraftserverluncher`
-- Tracked: governance/state documentation only
+- Tracked: governance/state documentation plus the backend scaffold and auth
+  API under `server/` (branch `backend/scaffold-and-auth`)
 - Untracked by design: `reference/` (DECISION-002) and local tooling state
-- Architecture documentation now includes `docs/PRISM_MINIMAL_CORE.md` and
+- Architecture documentation includes `docs/PRISM_MINIMAL_CORE.md` and
   `docs/PRISM_ARCHITECTURE_REVIEW.md` (DECISION-003/004/005)
-- No production source code exists in the repository yet
+- Backend source exists under `server/` (Go module `minecraftserverluncher/server`)
 
 ## Main goals
 
@@ -89,10 +91,15 @@ They are research/reference sources, not automatically product code.
 
 ## Current implementation status
 
-No production implementation approved yet.
-The Prism subsystem classification is complete (DECISION-003). The next
-implementation tasks, once DECISION-004 is signed off and DECISION-005 is
-resolved, are the launcher fork bootstrap and the launcher core design.
+Backend scaffold and core auth API implemented on branch
+`backend/scaffold-and-auth` (Go + SQLite): account model with bcrypt password
+hashing, server-side session model with expiry and revocation, device
+identity mapping, and registration/login/refresh/logout/logout-all endpoints.
+SQLite schema initialization and minimal tests are included. See
+`server/README.md`.
+
+Launcher and Velocity implementation remain blocked until DECISION-004 is
+signed off and DECISION-005 is resolved.
 
 ## Handoff rule
 
