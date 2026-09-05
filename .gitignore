@@ -18,3 +18,7 @@ Desktop.ini
 /out/
 /bin/
 node_modules/
+
+# Local / IDE / Reference ignored directories
+.abacusai/
+reference/
