@@ -8,6 +8,7 @@ core (docs/DECISIONS.md DECISION-003); it does not vendor Prism Launcher code.
 
 - `core/` — `BaseInstance`, `InstanceList` (`QAbstractListModel`),
   `InstancePersistence` (JSON read/write). Uses `std::vector<std::unique_ptr<BaseInstance>>` for safe move-only ownership.
+  Includes `HWIDExtractor` for hardware identification.
 - `minecraft/` — `MinecraftInstance`, `PackProfile` (version/loader
   composition).
 - `auth/` — `BackendAuthClient`, `TokenStorage`, `SessionManager`. Replaces
