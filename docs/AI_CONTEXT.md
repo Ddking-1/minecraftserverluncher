@@ -12,16 +12,19 @@ Java 24
 
 ## Current phase
 
-PHASE 1 — BACKEND SCAFFOLD / AUTH API (IN PROGRESS)
+PHASE 1 — BACKEND SCAFFOLD / AUTH API + LAUNCHER CORE SCAFFOLD (IN PROGRESS)
 
 The Prism minimal-core / licensing checkpoint is RESOLVED at architecture
 level (DECISION-003, DECISION-004; see `docs/PRISM_MINIMAL_CORE.md` and
 `docs/PRISM_ARCHITECTURE_REVIEW.md`).
 
 The backend scaffold and core auth API are implemented on branch
-`backend/scaffold-and-auth` (Go + SQLite). Launcher and Velocity work remain
-blocked until the owner signs off DECISION-004 (GPLv3 distribution model)
-and DECISION-005 (metadata source) is resolved.
+`backend/scaffold-and-auth` (Go + SQLite). A minimal C++ launcher core scaffold
+is implemented on branch `launcher/core-scaffold` (instance management,
+launch-task framework, backend auth client). Launcher compilation is BLOCKED
+until Qt 6 is installed in the build environment. Velocity work remains
+blocked until the owner signs off DECISION-004 (GPLv3 distribution model) and
+DECISION-005 (metadata source) is resolved.
 
 ## Approved architecture direction
 
@@ -44,11 +47,13 @@ NOT "full Prism Launcher + custom layer". See `docs/DECISIONS.md` DECISION-001.
 - Git default branch: `master`
 - Remote: `origin` — private GitHub repository `Ddking-1/minecraftserverluncher`
 - Tracked: governance/state documentation plus the backend scaffold and auth
-  API under `server/` (branch `backend/scaffold-and-auth`)
+  API under `server/` (branch `backend/scaffold-and-auth`) and the launcher
+  core scaffold under `launcher/` (branch `launcher/core-scaffold`)
 - Untracked by design: `reference/` (DECISION-002) and local tooling state
 - Architecture documentation includes `docs/PRISM_MINIMAL_CORE.md` and
   `docs/PRISM_ARCHITECTURE_REVIEW.md` (DECISION-003/004/005)
 - Backend source exists under `server/` (Go module `minecraftserverluncher/server`)
+- Launcher core scaffold exists under `launcher/` (C++ / Qt, not yet compiled)
 
 ## Main goals
 
@@ -98,8 +103,20 @@ identity mapping, and registration/login/refresh/logout/logout-all endpoints.
 SQLite schema initialization and minimal tests are included. See
 `server/README.md`.
 
-Launcher and Velocity implementation remain blocked until DECISION-004 is
-signed off and DECISION-005 is resolved.
+A minimal C++ launcher core scaffold is implemented on branch
+`launcher/core-scaffold`: `launcher/core` (BaseInstance, InstanceList as a
+QAbstractListModel, InstancePersistence), `launcher/minecraft`
+(MinecraftInstance, PackProfile), `launcher/auth` (BackendAuthClient matching
+the server auth API, TokenStorage, SessionManager — replaces Prism's
+Mojang/MSA flow), and `launcher/launch` (LaunchTask/LaunchStep framework with
+ClaimAuthSession, ResolveLibraries, ResolveAssets, ExtractNatives, VerifyJava,
+LauncherPartLaunch steps). See `launcher/README.md`. The C++ code is NOT yet
+compiled: no Qt 6 toolchain is installed in the build environment. Library and
+asset download steps are stubs pending DECISION-005; token storage is
+first-pass plaintext pending OS-protected credential storage (docs/AUTH.md).
+
+Velocity implementation remains blocked until DECISION-004 is signed off and
+DECISION-005 is resolved.
 
 ## Handoff rule
 

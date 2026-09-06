@@ -1,0 +1,34 @@
+filename = '§eSmall Totem Pop Animation.zip'
+name = 'Small Totem Pop Animation'
+side = 'client'
+x-prismlauncher-dependencies = []
+x-prismlauncher-loaders = []
+x-prismlauncher-mc-versions = [
+    '1.20',
+    '1.20.1',
+    '1.20.2 Pre-Release 1',
+    '1.20.2-pre1',
+    '1.20.2',
+    '1.20.3',
+    '1.20.4',
+    '1.20.5 Pre-Release 1',
+    '1.20.5 Pre-Release 2',
+    '1.20.5 Pre-Release 3',
+    '1.20.5-pre1',
+    '1.20.5-pre2',
+    '1.20.5-pre3',
+    '1.20.5',
+    '1.20.6'
+]
+x-prismlauncher-release-type = 'release'
+x-prismlauncher-version-number = '1.20.x'
+
+[download]
+hash = '847c0f9f91ca9467945cc09fe4311dcbbd0bb043ff6503379fcdfd77987e91e3fec4ded856266d7501c9714c71a1a0c77e88a8d4920630f4fae32920a3d59b9b'
+hash-format = 'sha512'
+mode = 'url'
+url = 'https://cdn.modrinth.com/data/WTdl7DCH/versions/pIWiNWFJ/§eSmall Totem Pop Animation.zip'
+
+[update.modrinth]
+mod-id = 'WTdl7DCH'
+version = 'pIWiNWFJ'

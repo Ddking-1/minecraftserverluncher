@@ -53,3 +53,32 @@ No production functionality is claimed at this stage.
 - Out of scope by design: Microsoft auth, UI, Velocity plugin, LimboAuth.
 - Updated `docs/AI_CONTEXT.md`, `docs/WORK_STATE.md`, `docs/PROGRESS.md` and
   `docs/CHANGELOG.md`.
+
+### Launcher core scaffold (C++ / Qt)
+
+- Implemented the minimal C++ launcher core under `launcher/` on branch
+  `launcher/core-scaffold`:
+  - `launcher/core`: `BaseInstance`, `InstanceList` (a `QAbstractListModel`
+    over instances), `InstancePersistence` (atomic JSON read/write of
+    `instance.json` / `launcher.json` / `version.json`), `InstanceTypes`.
+  - `launcher/minecraft`: `MinecraftInstance`, `PackProfile` (version/loader
+    composition as a `QAbstractListModel`).
+  - `launcher/auth`: `BackendAuthClient` (async client matching the server
+    auth API in `server/api/handlers.go`), `TokenStorage`, `SessionManager`.
+    Replaces Prism's Mojang/MSA auth flow entirely.
+  - `launcher/launch`: `LaunchTask` / `LaunchStep` framework and the minimal
+    launch sequence `ClaimAuthSession → ResolveLibraries → ResolveAssets →
+    ExtractNatives → VerifyJava → LauncherPartLaunch`, plus Java version
+    helpers. No Microsoft checks.
+- Added `launcher/CMakeLists.txt` (Qt6 Core/Gui/Widgets/Network), a minimal
+  `main.cpp`, and `launcher/README.md`. The minecraft and launch subsystems
+  are built as one library because they are mutually dependent.
+- Compilation is BLOCKED: no Qt 6 toolchain is installed in the build
+  environment. CMake configure dry-run reaches the Qt `find_package` step
+  cleanly; the C++ auth client contract was verified against
+  `server/api/handlers.go`.
+- Library/asset download steps are stubs pending DECISION-005 (metadata
+  source). Token storage is first-pass plaintext pending OS-protected
+  credential storage (docs/AUTH.md).
+- Updated `docs/AI_CONTEXT.md`, `docs/WORK_STATE.md`, `docs/PROGRESS.md` and
+  `docs/CHANGELOG.md`.
