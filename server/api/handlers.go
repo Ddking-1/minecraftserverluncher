@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"os/exec"
 	"strings"
 	"time"
 
@@ -45,6 +46,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/v1/auth/refresh", s.limit(s.handleRefresh))
 	mux.HandleFunc("POST /api/v1/auth/logout", s.limit(s.handleLogout))
 	mux.HandleFunc("POST /api/v1/auth/logout-all", s.limit(s.handleLogoutAll))
+	mux.HandleFunc("POST /api/server/start", s.limit(s.handleStartServer))
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
@@ -203,6 +205,30 @@ func (s *Server) handleLogoutAll(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
+
+// handleStartServer handles the POST /api/server/start endpoint.
+func (s *Server) handleStartServer(w http.ResponseWriter, r *http.Request) {
+	_, ok := s.authenticate(w, r)
+	if !ok {
+		return
+	}
+	
+	// Execute the Python script to start the Pterodactyl server
+	cmd := exec.Command("python", "scripts/ptero_control.py")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to start server: "+string(output))
+		return
+	}
+	
+	// Return success response with server status info
+	response := map[string]interface{}{
+		"status": "server started",
+		"output": string(output),
+	}
+	writeJSON(w, http.StatusOK, response)
+}
+
 
 // ---- helpers ----
 

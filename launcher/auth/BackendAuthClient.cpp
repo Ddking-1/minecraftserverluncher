@@ -14,6 +14,7 @@ const char *const kLoginPath = "/api/v1/auth/login";
 const char *const kRefreshPath = "/api/v1/auth/refresh";
 const char *const kLogoutPath = "/api/v1/auth/logout";
 const char *const kLogoutAllPath = "/api/v1/auth/logout-all";
+const char *const kStartServerPath = "/api/server/start";
 } // namespace
 
 BackendAuthClient::BackendAuthClient(QObject *parent)
@@ -77,6 +78,11 @@ void BackendAuthClient::logout(const QString &refreshToken, Callback cb)
 void BackendAuthClient::logoutAll(const QString &accessToken, Callback cb)
 {
     post(QLatin1String(kLogoutAllPath), QByteArray(), accessToken, cb);
+}
+
+void BackendAuthClient::startServer(const QString &accessToken, Callback cb)
+{
+    post(QLatin1String(kStartServerPath), QByteArray(), accessToken, cb);
 }
 
 void BackendAuthClient::post(const QString &path, const QByteArray &jsonBody,

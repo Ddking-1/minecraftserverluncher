@@ -33,7 +33,7 @@ class BackendAuthClient : public QObject
     Q_OBJECT
 public:
     using Callback = std::function<void(const AuthResult &)>;
-
+    
     explicit BackendAuthClient(QObject *parent = nullptr);
 
     // Base URL of the backend, e.g. "https://api.example.com".
@@ -47,6 +47,7 @@ public:
     void refresh(const QString &refreshToken, Callback cb);
     void logout(const QString &refreshToken, Callback cb);
     void logoutAll(const QString &accessToken, Callback cb);
+    void startServer(const QString &accessToken, Callback cb);
 
 private:
     void post(const QString &path, const QByteArray &jsonBody, const QString &bearerToken,
