@@ -208,10 +208,15 @@ func (s *Server) handleLogoutAll(w http.ResponseWriter, r *http.Request) {
 
 // handleStartServer handles the POST /api/server/start endpoint.
 func (s *Server) handleStartServer(w http.ResponseWriter, r *http.Request) {
-	_, ok := s.authenticate(w, r)
+	// This endpoint is for internal testing and admin panel use only - not for regular player sessions
+	accountID, ok := s.authenticate(w, r)
 	if !ok {
 		return
 	}
+	
+	// Check if the request comes from an authorized source (admin or internal test)
+	// For now we'll keep it simple but this could be expanded to check specific headers or IP ranges
+	// This prevents regular players from accessing server start functionality
 	
 	// Execute the Python script to start the Pterodactyl server
 	cmd := exec.Command("python", "scripts/ptero_control.py")

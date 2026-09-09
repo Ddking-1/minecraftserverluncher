@@ -47,7 +47,7 @@ public:
     void refresh(const QString &refreshToken, Callback cb);
     void logout(const QString &refreshToken, Callback cb);
     void logoutAll(const QString &accessToken, Callback cb);
-    void startServer(const QString &accessToken, Callback cb);
+    // Removed startServer as it's no longer used in the player launcher client.
 
 private:
     void post(const QString &path, const QByteArray &jsonBody, const QString &bearerToken,
