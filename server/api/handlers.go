@@ -145,6 +145,17 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Check if the device ID is banned
+	isBanned, err := s.db.IsHWIDBanned(req.DeviceID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+	if isBanned {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "Account or hardware is banned"})
+		return
+	}
+
 	pair, err := s.issueSession(w, acc.ID, req.DeviceID, req.DeviceName)
 	if err != nil {
 		return

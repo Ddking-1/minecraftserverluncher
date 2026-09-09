@@ -22,3 +22,7 @@ node_modules/
 # Local / IDE / Reference ignored directories
 .abacusai/
 reference/
+
+# Environment & Secret files
+.env
+*.env

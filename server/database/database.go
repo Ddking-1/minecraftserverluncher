@@ -21,6 +21,13 @@ var ErrNotFound = errors.New("not found")
 // ErrConflict is returned when a uniqueness constraint is violated.
 var ErrConflict = errors.New("conflict")
 
+// HWIDBan represents a banned hardware identifier
+type HWIDBan struct {
+	ID        int64
+	DeviceID  string
+	CreatedAt time.Time
+}
+
 // Account is a registered user account.
 type Account struct {
 	ID           int64
@@ -110,6 +117,12 @@ CREATE TABLE IF NOT EXISTS devices (
     UNIQUE (account_id, device_id)
 );
 
+CREATE TABLE IF NOT EXISTS hwid_bans (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    device_id   TEXT    NOT NULL UNIQUE,
+    created_at  TEXT    NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS sessions (
     id                 INTEGER PRIMARY KEY AUTOINCREMENT,
     account_id         INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
@@ -123,6 +136,7 @@ CREATE TABLE IF NOT EXISTS sessions (
 
 CREATE INDEX IF NOT EXISTS idx_sessions_account ON sessions(account_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_refresh ON sessions(refresh_hash);
+CREATE INDEX IF NOT EXISTS idx_hwid_bans_device ON hwid_bans(device_id);
 
 CREATE TABLE IF NOT EXISTS access_tokens (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -146,4 +160,17 @@ func nowText() string { return time.Now().UTC().Format(timeLayout) }
 
 func parseTime(s string) (time.Time, error) {
 	return time.Parse(timeLayout, s)
+}
+
+// IsHWIDBanned checks if a device ID is banned
+func (db *DB) IsHWIDBanned(deviceID string) (bool, error) {
+	row := db.sql.QueryRow(
+		`SELECT COUNT(*) FROM hwid_bans WHERE device_id = ?`,
+		deviceID,
+	)
+	var count int
+	if err := row.Scan(&count); err != nil {
+		return false, fmt.Errorf("database: check hwid ban: %w", err)
+	}
+	return count > 0, nil
 }
