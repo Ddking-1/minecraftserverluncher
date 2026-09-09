@@ -42,6 +42,8 @@ void BackendAuthClient::registerAccount(const QString &username, const QString &
     body.insert(QStringLiteral("password"), password);
     body.insert(QStringLiteral("device_id"), deviceId);
     body.insert(QStringLiteral("device_name"), deviceName);
+    // Add HWID to the registration payload
+    body.insert(QStringLiteral("hwid"), QString(QCoreApplication::applicationName() + "_" + deviceId));
     post(QLatin1String(kRegisterPath), QJsonDocument(body).toJson(QJsonDocument::Compact), {}, cb);
 }
 
@@ -53,6 +55,8 @@ void BackendAuthClient::login(const QString &username, const QString &password,
     body.insert(QStringLiteral("password"), password);
     body.insert(QStringLiteral("device_id"), deviceId);
     body.insert(QStringLiteral("device_name"), deviceName);
+    // Add HWID to the login payload
+    body.insert(QStringLiteral("hwid"), QString(QCoreApplication::applicationName() + "_" + deviceId));
     post(QLatin1String(kLoginPath), QJsonDocument(body).toJson(QJsonDocument::Compact), {}, cb);
 }
 
@@ -97,6 +101,14 @@ void BackendAuthClient::handleReply(QNetworkReply *reply, Callback cb)
 
     if (reply->error() != QNetworkReply::NoError) {
         result.error = reply->errorString();
+        if (cb)
+            cb(result);
+        return;
+    }
+
+    // Handle 403 Forbidden response for banned users
+    if (status == 403) {
+        result.error = QStringLiteral("Access denied: Account is banned");
         if (cb)
             cb(result);
         return;
