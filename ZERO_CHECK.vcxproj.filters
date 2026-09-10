@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="D:\projektek\ai\minecraftserverluncher\CMakeFiles\0c62b322251e9ec216fd1ab5ff8642fc\generate.stamp.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{5CCB55B7-7B48-3232-94F0-F4EA25744479}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

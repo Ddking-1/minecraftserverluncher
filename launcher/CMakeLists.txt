@@ -14,6 +14,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_executable(${PROJECT_NAME} 
     main.cpp
     core/HWIDExtractor.cpp
+    game/JavaDetector.cpp
+    game/MinecraftLauncher.cpp
 )
 
 # Include directories
@@ -46,6 +48,8 @@ add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
 # Add the header files for IDE integration
 set(HEADERS
     core/HWIDExtractor.h
+    game/JavaDetector.h
+    game/MinecraftLauncher.h
 )
 
 # Group header files in Visual Studio if using VS generator

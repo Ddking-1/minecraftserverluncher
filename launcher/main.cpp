@@ -9,6 +9,7 @@
 #include "core/BaseInstance.h"
 #include "core/InstanceList.h"
 #include "minecraft/MinecraftInstance.h"
+#include "game/MinecraftLauncher.h"
 
 namespace {
 std::unique_ptr<BaseInstance> makeInstance(const InstanceMetadata &meta, const QString &rootDir)
