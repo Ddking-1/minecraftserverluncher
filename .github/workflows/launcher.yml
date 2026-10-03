@@ -1,0 +1,32 @@
+name: launcher
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'launcher/**'
+      - '.github/workflows/launcher.yml'
+  pull_request:
+    paths:
+      - 'launcher/**'
+      - '.github/workflows/launcher.yml'
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.6.3'
+          host: windows
+          target: desktop
+          arch: win64_msvc2019_64
+          cache: true
+      - name: Configure
+        run: cmake -S launcher -B launcher/build -G "Visual Studio 17 2022" -A x64 -DCMAKE_PREFIX_PATH="${{ env.Qt6_DIR }}/.."
+      - name: Build
+        run: cmake --build launcher/build --config Release
+      - name: Test
+        run: ctest --test-dir launcher/build -C Release --output-on-failure
