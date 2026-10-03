@@ -21,10 +21,11 @@ level (DECISION-003, DECISION-004; see `docs/PRISM_MINIMAL_CORE.md` and
 The backend scaffold and core auth API are implemented on branch
 `backend/scaffold-and-auth` (Go + SQLite). A minimal C++ launcher core scaffold
 is implemented on branch `launcher/core-scaffold` (instance management,
-launch-task framework, backend auth client). Launcher compilation is BLOCKED
-until Qt 6 is installed in the build environment. Velocity work remains
-blocked until the owner signs off DECISION-004 (GPLv3 distribution model) and
-DECISION-005 (metadata source) is resolved.
+launch-task framework, backend auth client). The launcher build baseline is now
+GREEN on branch `fix/launcher-cmake-qt6`: CMake configure and a Release build
+with Qt 6.6.3 MSVC 2022 succeed and produce `MinecraftLauncher.exe`. Velocity
+work remains blocked until the owner signs off DECISION-004 (GPLv3 distribution
+model) and DECISION-005 (metadata source) is resolved.
 
 ## Approved architecture direction
 
@@ -110,8 +111,13 @@ QAbstractListModel, InstancePersistence), `launcher/minecraft`
 the server auth API, TokenStorage, SessionManager — replaces Prism's
 Mojang/MSA flow), and `launcher/launch` (LaunchTask/LaunchStep framework with
 ClaimAuthSession, ResolveLibraries, ResolveAssets, ExtractNatives, VerifyJava,
-LauncherPartLaunch steps). See `launcher/README.md`. The C++ code is NOT yet
-compiled: no Qt 6 toolchain is installed in the build environment. Library and
+LauncherPartLaunch steps). See `launcher/README.md`.
+
+The launcher build baseline is GREEN on branch `fix/launcher-cmake-qt6`:
+`launcher/CMakeLists.txt` uses Qt6 (Core/Network), AUTOMOC and C++17;
+`launcher/core/HWIDExtractor.cpp` now uses the Windows CNG SHA-256 API instead
+of OpenSSL. CMake configure and `cmake --build ... --config Release` succeed
+with Qt 6.6.3 MSVC 2022 and produce `MinecraftLauncher.exe`. Library and
 asset download steps are stubs pending DECISION-005; token storage is
 first-pass plaintext pending OS-protected credential storage (docs/AUTH.md).
 

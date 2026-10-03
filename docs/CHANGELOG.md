@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+### Launcher CMake / Qt6 build fix
+
+- Fixed `launcher/CMakeLists.txt`: added `find_package(Qt6 REQUIRED COMPONENTS
+  Core Network)`, `CMAKE_AUTOMOC ON`, C++17, an explicit source list covering
+  `core`, `minecraft`, `launch` and `launch/steps`, `target_include_directories`
+  and `target_link_libraries(... Qt6::Core Qt6::Network)`; Windows links
+  `bcrypt`, `iphlpapi`, `wbemuuid`, `ole32`, `oleaut32`.
+- Fixed the root `CMakeLists.txt`: removed the duplicate
+  `add_subdirectory(launcher)` and the Qt5-first lookup; it now delegates to
+  `launcher/`.
+- Replaced the OpenSSL `openssl/sha.h` dependency in
+  `launcher/core/HWIDExtractor.cpp` with the Windows CNG API (`bcrypt.h`):
+  SMBIOS/MachineGuid registry value + CPUID + primary MAC address, hashed with
+  BCrypt SHA-256 to a 64-char hex identifier.
+- Fixed a Qt6 compile error in `launcher/game/MinecraftLauncher.cpp`:
+  `QProcess::start(program, args)` returns `void`, so the invalid
+  `if (!m_process->start())` was replaced with `start()` +
+  `waitForStarted(5000)`.
+- Verified with a real build: CMake configure and
+  `cmake --build ... --config Release` both succeed and produce
+  `MinecraftLauncher.exe` (Qt 6.6.3 MSVC 2022, CMake 4.1.1, MSVC 19.44).
+
 ### Project initialization
 
 - Defined requirements for a Windows Minecraft launcher/client ecosystem.

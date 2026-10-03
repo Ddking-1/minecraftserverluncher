@@ -34,7 +34,8 @@ void MinecraftLauncher::launchGame(const QString &javaPath, const QString &usern
     m_process->setProgram(javaPath);
     m_process->setArguments(arguments);
 
-    if (!m_process->start()) {
+    m_process->start();
+    if (!m_process->waitForStarted(5000)) {
         emit launchError("Failed to start process");
         return;
     }

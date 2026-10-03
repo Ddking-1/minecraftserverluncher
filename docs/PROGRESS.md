@@ -212,3 +212,43 @@ Manual user action:
    compiled and verified.
 2. Review and merge branch launcher/core-scaffold into master.
 3. Legal sign-off on DECISION-004 remains outstanding.
+
+## 2026-10-04 — LAUNCHER CMake / Qt6 BUILD FIX
+
+Agent/model: launcher build agent (worker model lm-studio/deepseek-coder-v2-lite-instruct)
+Branch: fix/launcher-cmake-qt6
+Task: Make the launcher C++ core actually compile with the installed Qt 6.6.3
+MSVC 2022 toolchain and remove the OpenSSL dependency from the HWID helper.
+Started: 2026-10-04
+Completed: 2026-10-04
+
+Files:
+- launcher/CMakeLists.txt (rewritten: Qt6 Core/Network, AUTOMOC, C++17, full
+  source list, include dirs, Windows libs)
+- CMakeLists.txt (root: removed duplicate add_subdirectory(launcher) and
+  Qt5-first lookup)
+- launcher/core/HWIDExtractor.cpp (OpenSSL sha.h -> Windows CNG bcrypt SHA-256)
+- launcher/game/MinecraftLauncher.cpp (Qt6 QProcess::start void-return fix)
+- docs/WORK_STATE.md, docs/PROGRESS.md (this entry), docs/CHANGELOG.md,
+  docs/AI_CONTEXT.md
+
+Tests:
+Real build performed (no test framework for the launcher yet):
+cmake -S launcher -B launcher/build-test -G "Visual Studio 17 2022" -A x64
+  -DCMAKE_PREFIX_PATH="C:/Users/koppa_9my1ub2/6.6.3/msvc2019_64"  -> OK
+cmake --build launcher/build-test --config Release                    -> OK
+Artifact: launcher/build-test/Release/MinecraftLauncher.exe.
+Build directory removed after verification.
+
+Current status:
+Launcher build baseline is GREEN on branch fix/launcher-cmake-qt6. All 18
+translation units compile and link. No launcher unit tests exist yet.
+
+Next:
+Owner review/merge of branch fix/launcher-cmake-qt6; continue the approved
+15-task plan (HWID verification, DPAPI token storage, launch steps); resolve
+DECISION-005.
+
+Manual user action:
+1. Review and merge branch fix/launcher-cmake-qt6 into master.
+2. Legal sign-off on DECISION-004 remains outstanding.
