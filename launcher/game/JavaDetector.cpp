@@ -2,107 +2,90 @@
 #include "JavaDetector.h"
 
 #include <QDir>
+#include <QFile>
+#include <QProcess>
 #include <QProcessEnvironment>
+#include <QRegularExpression>
 #include <QStringList>
 
-bool JavaDetector::isJavaAvailable()
+const int JavaDetector::kMinJavaMajor = 21;
+
+QStringList JavaDetector::candidateJavaHomes()
 {
-    // Check JAVA_HOME environment variable first
-    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
-    QString javaHome = env.value("JAVA_HOME");
-    
-    if (!javaHome.isEmpty()) {
-        QDir dir(javaHome);
-        if (dir.exists() && checkJavaVersion(javaHome)) {
-            return true;
-        }
+    QStringList result;
+
+    if (!qEnvironmentVariable("LAUNCHER_JAVA_HOME").isEmpty()) {
+        result << qEnvironmentVariable("LAUNCHER_JAVA_HOME");
     }
-
-    // Check standard Java installation paths
-    QStringList possiblePaths = {
-        "C:/Program Files/Java/",
-        "C:/Program Files (x86)/Java/"
+    if (!qEnvironmentVariable("JAVA_HOME").isEmpty()) {
+        result << qEnvironmentVariable("JAVA_HOME");
+    }
+    const QStringList roots = {
+        "C:/Program Files/Eclipse Adoptium",
+        "C:/Program Files/Java",
+        "C:/Program Files/Microsoft",
+        "C:/Program Files/Zulu",
+        "C:/Program Files/Amazon Corretto",
+        "C:/Program Files (x86)/Java",
+        QDir::homePath() + QStringLiteral("/.jdks")
     };
-
-    for (const QString &path : possiblePaths) {
-        QDir dir(path);
+    for (const QString &root : roots) {
+        QDir dir(root);
         if (dir.exists()) {
-            // Look for JDK or JRE directories with version numbers
-            QStringList subdirs = dir.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
-            
+            const QStringList subdirs = dir.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
             for (const QString &subdir : subdirs) {
-                if (subdir.startsWith("jdk") || subdir.startsWith("jre")) {
-                    // Check the bin directory in this path
-                    QString javaPath = QString("%1/%2/bin/java.exe").arg(path, subdir);
-                    
-                    QDir testDir(javaPath);
-                    if (testDir.exists()) {
-                        return true;
-                    }
-                }
+                result << root + "/" + subdir;
             }
         }
     }
+    return result;
+}
 
-    return false;
+int JavaDetector::javaMajorVersion(const QString &javaExe)
+{
+    if (javaExe.isEmpty())
+        return -1;
+
+    QProcess p;
+    p.start(javaExe, QStringList() << "-version");
+    if (!p.waitForStarted(3000))
+        return -1;
+    p.waitForFinished(5000);
+
+    QByteArray out = p.readAllStandardError() + p.readAllStandardOutput();
+    QString text = QString::fromLocal8Bit(out);
+
+    QRegularExpression re("([0-9][0-9A-Za-z._-]*)");
+    auto m = re.match(text);
+    if (!m.hasMatch())
+        return -1;
+
+    QString ver = m.captured(1);
+    QStringList parts = ver.split('.');
+
+    if (parts.size() >= 2 && parts[0] == "1") {
+        return parts[1].toInt();
+    }
+    return parts[0].toInt();
+}
+
+QString JavaDetector::detectJava24()
+{
+    for (const QString &home : candidateJavaHomes()) {
+        QString exe = home + "/bin/java.exe";
+        if (QFile::exists(exe) && javaMajorVersion(exe) >= kMinJavaMajor) {
+            return exe;
+        }
+    }
+    return "";
+}
+
+bool JavaDetector::isJavaAvailable()
+{
+    return !detectJava24().isEmpty();
 }
 
 QString JavaDetector::getJavaPath()
 {
-    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
-    QString javaHome = env.value("JAVA_HOME");
-    
-    if (!javaHome.isEmpty()) {
-        QDir dir(javaHome);
-        if (dir.exists() && checkJavaVersion(javaHome)) {
-            return javaHome + "/bin/java.exe";
-        }
-    }
-
-    // Check standard Java installation paths
-    QStringList possiblePaths = {
-        "C:/Program Files/Java/",
-        "C:/Program Files (x86)/Java/"
-    };
-
-    for (const QString &path : possiblePaths) {
-        QDir dir(path);
-        if (dir.exists()) {
-            QStringList subdirs = dir.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
-            
-            for (const QString &subdir : subdirs) {
-                if (subdir.startsWith("jdk") || subdir.startsWith("jre")) {
-                    // Check the bin directory in this path
-                    QString javaPath = QString("%1/%2/bin/java.exe").arg(path, subdir);
-                    
-                    QDir testDir(javaPath);
-                    if (testDir.exists()) {
-                        return javaPath;
-                    }
-                }
-            }
-        }
-    }
-
-    return {};
-}
-
-bool JavaDetector::checkJavaVersion(const QString &javaPath)
-{
-    // Simple check for 64-bit JRE/JDK
-    QProcess process;
-    QStringList args = {"-version"};
-    
-    if (process.startDetached(javaPath + "/bin/java.exe", args)) {
-        // Wait a bit to let the command finish
-        process.waitForFinished(1000);
-        
-        QString output = process.readAllStandardError();
-        
-        return output.contains("64-Bit") || 
-               output.contains("64-bit") ||
-               (output.contains("Java(TM)") && !output.contains("32-Bit"));
-    }
-    
-    return false;
+    return detectJava24();
 }

@@ -3,6 +3,7 @@
 
 #include <QObject>
 #include <QString>
+#include <QStringList>
 
 class JavaDetector : public QObject
 {
@@ -10,7 +11,10 @@ class JavaDetector : public QObject
 public:
     static bool isJavaAvailable();
     static QString getJavaPath();
+    static int javaMajorVersion(const QString &javaExe);
+    static QString detectJava24();
 
 private:
-    static bool checkJavaVersion(const QString &javaPath);
+    static QStringList candidateJavaHomes();
+    static const int kMinJavaMajor;
 };
