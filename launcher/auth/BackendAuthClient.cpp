@@ -19,6 +19,7 @@ const char *const kLogoutAllPath = "/api/v1/auth/logout-all";
 BackendAuthClient::BackendAuthClient(QObject *parent)
     : QObject(parent), m_network(new QNetworkAccessManager(this))
 {
+    m_network->setTransferTimeout(15000);
 }
 
 QString BackendAuthClient::backendUrl() const
