@@ -14,6 +14,32 @@ const char *const kLoginPath = "/api/v1/auth/login";
 const char *const kRefreshPath = "/api/v1/auth/refresh";
 const char *const kLogoutPath = "/api/v1/auth/logout";
 const char *const kLogoutAllPath = "/api/v1/auth/logout-all";
+
+// Maps a backend HTTP status to a user-facing message. A server-supplied
+// message always wins so specific backend errors are shown verbatim.
+QString mapHttpStatusError(int status, const QString &serverMessage)
+{
+    if (!serverMessage.isEmpty())
+        return serverMessage;
+    switch (status) {
+    case 400:
+        return QStringLiteral("Invalid request");
+    case 401:
+        return QStringLiteral("Invalid or expired credentials");
+    case 403:
+        return QStringLiteral("Access denied");
+    case 404:
+        return QStringLiteral("Not found");
+    case 409:
+        return QStringLiteral("That username is already taken");
+    case 429:
+        return QStringLiteral("Too many attempts, please wait and try again");
+    default:
+        if (status >= 500 && status <= 599)
+            return QStringLiteral("Server error, please try again later");
+        return QStringLiteral("Request failed (HTTP %1)").arg(status);
+    }
+}
 } // namespace
 
 BackendAuthClient::BackendAuthClient(QObject *parent)
@@ -102,40 +128,32 @@ void BackendAuthClient::handleReply(QNetworkReply *reply, Callback cb)
     const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
     const QByteArray data = reply->readAll();
 
-    if (reply->error() != QNetworkReply::NoError) {
-        result.error = reply->errorString();
-        if (cb)
-            cb(result);
-        return;
-    }
-
-    // Handle 403 Forbidden response for banned users
-    if (status == 403) {
-        result.error = QStringLiteral("Access denied: Account is banned");
-        if (cb)
-            cb(result);
-        return;
-    }
-
+    // Parse the body once; error responses carry a JSON "error" field that we
+    // surface verbatim.
     QJsonParseError err{};
     const QJsonDocument doc = QJsonDocument::fromJson(data, &err);
-    if (err.error != QJsonParseError::NoError || !doc.isObject()) {
-        result.error = QStringLiteral("invalid response from server");
-        if (cb)
-            cb(result);
-        return;
-    }
+    const bool validObject = err.error == QJsonParseError::NoError && doc.isObject();
 
-    const QJsonObject obj = doc.object();
-    if (status >= 200 && status < 300) {
+    if (reply->error() == QNetworkReply::NoError && status >= 200 && status < 300) {
+        if (!validObject) {
+            result.error = QStringLiteral("invalid response from server");
+            if (cb)
+                cb(result);
+            return;
+        }
+        const QJsonObject obj = doc.object();
         result.success = true;
         result.accessToken = obj.value(QStringLiteral("access_token")).toString();
         result.refreshToken = obj.value(QStringLiteral("refresh_token")).toString();
         result.expiresIn = obj.value(QStringLiteral("expires_in")).toInt();
+    } else if (status == 0) {
+        // Transport-level failure: no HTTP status was received.
+        result.error = reply->errorString();
     } else {
-        result.error = obj.value(QStringLiteral("error")).toString();
-        if (result.error.isEmpty())
-            result.error = QStringLiteral("request failed (HTTP %1)").arg(status);
+        QString serverMessage;
+        if (validObject)
+            serverMessage = doc.object().value(QStringLiteral("error")).toString();
+        result.error = mapHttpStatusError(status, serverMessage);
     }
 
     if (cb)
