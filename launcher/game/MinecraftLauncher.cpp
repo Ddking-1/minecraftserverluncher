@@ -11,7 +11,7 @@ MinecraftLauncher::MinecraftLauncher(QObject *parent)
     connect(m_process, &QProcess::errorOccurred, this, &MinecraftLauncher::onProcessError);
 }
 
-void MinecraftLauncher::launchGame(const QString &javaPath, const QString &username, const QString &sessionToken, const QString &gameDir)
+void MinecraftLauncher::launchGame(const QString &javaPath, const QString &username, const QString &uuid, const QString &accessToken, const QString &gameDir)
 {
     if (javaPath.isEmpty() || gameDir.isEmpty()) {
         emit launchError("Invalid parameters");
@@ -27,8 +27,8 @@ void MinecraftLauncher::launchGame(const QString &javaPath, const QString &usern
     QStringList arguments;
     arguments << "-cp" << "net.minecraft.client.main.Main";
     arguments << "--username" << username;
-    arguments << "--uuid" << sessionToken; // Using token as UUID for simplicity
-    arguments << "--accessToken" << sessionToken;
+    arguments << "--uuid" << uuid;
+    arguments << "--accessToken" << accessToken;
     arguments << "--gameDir" << gameDir;
 
     m_process->setProgram(javaPath);

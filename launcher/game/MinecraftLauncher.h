@@ -11,7 +11,7 @@ class MinecraftLauncher : public QObject
 public:
     explicit MinecraftLauncher(QObject *parent = nullptr);
     
-    void launchGame(const QString &javaPath, const QString &username, const QString &sessionToken, const QString &gameDir);
+    void launchGame(const QString &javaPath, const QString &username, const QString &uuid, const QString &accessToken, const QString &gameDir);
 
 signals:
     void gameStarted();
