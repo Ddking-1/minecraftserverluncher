@@ -8,6 +8,56 @@
 #include <QJsonObject>
 #include <QSaveFile>
 
+#ifdef Q_OS_WIN
+#include <windows.h>
+#include <wincrypt.h>
+#endif
+
+namespace {
+
+// Marker prefix for DPAPI-protected files (version 1).
+constexpr char kDpapiPrefix[] = "DPAPI1:";
+
+#ifdef Q_OS_WIN
+// Protect plaintext with the current user's DPAPI credentials.
+QByteArray dpapiProtect(const QByteArray &plain)
+{
+    DATA_BLOB in;
+    in.pbData = reinterpret_cast<BYTE *>(const_cast<char *>(plain.constData()));
+    in.cbData = static_cast<DWORD>(plain.size());
+
+    DATA_BLOB out{};
+    if (!CryptProtectData(&in, L"launcher-auth-token", nullptr, nullptr, nullptr,
+                          CRYPTPROTECT_UI_FORBIDDEN, &out)) {
+        return {};
+    }
+    QByteArray result(reinterpret_cast<const char *>(out.pbData),
+                      static_cast<int>(out.cbData));
+    LocalFree(out.pbData);
+    return result;
+}
+
+// Unprotect a DPAPI blob produced by dpapiProtect.
+QByteArray dpapiUnprotect(const QByteArray &blob)
+{
+    DATA_BLOB in;
+    in.pbData = reinterpret_cast<BYTE *>(const_cast<char *>(blob.constData()));
+    in.cbData = static_cast<DWORD>(blob.size());
+
+    DATA_BLOB out{};
+    if (!CryptUnprotectData(&in, nullptr, nullptr, nullptr, nullptr,
+                            CRYPTPROTECT_UI_FORBIDDEN, &out)) {
+        return {};
+    }
+    QByteArray result(reinterpret_cast<const char *>(out.pbData),
+                      static_cast<int>(out.cbData));
+    LocalFree(out.pbData);
+    return result;
+}
+#endif // Q_OS_WIN
+
+} // namespace
+
 TokenStorage::TokenStorage(const QString &dataDir) : m_dataDir(dataDir)
 {
 }
@@ -30,10 +80,22 @@ bool TokenStorage::save(const AuthSession &session) const
     obj.insert(QStringLiteral("expires_at"), session.expires_at);
     obj.insert(QStringLiteral("is_online"), session.is_online);
 
+    const QByteArray json = QJsonDocument(obj).toJson(QJsonDocument::Compact);
+
+    // Protect the token blob with the OS credential store (Windows DPAPI).
+    // If DPAPI is unavailable, fall back to plaintext so the launcher still
+    // works (documented limitation; docs/AUTH.md).
+    QByteArray data = json;
+#ifdef Q_OS_WIN
+    const QByteArray protectedBlob = dpapiProtect(json);
+    if (!protectedBlob.isEmpty()) {
+        data = QByteArray(kDpapiPrefix) + protectedBlob.toBase64();
+    }
+#endif
+
     QSaveFile file(path);
     if (!file.open(QIODevice::WriteOnly))
         return false;
-    const QByteArray data = QJsonDocument(obj).toJson(QJsonDocument::Indented);
     if (file.write(data) != data.size())
         return false;
     return file.commit();
@@ -44,8 +106,21 @@ bool TokenStorage::load(const QString &username, AuthSession &out) const
     QFile file(filePathFor(username));
     if (!file.open(QIODevice::ReadOnly))
         return false;
-    const QByteArray data = file.readAll();
+    const QByteArray raw = file.readAll();
     file.close();
+
+    QByteArray data = raw;
+    if (raw.startsWith(kDpapiPrefix)) {
+#ifdef Q_OS_WIN
+        const QByteArray blob = QByteArray::fromBase64(raw.mid(static_cast<int>(sizeof(kDpapiPrefix)) - 1));
+        data = dpapiUnprotect(blob);
+        if (data.isEmpty())
+            return false;
+#else
+        // DPAPI-protected file on a non-Windows host cannot be read.
+        return false;
+#endif
+    }
 
     QJsonParseError err{};
     const QJsonDocument doc = QJsonDocument::fromJson(data, &err);

@@ -32,5 +32,5 @@ target_include_directories(MinecraftLauncher PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 target_link_libraries(MinecraftLauncher PRIVATE Qt6::Core Qt6::Network)
 
 if(WIN32)
-    target_link_libraries(MinecraftLauncher PRIVATE bcrypt iphlpapi wbemuuid ole32 oleaut32)
+    target_link_libraries(MinecraftLauncher PRIVATE bcrypt crypt32 iphlpapi wbemuuid ole32 oleaut32)
 endif()

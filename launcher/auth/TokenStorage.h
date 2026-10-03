@@ -7,9 +7,10 @@
 #include "core/InstanceTypes.h"
 
 // Persists a session's tokens to disk so the user stays logged in across
-// launches. NOTE: first-pass implementation stores tokens in a plaintext JSON
-// file under the launcher data directory. OS-protected credential storage
-// (Windows DPAPI) is a documented hardening step (docs/AUTH.md).
+// launches. On Windows the token blob is protected with the current user's
+// DPAPI credentials (CryptProtectData); on other platforms, or if DPAPI is
+// unavailable, it falls back to plaintext JSON (documented limitation,
+// docs/AUTH.md).
 class TokenStorage
 {
 public:
