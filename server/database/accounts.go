@@ -29,6 +29,23 @@ func (db *DB) CreateAccount(username, passwordHash string) (*Account, error) {
 	return &Account{ID: id, Username: username, PasswordHash: passwordHash, CreatedAt: mustParse(now)}, nil
 }
 
+// UpdatePassword replaces the stored password hash for an account. It returns
+// ErrNotFound if no account has the given id.
+func (db *DB) UpdatePassword(accountID int64, passwordHash string) error {
+	res, err := db.sql.Exec(`UPDATE accounts SET password_hash = ? WHERE id = ?`, passwordHash, accountID)
+	if err != nil {
+		return fmt.Errorf("database: update password: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("database: update password rows: %w", err)
+	}
+	if n == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
 // AccountByUsername returns the account with the given username, or
 // ErrNotFound.
 func (db *DB) AccountByUsername(username string) (*Account, error) {

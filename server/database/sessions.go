@@ -55,6 +55,42 @@ func (db *DB) SessionByID(id int64) (*Session, error) {
 	return scanSession(row)
 }
 
+// SessionsByAccount returns every session for an account, newest first.
+func (db *DB) SessionsByAccount(accountID int64) ([]Session, error) {
+	rows, err := db.sql.Query(
+		`SELECT id, account_id, device_id, refresh_hash, refresh_expires_at, revoked, created_at, last_used_at
+		 FROM sessions WHERE account_id = ? ORDER BY created_at DESC, id DESC`,
+		accountID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("database: list sessions: %w", err)
+	}
+	defer rows.Close()
+
+	var out []Session
+	for rows.Next() {
+		var s Session
+		var deviceID sql.NullInt64
+		var refreshExpires, created, lastUsed string
+		var revoked int
+		if err := rows.Scan(&s.ID, &s.AccountID, &deviceID, &s.RefreshHash, &refreshExpires, &revoked, &created, &lastUsed); err != nil {
+			return nil, fmt.Errorf("database: scan session row: %w", err)
+		}
+		if deviceID.Valid {
+			s.DeviceID = deviceID.Int64
+		}
+		s.RefreshExpiresAt = mustParse(refreshExpires)
+		s.CreatedAt = mustParse(created)
+		s.LastUsedAt = mustParse(lastUsed)
+		s.Revoked = revoked != 0
+		out = append(out, s)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("database: iterate sessions: %w", err)
+	}
+	return out, nil
+}
+
 // RevokeSession marks a single session revoked and deletes its access tokens.
 func (db *DB) RevokeSession(id int64) error {
 	tx, err := db.sql.Begin()
