@@ -1,4 +1,5 @@
 build/
+build-*/
 .vs/
 *.user
 *.suo
@@ -11,3 +12,9 @@ CMakeFiles/
 x64/
 Release/
 Debug/
+out/
+CMakeUserPresets.json
+
+# Local Minecraft instances and runtime/game data. Never commit game data,
+# mods, logs or downloaded assets; these are user-specific (not project source).
+instances/
