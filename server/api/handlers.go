@@ -4,8 +4,11 @@
 package api
 
 import (
+	"context"
+	"crypto/subtle"
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 	"os/exec"
 	"strings"
@@ -47,6 +50,9 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/v1/auth/logout", s.limit(s.handleLogout))
 	mux.HandleFunc("POST /api/v1/auth/logout-all", s.limit(s.handleLogoutAll))
 	mux.HandleFunc("POST /api/server/start", s.limit(s.handleStartServer))
+	mux.HandleFunc("POST /api/admin/hwid/ban", s.limit(s.handleBanHWID))
+	mux.HandleFunc("POST /api/admin/hwid/unban", s.limit(s.handleUnbanHWID))
+	mux.HandleFunc("GET /api/admin/hwid/bans", s.limit(s.handleListHWIDBans))
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
@@ -207,31 +213,36 @@ func (s *Server) handleLogoutAll(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleStartServer handles the POST /api/server/start endpoint.
+//
+// This is an administrative endpoint. It is disabled entirely unless an admin
+// token is configured (AUTH_ADMIN_TOKEN); requests must present it in the
+// X-Admin-Token header. It never echoes command output to the client.
 func (s *Server) handleStartServer(w http.ResponseWriter, r *http.Request) {
-	// This endpoint is for internal testing and admin panel use only - not for regular player sessions
-	accountID, ok := s.authenticate(w, r)
-	if !ok {
+	if s.cfg.AdminToken == "" {
+		// Endpoint disabled: do not reveal its existence.
+		http.NotFound(w, r)
 		return
 	}
-	
-	// Check if the request comes from an authorized source (admin or internal test)
-	// For now we'll keep it simple but this could be expanded to check specific headers or IP ranges
-	// This prevents regular players from accessing server start functionality
-	
-	// Execute the Python script to start the Pterodactyl server
-	cmd := exec.Command("python", "scripts/ptero_control.py")
+	provided := r.Header.Get("X-Admin-Token")
+	if subtle.ConstantTimeCompare([]byte(provided), []byte(s.cfg.AdminToken)) != 1 {
+		writeError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+	defer cancel()
+
+	// No shell is involved: the script path is fixed by configuration and is
+	// passed as a single argv element.
+	cmd := exec.CommandContext(ctx, "python", s.cfg.PteroScript)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to start server: "+string(output))
+		// Log details server-side only; never return raw output to the client.
+		log.Printf("server start failed: %v: %s", err, strings.TrimSpace(string(output)))
+		writeError(w, http.StatusInternalServerError, "failed to start server")
 		return
 	}
-	
-	// Return success response with server status info
-	response := map[string]interface{}{
-		"status": "server started",
-		"output": string(output),
-	}
-	writeJSON(w, http.StatusOK, response)
+	writeJSON(w, http.StatusOK, map[string]string{"status": "server started"})
 }
 
 

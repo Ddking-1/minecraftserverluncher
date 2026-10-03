@@ -174,3 +174,43 @@ func (db *DB) IsHWIDBanned(deviceID string) (bool, error) {
 	}
 	return count > 0, nil
 }
+
+// BanHWID adds a device identifier to the ban list. It is idempotent.
+func (db *DB) BanHWID(deviceID string) error {
+	_, err := db.sql.Exec(
+		`INSERT INTO hwid_bans (device_id, created_at) VALUES (?, ?)
+		 ON CONFLICT(device_id) DO NOTHING`,
+		deviceID, nowText(),
+	)
+	if err != nil {
+		return fmt.Errorf("database: ban hwid: %w", err)
+	}
+	return nil
+}
+
+// UnbanHWID removes a device identifier from the ban list.
+func (db *DB) UnbanHWID(deviceID string) error {
+	if _, err := db.sql.Exec(`DELETE FROM hwid_bans WHERE device_id = ?`, deviceID); err != nil {
+		return fmt.Errorf("database: unban hwid: %w", err)
+	}
+	return nil
+}
+
+// ListHWIDBans returns all banned device identifiers, newest first.
+func (db *DB) ListHWIDBans() ([]string, error) {
+	rows, err := db.sql.Query(`SELECT device_id FROM hwid_bans ORDER BY created_at DESC`)
+	if err != nil {
+		return nil, fmt.Errorf("database: list hwid bans: %w", err)
+	}
+	defer rows.Close()
+
+	var out []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("database: scan hwid ban: %w", err)
+		}
+		out = append(out, id)
+	}
+	return out, rows.Err()
+}

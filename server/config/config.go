@@ -26,6 +26,12 @@ type Config struct {
 	RefreshTokenTTL time.Duration
 	// BcryptCost is the bcrypt cost used when hashing passwords.
 	BcryptCost int
+	// AdminToken gates administrative endpoints (e.g. /api/server/start).
+	// When empty, those endpoints are disabled. Never hardcoded.
+	AdminToken string
+	// PteroScript is the path of the server-control script invoked by the
+	// admin start endpoint.
+	PteroScript string
 }
 
 // Default values. These are non-secret operational defaults only.
@@ -35,6 +41,7 @@ const (
 	defaultAccessTTL  = 15 * time.Minute
 	defaultRefreshTTL = 30 * 24 * time.Hour // 30 days, per docs/AUTH.md
 	defaultBcryptCost = 12
+	defaultPteroScript = "scripts/ptero_control.py"
 )
 
 // maxRefreshTTL caps the configured refresh/session lifetime at 30 days.
@@ -50,6 +57,8 @@ func Load() (*Config, error) {
 		AccessTokenTTL:  defaultAccessTTL,
 		RefreshTokenTTL: defaultRefreshTTL,
 		BcryptCost:      defaultBcryptCost,
+		AdminToken:      os.Getenv("AUTH_ADMIN_TOKEN"),
+		PteroScript:     envOr("AUTH_PTERO_SCRIPT", defaultPteroScript),
 	}
 
 	if v := os.Getenv("AUTH_ACCESS_TOKEN_TTL"); v != "" {
