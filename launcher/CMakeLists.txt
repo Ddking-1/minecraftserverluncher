@@ -34,3 +34,12 @@ target_link_libraries(MinecraftLauncher PRIVATE Qt6::Core Qt6::Network)
 if(WIN32)
     target_link_libraries(MinecraftLauncher PRIVATE bcrypt crypt32 iphlpapi wbemuuid ole32 oleaut32)
 endif()
+
+enable_testing()
+
+add_executable(test_hwid tests/test_hwid.cpp core/HWIDExtractor.cpp)
+target_include_directories(test_hwid PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+if(WIN32)
+    target_link_libraries(test_hwid PRIVATE bcrypt iphlpapi)
+endif()
+add_test(NAME hwid COMMAND test_hwid)
