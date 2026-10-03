@@ -96,6 +96,9 @@ func Open(path string) (*DB, error) {
 // Close closes the underlying database.
 func (db *DB) Close() error { return db.sql.Close() }
 
+// Ping verifies that the database is reachable.
+func (db *DB) Ping() error { return db.sql.Ping() }
+
 // migrate applies the schema idempotently.
 func (db *DB) migrate() error {
 	const schema = `
