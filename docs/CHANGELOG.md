@@ -2,6 +2,46 @@
 
 ## Unreleased
 
+### Backend hardening, account management and tests
+
+- Added `GET /api/v1/account/me`, `POST /api/v1/account/password`,
+  `GET /api/v1/account/sessions` and `POST /api/v1/account/sessions/revoke`.
+  Password change verifies the current password and revokes all sessions;
+  session revocation is scoped to the owning account (403 otherwise).
+- Added database helpers `UpdatePassword`, `SessionsByAccount` and `Ping`.
+- Added HTTP middleware: structured request logging (method/path/status/
+  latency), panic recovery (500 + stack log) and security headers
+  (`nosniff`, `DENY`, `no-store`, `no-referrer`).
+- Added `GET /readyz` readiness endpoint (database ping); `/healthz` remains a
+  pure liveness probe.
+- Hardened the HTTP server: read/read-header/write/idle timeouts and a 10s
+  graceful shutdown with error logging.
+- Added unit tests: config loader, session service lifecycle, device service
+  upsert/scoping, rate limiter, account profile/password, session management,
+  middleware and readiness.
+- Added `docs/SECURITY_REVIEW.md` and `docs/API.md`.
+
+### Launcher core features and tests
+
+- Bounded backend HTTP requests with a 15s transfer timeout and added
+  `#include <QCoreApplication>` (fixes `applicationName()` build).
+- Mapped backend HTTP status codes (400/401/403/404/409/429/5xx) to
+  user-facing messages in `BackendAuthClient`.
+- Added CLI options to `main.cpp`: instance name/id filter (`--filter`),
+  `--version`/`--help` build info via `core/Version.h`.
+- Added the update manifest model + parser (`updates/UpdateManifest.{h,cpp}`)
+  with path-traversal, hash-length and required-field validation.
+- Added the skin model (`core/SkinModel.{h,cpp}`) with id/hash validation.
+- Added launcher tests: settings/metadata round-trip, update manifest parser,
+  skin model and a `BackendAuthClient` request contract test against a local
+  fake HTTP server.
+
+### CI
+
+- Added `.github/workflows/backend.yml` (go vet + test + build on
+  ubuntu-latest) and `.github/workflows/launcher.yml` (Qt 6.6.3 MSVC build +
+  ctest on windows-latest).
+
 ### Launcher CMake / Qt6 build fix
 
 - Fixed `launcher/CMakeLists.txt`: added `find_package(Qt6 REQUIRED COMPONENTS

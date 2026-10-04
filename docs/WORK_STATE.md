@@ -1,58 +1,57 @@
 ﻿# WORK STATE
 
 Current phase:
-PHASE 1 — LAUNCHER BUILD BASELINE (CMake/Qt6) GREEN
+PHASE 2 — BACKEND HARDENING + LAUNCHER CORE FEATURES (IN PROGRESS)
 
 Current task:
-Fix the launcher CMake/Qt6 build so the C++ launcher core compiles with the
-installed Qt 6.6.3 MSVC 2022 toolchain, and remove the OpenSSL dependency from
-the HWID helper.
+Continue the ordered marathon backlog in `docs/MASTER_PLAN_EXTENDED.md`
+(T1-T45). Backend and launcher tasks through T41 are complete except the
+Velocity skeleton (T11, blocked on DECISION-004/005) and the documentation
+sync (T44) / final verification (T45).
 
 Status:
-BUILD BASELINE GREEN (branch fix/launcher-cmake-qt6). CMake configure and
-`cmake --build ... --config Release` both succeed and produce
-MinecraftLauncher.exe.
+Green. Backend: `go build`, `go vet`, `go test ./...` all pass. Launcher:
+CMake configure + Release build with Qt 6.6.3 MSVC 2022 succeed; CTest runs
+5 tests (hwid, settings, update_manifest, skin_model, backend_contract), all
+pass.
 
 Branch:
-fix/launcher-cmake-qt6
+master (all task branches fast-forward merged and pushed).
 
-Last completed step:
-- launcher/CMakeLists.txt rewritten: find_package(Qt6 Core Network),
-  CMAKE_AUTOMOC ON, C++17, full source list (core/minecraft/launch/steps),
-  include dirs, Qt6::Core + Qt6::Network, Windows libs (bcrypt, iphlpapi,
-  wbemuuid, ole32, oleaut32).
-- Root CMakeLists.txt fixed: removed duplicate add_subdirectory(launcher) and
-  the Qt5-first lookup.
-- launcher/core/HWIDExtractor.cpp: OpenSSL sha.h replaced by Windows CNG
-  (bcrypt.h) SHA-256; input = MachineGuid + CPUID + primary MAC.
-- launcher/game/MinecraftLauncher.cpp: invalid `if (!m_process->start())`
-  (void return in Qt6) replaced by start() + waitForStarted(5000).
-
-Verification performed: real build on Qt 6.6.3 msvc2019_64, CMake 4.1.1,
-MSVC 19.44, generator "Visual Studio 17 2022" x64 — configure OK, Release
-build OK, MinecraftLauncher.exe produced.
+Last completed steps:
+- T12/T29 config loader tests, T31 session service tests, T30 device service
+  tests, T28 rate limiter tests.
+- T16 backend security review (`docs/SECURITY_REVIEW.md`).
+- T22-T27 account profile, password change, session list/revoke endpoints and
+  their tests.
+- T33-T35 request logging, panic recovery and security header middleware.
+- T40 `/readyz` readiness endpoint.
+- T32 hardened HTTP server timeouts + graceful shutdown.
+- T36-T39 launcher HTTP client timeout, backend status-code error mapping, CLI
+  instance filter, `--version`/`--help`.
+- T19/T20 update manifest parser + tests; T21 skin model + tests.
+- T13 BackendAuthClient contract test (local fake HTTP server).
+- T41 `docs/API.md` endpoint reference.
+- T14/T42/T43 CI workflows (backend on ubuntu-latest, launcher on
+  windows-latest).
 
 Current step:
-None in progress. This task is finished and stopped.
+Documentation sync (T44) and final verification (T45).
 
 Next step:
-1. Owner: review and merge branch fix/launcher-cmake-qt6 into master.
-2. Continue the approved 15-task plan (next: HWID verification / remaining
-   launcher build baseline items).
-3. Owner: legal sign-off on DECISION-004 (manual action).
-4. Resolve DECISION-005 (metadata source; self-hosted mirror recommended) to
-   implement library/asset download (currently stubs).
-5. Implement OS-protected token storage (Windows DPAPI) per docs/AUTH.md
-   (currently first-pass plaintext).
+1. T44: synchronize AI_CONTEXT / WORK_STATE / PROGRESS / CHANGELOG.
+2. T45: full backend `go test ./...` + full launcher Release build + CTest,
+   then final report.
+3. T11 Velocity plugin remains BLOCKED on DECISION-004 legal sign-off and
+   DECISION-005 (metadata source).
 
 Repository facts:
 - default branch: master
 - remote: origin (private GitHub repo Ddking-1/minecraftserverluncher)
 - reference/ is local-only, never committed (DECISION-002)
 - backend source exists under server/ (Go module minecraftserverluncher/server)
-- launcher core scaffold exists under launcher/ (C++ / Qt, not yet compiled)
+- launcher core exists under launcher/ (C++ / Qt6, builds and tests green)
 - velocity directory is scaffolded but empty (no code yet)
 
 Last commit:
-See docs/PROGRESS.md — launcher core scaffold commit on branch
-launcher/core-scaffold.
+See docs/PROGRESS.md / `git log --oneline`.

@@ -12,20 +12,27 @@ Java 24
 
 ## Current phase
 
-PHASE 1 — BACKEND SCAFFOLD / AUTH API + LAUNCHER CORE SCAFFOLD (IN PROGRESS)
+PHASE 2 — BACKEND HARDENING + LAUNCHER CORE FEATURES (IN PROGRESS)
 
 The Prism minimal-core / licensing checkpoint is RESOLVED at architecture
 level (DECISION-003, DECISION-004; see `docs/PRISM_MINIMAL_CORE.md` and
 `docs/PRISM_ARCHITECTURE_REVIEW.md`).
 
-The backend scaffold and core auth API are implemented on branch
-`backend/scaffold-and-auth` (Go + SQLite). A minimal C++ launcher core scaffold
-is implemented on branch `launcher/core-scaffold` (instance management,
-launch-task framework, backend auth client). The launcher build baseline is now
-GREEN on branch `fix/launcher-cmake-qt6`: CMake configure and a Release build
-with Qt 6.6.3 MSVC 2022 succeed and produce `MinecraftLauncher.exe`. Velocity
-work remains blocked until the owner signs off DECISION-004 (GPLv3 distribution
-model) and DECISION-005 (metadata source) is resolved.
+The Go + SQLite backend is implemented, hardened and fully tested on `master`:
+auth, account management (profile, password change, session list/revoke),
+middleware (request logging, panic recovery, security headers), readiness
+probe, rate limiting, and admin HWID bans. `go build`, `go vet` and
+`go test ./...` pass.
+
+The C++/Qt6 launcher core is implemented on `master` and the build baseline is
+GREEN: CMake configure and a Release build with Qt 6.6.3 MSVC 2022 succeed and
+produce `MinecraftLauncher.exe`. CTest runs five tests (hwid, settings,
+update_manifest, skin_model, backend_contract), all passing. Newer launcher
+work includes the update manifest parser, skin model, backend status-code error
+mapping, a request timeout, and CLI filter/version options.
+
+Velocity work remains blocked until the owner signs off DECISION-004 (GPLv3
+distribution model) and DECISION-005 (metadata source) is resolved.
 
 ## Approved architecture direction
 
@@ -47,14 +54,13 @@ NOT "full Prism Launcher + custom layer". See `docs/DECISIONS.md` DECISION-001.
 
 - Git default branch: `master`
 - Remote: `origin` — private GitHub repository `Ddking-1/minecraftserverluncher`
-- Tracked: governance/state documentation plus the backend scaffold and auth
-  API under `server/` (branch `backend/scaffold-and-auth`) and the launcher
-  core scaffold under `launcher/` (branch `launcher/core-scaffold`)
+- Tracked: governance/state documentation plus the backend under `server/` and
+  the launcher core under `launcher/`, all on `master`
 - Untracked by design: `reference/` (DECISION-002) and local tooling state
 - Architecture documentation includes `docs/PRISM_MINIMAL_CORE.md` and
   `docs/PRISM_ARCHITECTURE_REVIEW.md` (DECISION-003/004/005)
 - Backend source exists under `server/` (Go module `minecraftserverluncher/server`)
-- Launcher core scaffold exists under `launcher/` (C++ / Qt, not yet compiled)
+- Launcher core exists under `launcher/` (C++ / Qt6, builds and tests green)
 
 ## Main goals
 
@@ -97,29 +103,26 @@ They are research/reference sources, not automatically product code.
 
 ## Current implementation status
 
-Backend scaffold and core auth API implemented on branch
-`backend/scaffold-and-auth` (Go + SQLite): account model with bcrypt password
-hashing, server-side session model with expiry and revocation, device
-identity mapping, and registration/login/refresh/logout/logout-all endpoints.
-SQLite schema initialization and minimal tests are included. See
-`server/README.md`.
+Backend (Go + SQLite, `server/`, module `minecraftserverluncher/server`) is on
+`master`: account model with bcrypt password hashing, server-side session model
+with expiry and revocation, device identity mapping, registration/login/
+refresh/logout/logout-all, account profile/password/session management,
+HWID ban administration, rate limiting, middleware (request logging, panic
+recovery, security headers), `/healthz` + `/readyz`, and hardened HTTP server
+timeouts with graceful shutdown. `go build`, `go vet` and `go test ./...` pass.
+See `docs/API.md`, `docs/SECURITY_REVIEW.md` and `server/README.md`.
 
-A minimal C++ launcher core scaffold is implemented on branch
-`launcher/core-scaffold`: `launcher/core` (BaseInstance, InstanceList as a
-QAbstractListModel, InstancePersistence), `launcher/minecraft`
-(MinecraftInstance, PackProfile), `launcher/auth` (BackendAuthClient matching
-the server auth API, TokenStorage, SessionManager — replaces Prism's
-Mojang/MSA flow), and `launcher/launch` (LaunchTask/LaunchStep framework with
-ClaimAuthSession, ResolveLibraries, ResolveAssets, ExtractNatives, VerifyJava,
-LauncherPartLaunch steps). See `launcher/README.md`.
-
-The launcher build baseline is GREEN on branch `fix/launcher-cmake-qt6`:
-`launcher/CMakeLists.txt` uses Qt6 (Core/Network), AUTOMOC and C++17;
-`launcher/core/HWIDExtractor.cpp` now uses the Windows CNG SHA-256 API instead
-of OpenSSL. CMake configure and `cmake --build ... --config Release` succeed
-with Qt 6.6.3 MSVC 2022 and produce `MinecraftLauncher.exe`. Library and
-asset download steps are stubs pending DECISION-005; token storage is
-first-pass plaintext pending OS-protected credential storage (docs/AUTH.md).
+Launcher core (`launcher/`, C++/Qt6) is on `master`: `launcher/core`
+(BaseInstance, InstanceList, InstancePersistence, SkinModel, Version),
+`launcher/minecraft` (MinecraftInstance, PackProfile), `launcher/auth`
+(BackendAuthClient with a 15s timeout and status-code error mapping,
+TokenStorage using Windows DPAPI, SessionManager), `launcher/launch`
+(LaunchTask/LaunchStep framework), `launcher/updates` (UpdateManifest parser)
+and `launcher/game` (JavaDetector, MinecraftLauncher). CMake configure and
+`cmake --build ... --config Release` succeed with Qt 6.6.3 MSVC 2022; CTest
+runs five passing tests (hwid, settings, update_manifest, skin_model,
+backend_contract). Library/asset download steps remain stubs pending
+DECISION-005.
 
 Velocity implementation remains blocked until DECISION-004 is signed off and
 DECISION-005 is resolved.

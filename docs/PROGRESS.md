@@ -252,3 +252,39 @@ DECISION-005.
 Manual user action:
 1. Review and merge branch fix/launcher-cmake-qt6 into master.
 2. Legal sign-off on DECISION-004 remains outstanding.
+
+## 2026-10-04 - MARATHON TASKS T12-T41 (BACKEND + LAUNCHER + CI)
+
+Agent/model: Architect (integration) + Worker (lm-studio/deepseek-coder-v2-lite-instruct, code generation)
+Branch: master (per-task branches fast-forward merged and pushed)
+Task: Execute the ordered marathon backlog docs/MASTER_PLAN_EXTENDED.md from T12 through T41.
+Started: 2026-10-04
+Completed: 2026-10-04
+
+Files:
+- server: config/config_test.go; sessions/service_test.go; devices/service_test.go;
+  api/ratelimit_test.go, account.go, account_test.go, account_sessions_test.go,
+  middleware.go, middleware_test.go, health.go, health_test.go, handlers.go;
+  database/accounts.go, sessions.go, database.go; main.go
+- launcher: auth/BackendAuthClient.cpp; core/Version.h, SkinModel.h/.cpp;
+  updates/UpdateManifest.h/.cpp; tests/test_settings.cpp, test_update_manifest.cpp,
+  test_skin_model.cpp, test_backend_contract.cpp; main.cpp; CMakeLists.txt
+- docs: SECURITY_REVIEW.md, API.md, ERROR_LOG.md, MASTER_PLAN_EXTENDED.md
+- .github/workflows/backend.yml, launcher.yml
+
+Tests:
+- Backend: go build ./..., go vet ./..., go test ./... -> all pass.
+- Launcher: cmake configure + Release build (Qt 6.6.3 MSVC 2022) -> OK;
+  ctest -> 5/5 pass (hwid, settings, update_manifest, skin_model, backend_contract).
+- YAML workflows parsed with a YAML parser.
+
+Current status:
+T12-T41 complete except T11 (Velocity, blocked on DECISION-004/005). Remaining:
+T44 documentation sync (this entry) and T45 final verification.
+
+Next:
+T45 final verification (full go test + full launcher build + ctest) and report.
+
+Manual user action:
+Legal sign-off on DECISION-004 and resolution of DECISION-005 remain outstanding
+(blocks T11 Velocity work).
