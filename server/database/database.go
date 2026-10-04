@@ -152,6 +152,17 @@ CREATE TABLE IF NOT EXISTS access_tokens (
 CREATE INDEX IF NOT EXISTS idx_access_session ON access_tokens(session_id);
 CREATE INDEX IF NOT EXISTS idx_access_expires ON access_tokens(expires_at);
 CREATE INDEX IF NOT EXISTS idx_sessions_refresh_expires ON sessions(refresh_expires_at);
+
+CREATE TABLE IF NOT EXISTS skins (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    account_id   INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    variant      TEXT    NOT NULL,
+    content_type TEXT    NOT NULL,
+    data         BLOB    NOT NULL,
+    created_at   TEXT    NOT NULL,
+    updated_at   TEXT    NOT NULL,
+    UNIQUE (account_id, variant)
+);
 `
 	if _, err := db.sql.Exec(schema); err != nil {
 		return fmt.Errorf("database: migrate: %w", err)

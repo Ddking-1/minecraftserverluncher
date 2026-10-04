@@ -134,7 +134,12 @@ Legal review required: no (licensing handled by DECISION-004)
 
 Date: 2026-09-05
 
-Status: APPROVED (direction) / LEGAL REVIEW REQUIRED (final sign-off)
+Status: APPROVED (final)
+
+Note (2026-10-05): Executive approval granted by project owner. DECISION-004
+is now final and no longer blocking. The launcher source may be published in
+a separate public repository under GPL-3.0-only, with per-release source tags
+and preserved third-party notices, as recorded below.
 
 Decision:
 - the distributed launcher (Prism fork + project launcher core) is one
@@ -183,10 +188,16 @@ Legal review required: YES (final sign-off before production implementation)
 
 Date: 2026-09-05
 
-Status: PENDING
+Status: APPROVED
+
+Note (2026-10-05): Executive approval granted by project owner. DECISION-005
+is now decided. The Go backend's own internal database is the authoritative
+metadata source; client-side resolution must not depend on a third-party meta
+endpoint. Build-time metadata serving from the backend is the implementation
+path.
 
 Decision:
-Not yet decided. Options:
+
 - (a) self-hosted mirror of the Prism meta index on project infrastructure
   (recommended: control, availability, no third-party trust dependency)
 - (b) continue using `https://meta.prismlauncher.org` (zero maintenance,
@@ -197,6 +208,9 @@ Not yet decided. Options:
 The endpoint is a build-time variable (`Launcher_META_URL`, upstream
 `CMakeLists.txt:200`), so switching is a build-configuration change, not a
 code rewrite.
+
+Selected: (a) self-hosted metadata served by the Go backend's internal
+database; `Launcher_META_URL` is pointed at the backend.
 
 Reason:
 The meta index drives Minecraft version and loader resolution; its source
