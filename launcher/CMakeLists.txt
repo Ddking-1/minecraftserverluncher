@@ -13,6 +13,7 @@ add_executable(MinecraftLauncher
     core/InstanceList.cpp
     core/InstancePersistence.cpp
     core/SkinModel.cpp
+    core/SettingsStore.cpp
     core/HWIDExtractor.cpp
     game/JavaDetector.cpp
     game/MinecraftLauncher.cpp
@@ -65,3 +66,8 @@ add_executable(test_backend_contract tests/test_backend_contract.cpp auth/Backen
 target_include_directories(test_backend_contract PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(test_backend_contract PRIVATE Qt6::Core Qt6::Network)
 add_test(NAME backend_contract COMMAND test_backend_contract)
+
+add_executable(test_settings_store tests/test_settings_store.cpp core/SettingsStore.cpp)
+target_include_directories(test_settings_store PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(test_settings_store PRIVATE Qt6::Core)
+add_test(NAME settings_store COMMAND test_settings_store)
