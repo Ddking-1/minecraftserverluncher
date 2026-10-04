@@ -321,3 +321,53 @@ No unblocked tasks. Await new instructions.
 
 Manual user action:
 Legal sign-off on DECISION-004 and resolution of DECISION-005 remain outstanding.
+
+## 2026-10-04 13:06 — SECURITY FIXES (TOKEN/RESOLVER/RATELIMIT)
+
+Agent/model: Copilot Task Agent
+Branch: copilot/fix-security-issues-and-bugs
+Task: Fix token-storage plaintext fallback/path traversal issues, implement
+library+asset resolution with integrity checks, and add trusted-proxy-aware rate
+limit keying.
+Started: 2026-10-04
+Completed: 2026-10-04
+
+Files:
+- launcher/auth/TokenStorage.h
+- launcher/auth/TokenStorage.cpp
+- launcher/launch/steps/ResolveLibraries.cpp
+- launcher/launch/steps/ResolveAssets.cpp
+- launcher/tests/test_token_storage.cpp
+- launcher/tests/test_resolve_libraries.cpp
+- launcher/tests/test_resolve_assets.cpp
+- launcher/CMakeLists.txt
+- server/api/ratelimit.go
+- server/api/ratelimit_test.go
+- server/config/config.go
+- server/config/config_test.go
+- server/.env.example
+- server/README.md
+- launcher/README.md
+- docs/SECURITY_REVIEW.md
+- docs/AI_CONTEXT.md
+- docs/WORK_STATE.md
+- docs/PROGRESS.md (this entry)
+- docs/CHANGELOG.md
+
+Tests:
+- `cd server && gofmt -w api/ratelimit.go api/ratelimit_test.go config/config.go config/config_test.go`
+- `cd server && go test ./...` (pass)
+- `cd launcher && cmake -S . -B build && cmake --build build -j2 && ctest --test-dir build --output-on-failure` (blocked: Qt6 not installed in this environment)
+
+Current status:
+Code changes implemented and pushed on branch
+`copilot/fix-security-issues-and-bugs`. Backend tests pass. Launcher compile/test
+verification is blocked in this Linux sandbox by missing Qt 6 SDK.
+
+Next:
+Run launcher CMake build + CTest in a Qt6-enabled environment, then review and
+merge the branch.
+
+Manual user action:
+1. Run launcher build/tests in a Qt6-capable environment.
+2. Review and merge branch `copilot/fix-security-issues-and-bugs`.

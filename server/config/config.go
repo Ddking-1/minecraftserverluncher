@@ -44,11 +44,11 @@ type Config struct {
 
 // Default values. These are non-secret operational defaults only.
 const (
-	defaultListenAddr = ":8080"
-	defaultDBPath     = "auth.db"
-	defaultAccessTTL  = 15 * time.Minute
-	defaultRefreshTTL = 30 * 24 * time.Hour // 30 days, per docs/AUTH.md
-	defaultBcryptCost = 12
+	defaultListenAddr  = ":8080"
+	defaultDBPath      = "auth.db"
+	defaultAccessTTL   = 15 * time.Minute
+	defaultRefreshTTL  = 30 * 24 * time.Hour // 30 days, per docs/AUTH.md
+	defaultBcryptCost  = 12
 	defaultPteroScript = "scripts/ptero_control.py"
 )
 

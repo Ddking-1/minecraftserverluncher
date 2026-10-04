@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+### Security hardening and launch resolver implementation
+
+- Hardened launcher token persistence (`launcher/auth/TokenStorage`):
+  DPAPI-only encrypted storage (no plaintext fallback), plaintext token-file
+  rejection, and strict username validation to block path traversal.
+- Implemented `ResolveLibraries` download flow from instance `version.json`
+  metadata (`libraries[]`), including path safety checks, SHA-1 integrity
+  verification, and fail-closed error handling.
+- Implemented `ResolveAssets` download flow from instance `version.json`
+  `asset_index` metadata, including index fetch/validation, object fetch with
+  retry handling, SHA-1 verification, and fail-closed writes.
+- Added launcher regression tests: `test_token_storage`,
+  `test_resolve_libraries`, and `test_resolve_assets`.
+- Hardened backend rate limiting for reverse-proxy deployments:
+  optional trusted-proxy header mode (`AUTH_TRUST_PROXY_HEADERS` +
+  `AUTH_TRUSTED_PROXY_CIDRS`) with safe default disabled and spoof-resistant
+  client-IP resolution.
+- Added backend tests for direct and trusted-proxy client-IP handling and rate
+  limit key isolation.
+
 ### Phase 3 — launcher features and backend robustness
 
 Launcher:

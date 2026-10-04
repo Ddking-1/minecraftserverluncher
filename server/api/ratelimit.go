@@ -20,8 +20,8 @@ type rateLimiter struct {
 }
 
 type bucket struct {
-	count    int
-	resetAt  time.Time
+	count   int
+	resetAt time.Time
 }
 
 func newRateLimiter(limit int, window time.Duration) *rateLimiter {

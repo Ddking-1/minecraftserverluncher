@@ -35,6 +35,11 @@ LimboAuth and the UI are intentionally out of scope.
 All configuration is read from environment variables (see `.env.example`).
 No secrets are hardcoded.
 
+Trusted proxy support for rate limiting is optional and disabled by default:
+
+- `AUTH_TRUST_PROXY_HEADERS=true` enables forwarded-IP parsing.
+- `AUTH_TRUSTED_PROXY_CIDRS` must list trusted proxy peers (comma-separated CIDRs or IPs).
+
 ## Run
 
 ```

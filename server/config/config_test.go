@@ -88,31 +88,31 @@ func TestAdminToken(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	func TestTrustedProxyRequiresCIDRs(t *testing.T) {
-		clearEnv()
-		os.Setenv("AUTH_TRUST_PROXY_HEADERS", "true")
-		if _, err := Load(); err == nil {
-			t.Fatal("expected error when trusted proxy mode enabled without cidrs")
-		}
-	}
-
-	func TestTrustedProxyCIDRParsing(t *testing.T) {
-		clearEnv()
-		os.Setenv("AUTH_TRUST_PROXY_HEADERS", "true")
-		os.Setenv("AUTH_TRUSTED_PROXY_CIDRS", "127.0.0.1,10.0.0.0/8")
-		cfg, err := Load()
-		if err != nil {
-			t.Fatal(err)
-		}
-		if !cfg.TrustedProxyHeaders {
-			t.Fatal("expected trusted proxy mode enabled")
-		}
-		if len(cfg.TrustedProxyCIDRs) != 2 {
-			t.Fatalf("expected 2 cidrs, got %d", len(cfg.TrustedProxyCIDRs))
-		}
-	}
 	if cfg.AdminToken != "abc" {
 		t.Errorf("got %q", cfg.AdminToken)
+	}
+}
+
+func TestTrustedProxyRequiresCIDRs(t *testing.T) {
+	clearEnv()
+	os.Setenv("AUTH_TRUST_PROXY_HEADERS", "true")
+	if _, err := Load(); err == nil {
+		t.Fatal("expected error when trusted proxy mode enabled without cidrs")
+	}
+}
+
+func TestTrustedProxyCIDRParsing(t *testing.T) {
+	clearEnv()
+	os.Setenv("AUTH_TRUST_PROXY_HEADERS", "true")
+	os.Setenv("AUTH_TRUSTED_PROXY_CIDRS", "127.0.0.1,10.0.0.0/8")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.TrustedProxyHeaders {
+		t.Fatal("expected trusted proxy mode enabled")
+	}
+	if len(cfg.TrustedProxyCIDRs) != 2 {
+		t.Fatalf("expected 2 cidrs, got %d", len(cfg.TrustedProxyCIDRs))
 	}
 }

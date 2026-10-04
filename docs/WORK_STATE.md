@@ -32,10 +32,12 @@ Phase 3 tasks (all DONE):
 - P3-10 Phase 3 final verification + documentation sync
 
 Current step:
-None — Phase 3 complete.
+Security hardening and launch-resolver implementation task completed on task
+branch `copilot/fix-security-issues-and-bugs` (pending review/merge).
 
 Next step:
-New tasks must be requested. T11 Velocity remains BLOCKED on DECISION-004/005.
+Review/merge current task branch; then await new tasks. T11 Velocity remains
+BLOCKED on DECISION-004/005.
 
 Repository facts:
 - default branch: master
@@ -43,6 +45,8 @@ Repository facts:
 - reference/ is local-only, never committed (DECISION-002)
 - backend source exists under server/ (Go module minecraftserverluncher/server)
 - launcher core exists under launcher/ (C++ / Qt6, builds and tests green)
+- launcher token persistence is DPAPI-only (no plaintext fallback)
+- launcher library/asset resolution uses hash-verified `version.json` metadata
 - velocity directory is scaffolded but empty (no code yet)
 
 Last commit:

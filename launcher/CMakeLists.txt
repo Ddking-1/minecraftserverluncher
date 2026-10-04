@@ -112,9 +112,18 @@ add_test(NAME token_storage COMMAND test_token_storage)
 
 add_executable(test_resolve_libraries
     tests/test_resolve_libraries.cpp
+    auth/TokenStorage.cpp
+    auth/SessionManager.cpp
+    auth/BackendAuthClient.cpp
     launch/LaunchTask.cpp
     launch/LaunchStep.cpp
+    launch/java/JavaVersion.cpp
+    launch/steps/ClaimAuthSession.cpp
+    launch/steps/ExtractNatives.cpp
+    launch/steps/LauncherPartLaunch.cpp
+    launch/steps/ResolveAssets.cpp
     launch/steps/ResolveLibraries.cpp
+    launch/steps/VerifyJava.cpp
     minecraft/MinecraftInstance.cpp
     minecraft/PackProfile.cpp
     core/BaseInstance.cpp
@@ -126,9 +135,18 @@ add_test(NAME resolve_libraries COMMAND test_resolve_libraries)
 
 add_executable(test_resolve_assets
     tests/test_resolve_assets.cpp
+    auth/TokenStorage.cpp
+    auth/SessionManager.cpp
+    auth/BackendAuthClient.cpp
     launch/LaunchTask.cpp
     launch/LaunchStep.cpp
+    launch/java/JavaVersion.cpp
+    launch/steps/ClaimAuthSession.cpp
+    launch/steps/ExtractNatives.cpp
+    launch/steps/LauncherPartLaunch.cpp
     launch/steps/ResolveAssets.cpp
+    launch/steps/ResolveLibraries.cpp
+    launch/steps/VerifyJava.cpp
     minecraft/MinecraftInstance.cpp
     minecraft/PackProfile.cpp
     core/BaseInstance.cpp

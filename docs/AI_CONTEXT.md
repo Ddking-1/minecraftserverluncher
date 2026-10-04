@@ -117,14 +117,15 @@ Launcher core (`launcher/`, C++/Qt6) is on `master`: `launcher/core`
 SettingsStore, RotatingFileLogger, FileIntegrity, Version), `launcher/minecraft`
 (MinecraftInstance, PackProfile, ModScanner), `launcher/auth`
 (BackendAuthClient with a 15s timeout and status-code error mapping,
-TokenStorage using Windows DPAPI, SessionManager), `launcher/launch`
+TokenStorage using Windows DPAPI with no plaintext fallback, SessionManager), `launcher/launch`
 (LaunchTask/LaunchStep framework), `launcher/updates` (UpdateManifest parser,
 UpdateChecker) and `launcher/game` (JavaDetector, MinecraftLauncher). CMake
 configure and `cmake --build ... --config Release` succeed with Qt 6.6.3
 MSVC 2022; CTest runs 11 passing tests (hwid, settings, update_manifest,
 skin_model, backend_contract, settings_store, mod_scanner, skin_cache,
-rotating_logger, update_checker, file_integrity). Library/asset download steps
-remain stubs pending DECISION-005.
+rotating_logger, update_checker, file_integrity). Library/asset resolution now
+consumes instance `version.json` metadata (`libraries` + `asset_index`) with
+download hash verification and fail-closed behavior.
 
 Velocity implementation remains blocked until DECISION-004 is signed off and
 DECISION-005 is resolved.

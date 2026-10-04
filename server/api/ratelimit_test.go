@@ -1,9 +1,9 @@
 package api
 
 import (
+	"net"
 	"net/http"
 	"net/http/httptest"
-	"net"
 	"testing"
 	"time"
 

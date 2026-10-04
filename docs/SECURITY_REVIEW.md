@@ -18,7 +18,7 @@ values (username, device id, tokens) are treated as untrusted input.
 | Access token lifetime | short (default 15 min), server-enforced expiry |
 | Session lifetime | capped at 30 days (`config.maxRefreshTTL`) |
 | Revocation | per-session logout and logout-all; checked on every access validation |
-| Rate limiting | per-client-IP token bucket on all mutating auth endpoints |
+| Rate limiting | per-client-IP token bucket on all mutating auth endpoints; optional trusted-proxy client-IP resolution |
 | Login enumeration | identical "invalid credentials" for unknown user and bad password |
 | Admin endpoints | disabled (404) unless `AUTH_ADMIN_TOKEN` set; constant-time token compare |
 | Server-start endpoint | no shell, fixed configured script path, 30s timeout, output never returned to client |
@@ -39,12 +39,11 @@ values (username, device id, tokens) are treated as untrusted input.
    not shared across instances. Acceptable for the single-instance target
    (docs/DECISIONS.md resource constraint). A shared store is explicitly out of
    scope.
-2. Rate limiter is keyed on `RemoteAddr`; behind a reverse proxy this is the
-   proxy address unless the proxy sets a trusted client IP header. Deployments
-   behind a proxy must terminate rate limiting at the proxy or add trusted
-   header handling (not yet implemented).
-3. Token storage on the client is DPAPI-protected on Windows (see
-   `launcher/auth/TokenStorage.cpp`) with a documented plaintext fallback.
+2. Trusted-proxy mode is disabled by default; when enabled, deployments must
+   set `AUTH_TRUSTED_PROXY_CIDRS` correctly or forwarded headers are ignored/
+   rejected.
+3. Token storage on the client is DPAPI-protected on Windows only; save fails
+   if secure encryption is unavailable (no plaintext fallback).
 4. No account lockout after repeated failures beyond the per-IP rate limit.
 5. TLS termination is expected to be handled by the deployment (reverse proxy);
    the server does not implement TLS itself.
