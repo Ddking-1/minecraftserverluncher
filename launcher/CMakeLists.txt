@@ -19,6 +19,7 @@ add_executable(MinecraftLauncher
     game/MinecraftLauncher.cpp
     minecraft/MinecraftInstance.cpp
     minecraft/PackProfile.cpp
+    minecraft/ModScanner.cpp
     launch/LaunchTask.cpp
     launch/LaunchStep.cpp
     launch/java/JavaVersion.cpp
@@ -71,3 +72,8 @@ add_executable(test_settings_store tests/test_settings_store.cpp core/SettingsSt
 target_include_directories(test_settings_store PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(test_settings_store PRIVATE Qt6::Core)
 add_test(NAME settings_store COMMAND test_settings_store)
+
+add_executable(test_mod_scanner tests/test_mod_scanner.cpp minecraft/ModScanner.cpp)
+target_include_directories(test_mod_scanner PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(test_mod_scanner PRIVATE Qt6::Core)
+add_test(NAME mod_scanner COMMAND test_mod_scanner)
