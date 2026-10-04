@@ -24,6 +24,14 @@ void applyDefaults(Settings &s);
 // Enforce memory bounds: min >= 512, max >= min, max <= 65536.
 void clamp(Settings &s);
 
+// A JVM argument is safe when it is non-empty, at most 1024 chars, equals its
+// trimmed form and contains no control characters.
+bool isSafeJvmArg(const QString &arg);
+
+// Validate memory bounds and JVM arguments. Returns false and sets *error
+// (when non-null) on the first problem.
+bool validate(const Settings &s, QString *error = nullptr);
+
 // Read settings from a JSON file. Returns false if the file is missing or
 // malformed. Loaded values are defaulted and clamped.
 bool load(const QString &path, Settings &out);

@@ -73,6 +73,44 @@ int main()
             return 1;
     }
 
+    // JVM argument safety.
+    if (!check(isSafeJvmArg(QStringLiteral("-XX:+UseG1GC")), "safe jvm arg")
+        || !check(!isSafeJvmArg(QString()), "empty arg unsafe")
+        || !check(!isSafeJvmArg(QStringLiteral(" -Xmx1G")), "leading space unsafe")
+        || !check(!isSafeJvmArg(QStringLiteral("bad\narg")), "control char unsafe")
+        || !check(!isSafeJvmArg(QString(2000, QLatin1Char('a'))), "overlong arg unsafe"))
+        return 1;
+
+    // Validation bounds.
+    {
+        QString error;
+        Settings good;
+        good.minMemoryMb = 2048;
+        good.maxMemoryMb = 4096;
+        if (!check(validate(good, &error), "valid settings"))
+            return 1;
+
+        Settings lowMin;
+        lowMin.minMemoryMb = 100;
+        lowMin.maxMemoryMb = 4096;
+        if (!check(!validate(lowMin, &error), "min below 512 invalid")
+            || !check(!error.isEmpty(), "error message set"))
+            return 1;
+
+        Settings inverted;
+        inverted.minMemoryMb = 8192;
+        inverted.maxMemoryMb = 4096;
+        if (!check(!validate(inverted, &error), "max below min invalid"))
+            return 1;
+
+        Settings unsafe;
+        unsafe.minMemoryMb = 2048;
+        unsafe.maxMemoryMb = 4096;
+        unsafe.jvmArgs = QStringList{QStringLiteral("bad\narg")};
+        if (!check(!validate(unsafe, &error), "unsafe jvm arg invalid"))
+            return 1;
+    }
+
     std::cout << "OK" << std::endl;
     return 0;
 }

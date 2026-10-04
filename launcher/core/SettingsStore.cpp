@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 #include "SettingsStore.h"
 
+#include <QChar>
 #include <QFile>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -38,6 +39,46 @@ void clamp(Settings &s)
         s.minMemoryMb = s.maxMemoryMb;
 }
 
+bool isSafeJvmArg(const QString &arg)
+{
+    if (arg.isEmpty() || arg.size() > 1024)
+        return false;
+    if (arg != arg.trimmed())
+        return false;
+    for (const QChar &c : arg) {
+        if (c.isNull() || c.category() == QChar::Other_Control)
+            return false;
+    }
+    return true;
+}
+
+bool validate(const Settings &s, QString *error)
+{
+    if (s.minMemoryMb < 512) {
+        if (error)
+            *error = QStringLiteral("minimum memory must be at least 512 MB");
+        return false;
+    }
+    if (s.maxMemoryMb < s.minMemoryMb) {
+        if (error)
+            *error = QStringLiteral("maximum memory must not be below minimum memory");
+        return false;
+    }
+    if (s.maxMemoryMb > 65536) {
+        if (error)
+            *error = QStringLiteral("maximum memory must not exceed 65536 MB");
+        return false;
+    }
+    for (const QString &arg : s.jvmArgs) {
+        if (!isSafeJvmArg(arg)) {
+            if (error)
+                *error = QStringLiteral("unsafe JVM argument: %1").arg(arg);
+            return false;
+        }
+    }
+    return true;
+}
+
 bool load(const QString &path, Settings &out)
 {
     QFile file(path);
@@ -59,8 +100,11 @@ bool load(const QString &path, Settings &out)
     s.maxMemoryMb = obj.value(QStringLiteral("max_memory_mb")).toInt(4096);
 
     const QJsonArray args = obj.value(QStringLiteral("jvm_args")).toArray();
-    for (const QJsonValue &v : args)
-        s.jvmArgs.append(v.toString());
+    for (const QJsonValue &v : args) {
+        const QString arg = v.toString();
+        if (isSafeJvmArg(arg))
+            s.jvmArgs.append(arg);
+    }
 
     applyDefaults(s);
     clamp(s);
