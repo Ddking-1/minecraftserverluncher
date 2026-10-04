@@ -1,49 +1,40 @@
 ﻿# WORK STATE
 
 Current phase:
-PHASE 2 — BACKEND HARDENING + LAUNCHER CORE FEATURES (IN PROGRESS)
+PHASE 3 — LAUNCHER FEATURE COMPLETION + BACKEND ROBUSTNESS (IN PROGRESS)
 
 Current task:
-Continue the ordered marathon backlog in `docs/MASTER_PLAN_EXTENDED.md`
-(T1-T45). Backend and launcher tasks through T41 are complete except the
-Velocity skeleton (T11, blocked on DECISION-004/005) and the documentation
-sync (T44) / final verification (T45).
+Execute the ordered Phase 3 backlog in `docs/MASTER_PLAN_PHASE3.md`
+(P3-01 … P3-10). The T1–T45 backlog (`docs/MASTER_PLAN_EXTENDED.md`) is
+complete except T11 (Velocity skeleton), which stays BLOCKED on DECISION-004
+legal sign-off and DECISION-005 (metadata source).
 
 Status:
-Green. Backend: `go build`, `go vet`, `go test ./...` all pass. Launcher:
-CMake configure + Release build with Qt 6.6.3 MSVC 2022 succeed; CTest runs
-5 tests (hwid, settings, update_manifest, skin_model, backend_contract), all
-pass.
+Green baseline. Backend: `go build`, `go vet`, `go test ./...` all pass.
+Launcher: CMake configure + Release build with Qt 6.6.3 MSVC 2022 succeed;
+CTest runs 5 tests (hwid, settings, update_manifest, skin_model,
+backend_contract), all pass.
 
 Branch:
 master (all task branches fast-forward merged and pushed).
 
-Last completed steps:
-- T12/T29 config loader tests, T31 session service tests, T30 device service
-  tests, T28 rate limiter tests.
-- T16 backend security review (`docs/SECURITY_REVIEW.md`).
-- T22-T27 account profile, password change, session list/revoke endpoints and
-  their tests.
-- T33-T35 request logging, panic recovery and security header middleware.
-- T40 `/readyz` readiness endpoint.
-- T32 hardened HTTP server timeouts + graceful shutdown.
-- T36-T39 launcher HTTP client timeout, backend status-code error mapping, CLI
-  instance filter, `--version`/`--help`.
-- T19/T20 update manifest parser + tests; T21 skin model + tests.
-- T13 BackendAuthClient contract test (local fake HTTP server).
-- T41 `docs/API.md` endpoint reference.
-- T14/T42/T43 CI workflows (backend on ubuntu-latest, launcher on
-  windows-latest).
+Phase 3 tasks:
+- P3-01 Launcher SettingsStore (launcher.json load/save, defaults, atomic) + tests
+- P3-02 Mod list scanner (mods/ dir, enabled/disabled, sorted) + tests
+- P3-03 Skin cache (content-addressed, SHA-256 verified) + tests
+- P3-04 Launcher rotating file logger (size rotation, keep N) + tests
+- P3-05 Update checker (semantic version compare + decision) + tests
+- P3-06 File integrity verifier (SHA-256 of file vs expected) + tests
+- P3-07 Backend request-ID + structured logging middleware + tests
+- P3-08 Backend auth/token extra tests + DB expiry indexes
+- P3-09 Launcher memory/JVM settings validation + tests
+- P3-10 Phase 3 final verification + documentation sync
 
 Current step:
-Documentation sync (T44) and final verification (T45).
+P3-01 Launcher SettingsStore.
 
 Next step:
-1. T44: synchronize AI_CONTEXT / WORK_STATE / PROGRESS / CHANGELOG.
-2. T45: full backend `go test ./...` + full launcher Release build + CTest,
-   then final report.
-3. T11 Velocity plugin remains BLOCKED on DECISION-004 legal sign-off and
-   DECISION-005 (metadata source).
+P3-02 Mod list scanner.
 
 Repository facts:
 - default branch: master
