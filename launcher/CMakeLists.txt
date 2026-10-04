@@ -13,6 +13,7 @@ add_executable(MinecraftLauncher
     core/InstanceList.cpp
     core/InstancePersistence.cpp
     core/SkinModel.cpp
+    core/SkinCache.cpp
     core/SettingsStore.cpp
     core/HWIDExtractor.cpp
     game/JavaDetector.cpp
@@ -77,3 +78,8 @@ add_executable(test_mod_scanner tests/test_mod_scanner.cpp minecraft/ModScanner.
 target_include_directories(test_mod_scanner PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(test_mod_scanner PRIVATE Qt6::Core)
 add_test(NAME mod_scanner COMMAND test_mod_scanner)
+
+add_executable(test_skin_cache tests/test_skin_cache.cpp core/SkinCache.cpp core/SkinModel.cpp)
+target_include_directories(test_skin_cache PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(test_skin_cache PRIVATE Qt6::Core)
+add_test(NAME skin_cache COMMAND test_skin_cache)
