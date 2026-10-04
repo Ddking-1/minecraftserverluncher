@@ -4,6 +4,8 @@
 
 # Local AI tooling state
 /.abacusai/
+/opencode.json
+/skills/
 
 # OS / editor noise
 Thumbs.db
@@ -26,3 +28,6 @@ reference/
 # Environment & Secret files
 .env
 *.env
+
+# Local MCP server config (contains API keys; use env vars instead)
+mcp.json
