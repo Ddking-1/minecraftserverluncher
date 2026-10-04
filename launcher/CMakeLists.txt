@@ -26,6 +26,7 @@ add_executable(MinecraftLauncher
     launch/steps/ResolveAssets.cpp
     launch/steps/ResolveLibraries.cpp
     launch/steps/VerifyJava.cpp
+    updates/UpdateManifest.cpp
 )
 
 target_include_directories(MinecraftLauncher PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
@@ -48,3 +49,8 @@ add_executable(test_settings tests/test_settings.cpp core/InstancePersistence.cp
 target_include_directories(test_settings PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(test_settings PRIVATE Qt6::Core)
 add_test(NAME settings COMMAND test_settings)
+
+add_executable(test_update_manifest tests/test_update_manifest.cpp updates/UpdateManifest.cpp)
+target_include_directories(test_update_manifest PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(test_update_manifest PRIVATE Qt6::Core)
+add_test(NAME update_manifest COMMAND test_update_manifest)
