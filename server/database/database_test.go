@@ -17,6 +17,21 @@ func openTestDB(t *testing.T) *DB {
 	return db
 }
 
+func TestExpiryIndexesExist(t *testing.T) {
+	db := openTestDB(t)
+
+	want := []string{"idx_access_expires", "idx_sessions_refresh_expires"}
+	for _, name := range want {
+		var found string
+		err := db.sql.QueryRow(
+			`SELECT name FROM sqlite_master WHERE type = 'index' AND name = ?`, name,
+		).Scan(&found)
+		if err != nil {
+			t.Fatalf("index %s not found: %v", name, err)
+		}
+	}
+}
+
 func TestCreateAndGetAccount(t *testing.T) {
 	db := openTestDB(t)
 

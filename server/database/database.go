@@ -150,6 +150,8 @@ CREATE TABLE IF NOT EXISTS access_tokens (
 );
 
 CREATE INDEX IF NOT EXISTS idx_access_session ON access_tokens(session_id);
+CREATE INDEX IF NOT EXISTS idx_access_expires ON access_tokens(expires_at);
+CREATE INDEX IF NOT EXISTS idx_sessions_refresh_expires ON sessions(refresh_expires_at);
 `
 	if _, err := db.sql.Exec(schema); err != nil {
 		return fmt.Errorf("database: migrate: %w", err)
