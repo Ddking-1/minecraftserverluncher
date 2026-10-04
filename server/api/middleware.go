@@ -1,11 +1,47 @@
 package api
 
 import (
+	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"log"
 	"net/http"
 	"runtime/debug"
 	"time"
 )
+
+// requestIDCtxKey is the context key under which the request id is stored.
+type ctxKey string
+
+const requestIDCtxKey = ctxKey("request-id")
+
+// withRequestID ensures every request carries an id. A client-provided
+// X-Request-Id is reused; otherwise a random one is generated. The id is
+// echoed in the response header and stored in the request context.
+func withRequestID(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id := r.Header.Get("X-Request-Id")
+		if id == "" {
+			buf := make([]byte, 16)
+			if _, err := rand.Read(buf); err != nil {
+				id = "unknown"
+			} else {
+				id = hex.EncodeToString(buf)
+			}
+		}
+		w.Header().Set("X-Request-Id", id)
+		ctx := context.WithValue(r.Context(), requestIDCtxKey, id)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+// requestID returns the request id stored by withRequestID, or "".
+func requestID(r *http.Request) string {
+	if id, ok := r.Context().Value(requestIDCtxKey).(string); ok {
+		return id
+	}
+	return ""
+}
 
 // statusRecorder captures the response status code for request logging.
 type statusRecorder struct {
@@ -24,7 +60,7 @@ func (s *Server) withRequestLog(next http.Handler) http.Handler {
 		start := time.Now()
 		rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
 		next.ServeHTTP(rec, r)
-		log.Printf("http method=%s path=%s status=%d latency_ms=%d", r.Method, r.URL.Path, rec.status, time.Since(start).Milliseconds())
+		log.Printf("http method=%s path=%s status=%d latency_ms=%d request_id=%s", r.Method, r.URL.Path, rec.status, time.Since(start).Milliseconds(), requestID(r))
 	})
 }
 

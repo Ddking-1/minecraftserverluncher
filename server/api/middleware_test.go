@@ -63,3 +63,57 @@ func TestRequestLogPreservesStatus(t *testing.T) {
 		t.Fatalf("status = %d, want 418", rec.Code)
 	}
 }
+
+func TestRequestIDGenerated(t *testing.T) {
+	var seen string
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		seen = requestID(r)
+	})
+	h := withRequestID(inner)
+
+	req := httptest.NewRequest(http.MethodGet, "/x", nil)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	if seen == "" {
+		t.Fatal("request id not stored in context")
+	}
+	if rec.Header().Get("X-Request-Id") != seen {
+		t.Fatalf("response header %q != context %q", rec.Header().Get("X-Request-Id"), seen)
+	}
+}
+
+func TestRequestIDEchoed(t *testing.T) {
+	const provided = "abc123"
+	var seen string
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		seen = requestID(r)
+	})
+	h := withRequestID(inner)
+
+	req := httptest.NewRequest(http.MethodGet, "/x", nil)
+	req.Header.Set("X-Request-Id", provided)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	if seen != provided {
+		t.Fatalf("context id = %q, want %q", seen, provided)
+	}
+	if rec.Header().Get("X-Request-Id") != provided {
+		t.Fatalf("response header = %q, want %q", rec.Header().Get("X-Request-Id"), provided)
+	}
+}
+
+func TestRequestIDUnique(t *testing.T) {
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
+	h := withRequestID(inner)
+
+	first := httptest.NewRecorder()
+	h.ServeHTTP(first, httptest.NewRequest(http.MethodGet, "/x", nil))
+	second := httptest.NewRecorder()
+	h.ServeHTTP(second, httptest.NewRequest(http.MethodGet, "/x", nil))
+
+	if first.Header().Get("X-Request-Id") == second.Header().Get("X-Request-Id") {
+		t.Fatal("generated request ids should differ")
+	}
+}
