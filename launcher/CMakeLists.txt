@@ -60,3 +60,8 @@ add_executable(test_skin_model tests/test_skin_model.cpp core/SkinModel.cpp)
 target_include_directories(test_skin_model PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(test_skin_model PRIVATE Qt6::Core)
 add_test(NAME skin_model COMMAND test_skin_model)
+
+add_executable(test_backend_contract tests/test_backend_contract.cpp auth/BackendAuthClient.cpp)
+target_include_directories(test_backend_contract PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(test_backend_contract PRIVATE Qt6::Core Qt6::Network)
+add_test(NAME backend_contract COMMAND test_backend_contract)
