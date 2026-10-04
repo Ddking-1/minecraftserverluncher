@@ -12,6 +12,7 @@ add_executable(MinecraftLauncher
     core/BaseInstance.cpp
     core/InstanceList.cpp
     core/InstancePersistence.cpp
+    core/SkinModel.cpp
     core/HWIDExtractor.cpp
     game/JavaDetector.cpp
     game/MinecraftLauncher.cpp
@@ -54,3 +55,8 @@ add_executable(test_update_manifest tests/test_update_manifest.cpp updates/Updat
 target_include_directories(test_update_manifest PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(test_update_manifest PRIVATE Qt6::Core)
 add_test(NAME update_manifest COMMAND test_update_manifest)
+
+add_executable(test_skin_model tests/test_skin_model.cpp core/SkinModel.cpp)
+target_include_directories(test_skin_model PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(test_skin_model PRIVATE Qt6::Core)
+add_test(NAME skin_model COMMAND test_skin_model)
