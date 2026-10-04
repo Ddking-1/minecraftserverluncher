@@ -2,6 +2,30 @@
 
 ## Unreleased
 
+### Phase 3 — launcher features and backend robustness
+
+Launcher:
+- `core/SettingsStore` — `launcher.json` load/save with documented defaults,
+  memory clamping, atomic writes, JVM-argument safety and settings validation.
+- `minecraft/ModScanner` — scans an instance `mods/` directory and reports
+  enabled/disabled mods, sorted case-insensitively.
+- `core/SkinCache` — content-addressed skin cache that verifies the SHA-256 of
+  both incoming and cached data.
+- `core/RotatingFileLogger` — append logger with size-based rotation and a
+  retention cap.
+- `updates/UpdateChecker` — dotted numeric version comparison and an
+  up-to-date / update-available / incompatible decision against a manifest.
+- `core/FileIntegrity` — SHA-256 file digest and expected-digest verification.
+- New CTest targets: settings_store, mod_scanner, skin_cache, rotating_logger,
+  update_checker, file_integrity (11 tests total).
+
+Backend:
+- Request-ID middleware: reuses or generates `X-Request-Id`, echoes it and
+  includes it in the request log line.
+- Added `access_tokens(expires_at)` and `sessions(refresh_expires_at)` indexes.
+- Added token determinism / password-rejection tests and an index-existence
+  test.
+
 ### Backend hardening, account management and tests
 
 - Added `GET /api/v1/account/me`, `POST /api/v1/account/password`,

@@ -19,16 +19,16 @@ Status legend: `DONE`, `BLOCKED`, `PENDING`.
 
 | ID | Title | Area | Status |
 |----|-------|------|--------|
-| P3-01 | Launcher SettingsStore (load/save launcher.json, defaults, atomic write) + tests | launcher/core | PENDING |
-| P3-02 | Mod list scanner (scan mods/ dir, enabled/disabled, sorted) + tests | launcher/minecraft | PENDING |
-| P3-03 | Skin cache (id → local file, SHA-256 verified) + tests | launcher/core | PENDING |
-| P3-04 | Launcher rotating file logger (size rotation, keep N) + tests | launcher/core | PENDING |
-| P3-05 | Update checker (semantic version compare + update decision) + tests | launcher/updates | PENDING |
-| P3-06 | File integrity verifier (SHA-256 of file vs expected) + tests | launcher/core | PENDING |
-| P3-07 | Backend request-ID + structured logging middleware + tests | server/api | PENDING |
-| P3-08 | Backend auth/token extra tests + DB expiry indexes | server | PENDING |
-| P3-09 | Launcher memory/JVM settings validation + tests | launcher/core | PENDING |
-| P3-10 | Phase 3 final verification + documentation sync | docs | PENDING |
+| P3-01 | Launcher SettingsStore (load/save launcher.json, defaults, atomic write) + tests | launcher/core | DONE (a2fd9a8) |
+| P3-02 | Mod list scanner (scan mods/ dir, enabled/disabled, sorted) + tests | launcher/minecraft | DONE (ab42ce0) |
+| P3-03 | Skin cache (id → local file, SHA-256 verified) + tests | launcher/core | DONE (5476a22) |
+| P3-04 | Launcher rotating file logger (size rotation, keep N) + tests | launcher/core | DONE (4525ab9) |
+| P3-05 | Update checker (semantic version compare + update decision) + tests | launcher/updates | DONE (8e5489b) |
+| P3-06 | File integrity verifier (SHA-256 of file vs expected) + tests | launcher/core | DONE (d90f0b2) |
+| P3-07 | Backend request-ID + structured logging middleware + tests | server/api | DONE (1f1cb4f) |
+| P3-08 | Backend auth/token extra tests + DB expiry indexes | server | DONE (b62555e) |
+| P3-09 | Launcher memory/JVM settings validation + tests | launcher/core | DONE (c77aa7b) |
+| P3-10 | Phase 3 final verification + documentation sync | docs | DONE |
 
 ## Task details
 

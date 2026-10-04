@@ -12,7 +12,7 @@ Java 24
 
 ## Current phase
 
-PHASE 2 — BACKEND HARDENING + LAUNCHER CORE FEATURES (IN PROGRESS)
+PHASE 3 — LAUNCHER FEATURE COMPLETION + BACKEND ROBUSTNESS (COMPLETE)
 
 The Prism minimal-core / licensing checkpoint is RESOLVED at architecture
 level (DECISION-003, DECISION-004; see `docs/PRISM_MINIMAL_CORE.md` and
@@ -113,16 +113,18 @@ timeouts with graceful shutdown. `go build`, `go vet` and `go test ./...` pass.
 See `docs/API.md`, `docs/SECURITY_REVIEW.md` and `server/README.md`.
 
 Launcher core (`launcher/`, C++/Qt6) is on `master`: `launcher/core`
-(BaseInstance, InstanceList, InstancePersistence, SkinModel, Version),
-`launcher/minecraft` (MinecraftInstance, PackProfile), `launcher/auth`
+(BaseInstance, InstanceList, InstancePersistence, SkinModel, SkinCache,
+SettingsStore, RotatingFileLogger, FileIntegrity, Version), `launcher/minecraft`
+(MinecraftInstance, PackProfile, ModScanner), `launcher/auth`
 (BackendAuthClient with a 15s timeout and status-code error mapping,
 TokenStorage using Windows DPAPI, SessionManager), `launcher/launch`
-(LaunchTask/LaunchStep framework), `launcher/updates` (UpdateManifest parser)
-and `launcher/game` (JavaDetector, MinecraftLauncher). CMake configure and
-`cmake --build ... --config Release` succeed with Qt 6.6.3 MSVC 2022; CTest
-runs five passing tests (hwid, settings, update_manifest, skin_model,
-backend_contract). Library/asset download steps remain stubs pending
-DECISION-005.
+(LaunchTask/LaunchStep framework), `launcher/updates` (UpdateManifest parser,
+UpdateChecker) and `launcher/game` (JavaDetector, MinecraftLauncher). CMake
+configure and `cmake --build ... --config Release` succeed with Qt 6.6.3
+MSVC 2022; CTest runs 11 passing tests (hwid, settings, update_manifest,
+skin_model, backend_contract, settings_store, mod_scanner, skin_cache,
+rotating_logger, update_checker, file_integrity). Library/asset download steps
+remain stubs pending DECISION-005.
 
 Velocity implementation remains blocked until DECISION-004 is signed off and
 DECISION-005 is resolved.

@@ -288,3 +288,36 @@ T45 final verification (full go test + full launcher build + ctest) and report.
 Manual user action:
 Legal sign-off on DECISION-004 and resolution of DECISION-005 remain outstanding
 (blocks T11 Velocity work).
+
+## 2026-10-04 - PHASE 3 (P3-01..P3-10)
+
+Agent/model: Architect (integration) + Worker (lm-studio/deepseek-coder-v2-lite-instruct, code generation)
+Branch: master (per-task branches fast-forward merged and pushed)
+Task: Design and execute 10 new Phase 3 tasks (docs/MASTER_PLAN_PHASE3.md).
+Completed: 2026-10-04
+
+Files:
+- launcher/core: SettingsStore.{h,cpp}, SkinCache.{h,cpp}, RotatingFileLogger.{h,cpp}, FileIntegrity.{h,cpp}
+- launcher/minecraft: ModScanner.{h,cpp}
+- launcher/updates: UpdateChecker.{h,cpp}
+- launcher/tests: test_settings_store.cpp, test_mod_scanner.cpp, test_skin_cache.cpp,
+  test_rotating_logger.cpp, test_update_checker.cpp, test_file_integrity.cpp
+- launcher/CMakeLists.txt
+- server/api: middleware.go, handlers.go, middleware_test.go
+- server/auth/auth_extra_test.go
+- server/database: database.go, database_test.go
+- docs: MASTER_PLAN_PHASE3.md, WORK_STATE.md, CHANGELOG.md, AI_CONTEXT.md
+
+Tests:
+- Backend: go build ./..., go vet ./..., go test ./... -> all pass.
+- Launcher: cmake configure + Release build (Qt 6.6.3 MSVC 2022) -> OK;
+  ctest -> 11/11 pass.
+
+Current status:
+Phase 3 complete. T11 Velocity remains BLOCKED on DECISION-004/005.
+
+Next:
+No unblocked tasks. Await new instructions.
+
+Manual user action:
+Legal sign-off on DECISION-004 and resolution of DECISION-005 remain outstanding.

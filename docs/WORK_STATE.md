@@ -1,28 +1,29 @@
 ﻿# WORK STATE
 
 Current phase:
-PHASE 3 — LAUNCHER FEATURE COMPLETION + BACKEND ROBUSTNESS (IN PROGRESS)
+PHASE 3 — LAUNCHER FEATURE COMPLETION + BACKEND ROBUSTNESS (COMPLETE)
 
 Current task:
-Execute the ordered Phase 3 backlog in `docs/MASTER_PLAN_PHASE3.md`
-(P3-01 … P3-10). The T1–T45 backlog (`docs/MASTER_PLAN_EXTENDED.md`) is
-complete except T11 (Velocity skeleton), which stays BLOCKED on DECISION-004
-legal sign-off and DECISION-005 (metadata source).
+Phase 3 backlog (`docs/MASTER_PLAN_PHASE3.md`, P3-01 … P3-10) is complete.
+The T1–T45 backlog (`docs/MASTER_PLAN_EXTENDED.md`) is complete except T11
+(Velocity skeleton), which stays BLOCKED on DECISION-004 legal sign-off and
+DECISION-005 (metadata source).
 
 Status:
-Green baseline. Backend: `go build`, `go vet`, `go test ./...` all pass.
-Launcher: CMake configure + Release build with Qt 6.6.3 MSVC 2022 succeed;
-CTest runs 5 tests (hwid, settings, update_manifest, skin_model,
-backend_contract), all pass.
+Green. Backend: `go build`, `go vet`, `go test ./...` all pass. Launcher:
+CMake configure + Release build with Qt 6.6.3 MSVC 2022 succeed; CTest runs 11
+tests (hwid, settings, update_manifest, skin_model, backend_contract,
+settings_store, mod_scanner, skin_cache, rotating_logger, update_checker,
+file_integrity), all pass.
 
 Branch:
 master (all task branches fast-forward merged and pushed).
 
-Phase 3 tasks:
-- P3-01 Launcher SettingsStore (launcher.json load/save, defaults, atomic) + tests
+Phase 3 tasks (all DONE):
+- P3-01 SettingsStore (launcher.json load/save, defaults, atomic) + tests
 - P3-02 Mod list scanner (mods/ dir, enabled/disabled, sorted) + tests
 - P3-03 Skin cache (content-addressed, SHA-256 verified) + tests
-- P3-04 Launcher rotating file logger (size rotation, keep N) + tests
+- P3-04 Rotating file logger (size rotation, keep N) + tests
 - P3-05 Update checker (semantic version compare + decision) + tests
 - P3-06 File integrity verifier (SHA-256 of file vs expected) + tests
 - P3-07 Backend request-ID + structured logging middleware + tests
@@ -31,10 +32,10 @@ Phase 3 tasks:
 - P3-10 Phase 3 final verification + documentation sync
 
 Current step:
-P3-01 Launcher SettingsStore.
+None — Phase 3 complete.
 
 Next step:
-P3-02 Mod list scanner.
+New tasks must be requested. T11 Velocity remains BLOCKED on DECISION-004/005.
 
 Repository facts:
 - default branch: master
