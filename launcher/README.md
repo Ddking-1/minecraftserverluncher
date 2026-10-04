@@ -1,34 +1,42 @@
-# Launcher Core
+# Launcher
 
-Minimal C++ instance management, launch-task framework, and backend auth
-client for the project's Minecraft launcher. This is the project-owned launcher
-core (docs/DECISIONS.md DECISION-003); it does not vendor Prism Launcher code.
+This directory contains the C++/Qt6 launcher application for the private
+Minecraft network. It manages local game instances, authentication against
+the Go backend, and the Minecraft launch pipeline.
 
-## Structure
+## Layout
 
-- `core/` — `BaseInstance`, `InstanceList` (`QAbstractListModel`),
-  `InstancePersistence` (JSON read/write). Uses `std::vector<std::unique_ptr<BaseInstance>>` for safe move-only ownership.
-  Includes `HWIDExtractor` for hardware identification.
-- `minecraft/` — `MinecraftInstance`, `PackProfile` (version/loader
-  composition).
-- `auth/` — `BackendAuthClient`, `TokenStorage`, `SessionManager`. Replaces
-  Prism's Mojang/MSA auth flow with the project backend auth API.
-- `launch/` — `LaunchTask` / `LaunchStep` framework (`std::vector<std::unique_ptr<LaunchStep>>`) and the minimal launch
-  steps (`ClaimAuthSession`, `ResolveLibraries`, `ResolveAssets`,
-  `ExtractNatives`, `VerifyJava`, `LauncherPartLaunch`).
+- `main.cpp` — entry point and CLI argument parsing.
+- `core/` — shared core: instances, persistence, settings, skin cache,
+  rotating logger, file integrity, HWID extraction.
+- `auth/` — backend auth client, session manager, DPAPI token storage.
+- `minecraft/` — the Minecraft instance type, pack profile, mod scanner.
+- `launch/` — the launch pipeline: `LaunchTask` orchestrates ordered
+  `LaunchStep`s (Java verification, library/asset/native resolution, JVM start).
+- `updates/` — update manifest parser and version checker.
+- `game/` — Java detector and low-level game process launcher.
+- `tests/` — CTest unit tests.
 
-## Compilation and Execution Status
+## How it works
 
-**STATUS: FULLY FUNCTIONAL & VERIFIED**
+Each instance is stored in a folder under `instances/` with `instance.json`,
+`launcher.json` and `version.json`. `InstanceList` is a `QAbstractListModel`
+that loads instances through a factory. `MinecraftInstance::createLaunchTask`
+assembles a `LaunchTask` whose steps verify Java, prepare libraries/assets/
+natives, then start the JVM with the backend session identity (no Mojang/MSA
+tokens). Library and asset download steps are stubs pending `DECISION-005`
+(docs/DECISIONS.md).
 
-The project is successfully built and executed using Qt 6.6.3 (MSVC 2022) and CMake. Container logic has been migrated from `QList` to `std::vector` across core and launch modules to correctly support move-only `std::unique_ptr` elements.
+## Dependencies
 
-Requirements:
-- CMake 3.16+
-- Qt 6.6.3 (MSVC 64-bit)
-- MSVC 2022 C++17 compiler
+- Qt 6 (Core, Network).
+- Build: CMake + MSVC 2022 (Visual Studio 17), 64-bit.
+- Auth storage uses Windows DPAPI (`crypt32`).
 
-Build:
-```powershell
-cmake -B build -DCMAKE_PREFIX_PATH="C:\Users\<user>\6.6.3\msvc2019_64"
-cmake --build build --config Release
+## Build & test
+
+```bash
+cmake -S launcher -B launcher/build -G "Visual Studio 17 2022" -A x64
+cmake --build launcher/build --config Release
+ctest --test-dir launcher/build -C Release --output-on-failure
+```

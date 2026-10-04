@@ -7,6 +7,10 @@ set(CMAKE_AUTOMOC ON)
 
 find_package(Qt6 REQUIRED COMPONENTS Core Network)
 
+add_subdirectory(auth)
+add_subdirectory(core)
+add_subdirectory(minecraft)
+
 add_executable(MinecraftLauncher
     main.cpp
     core/BaseInstance.cpp
@@ -37,7 +41,7 @@ add_executable(MinecraftLauncher
 )
 
 target_include_directories(MinecraftLauncher PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(MinecraftLauncher PRIVATE Qt6::Core Qt6::Network)
+target_link_libraries(MinecraftLauncher PRIVATE launcher_auth launcher_minecraft launcher_core Qt6::Core Qt6::Network)
 
 if(WIN32)
     target_link_libraries(MinecraftLauncher PRIVATE bcrypt crypt32 iphlpapi wbemuuid ole32 oleaut32)

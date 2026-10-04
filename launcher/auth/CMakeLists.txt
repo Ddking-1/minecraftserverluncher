@@ -9,3 +9,6 @@ add_library(launcher_auth STATIC
 )
 target_include_directories(launcher_auth PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)
 target_link_libraries(launcher_auth PUBLIC launcher_core Qt6::Core Qt6::Network)
+if(WIN32)
+    target_link_libraries(launcher_auth PUBLIC crypt32)
+endif()

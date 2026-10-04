@@ -11,15 +11,15 @@ LaunchTask::LaunchTask(BaseInstance *instance, QObject *parent)
 
 LaunchTask::~LaunchTask() = default;
 
-void LaunchTask::appendStep(std::unique_ptr<LaunchStep> step)
+void LaunchTask::appendStep(LaunchStep *step)
 {
     if (m_state != State::NotStarted)
         return;
-    LaunchStep *raw = step.get();
-    connect(raw, &LaunchStep::readyForLaunch, this, &LaunchTask::onStepReady);
-    connect(raw, &LaunchStep::failed, this, &LaunchTask::onStepFailed);
-    connect(raw, &LaunchStep::logLine, this, &LaunchTask::logLine);
-    m_steps.push_back(std::move(step));
+    step->setParent(this);
+    connect(step, &LaunchStep::readyForLaunch, this, &LaunchTask::onStepReady);
+    connect(step, &LaunchStep::failed, this, &LaunchTask::onStepFailed);
+    connect(step, &LaunchStep::logLine, this, &LaunchTask::logLine);
+    m_steps.push_back(step);
 }
 
 void LaunchTask::start()

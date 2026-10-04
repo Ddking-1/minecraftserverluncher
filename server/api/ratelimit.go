@@ -30,20 +30,30 @@ func newRateLimiter(limit int, window time.Duration) *rateLimiter {
 }
 
 // allow reports whether a request from the given key is within the limit.
+// Expired buckets are pruned so the map does not grow without bound.
 func (l *rateLimiter) allow(key string) bool {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	now := time.Now()
-	b, ok := l.buckets[key]
-	if !ok || now.After(b.resetAt) {
-		l.buckets[key] = &bucket{count: 1, resetAt: now.Add(l.window)}
+	l.pruneLocked(now)
+	if b, ok := l.buckets[key]; ok {
+		if b.count >= l.limit {
+			return false
+		}
+		b.count++
 		return true
 	}
-	if b.count >= l.limit {
-		return false
-	}
-	b.count++
+	l.buckets[key] = &bucket{count: 1, resetAt: now.Add(l.window)}
 	return true
+}
+
+// pruneLocked removes expired buckets. Callers must hold l.mu.
+func (l *rateLimiter) pruneLocked(now time.Time) {
+	for k, b := range l.buckets {
+		if now.After(b.resetAt) {
+			delete(l.buckets, k)
+		}
+	}
 }
 
 // limit wraps a handler with per-IP rate limiting.

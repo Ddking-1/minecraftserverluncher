@@ -7,6 +7,7 @@
 #include "PackProfile.h"
 #include "core/InstancePersistence.h"
 #include "launch/LaunchTask.h"
+#include "launch/LaunchStep.h"
 #include "launch/steps/ClaimAuthSession.h"
 #include "launch/steps/ExtractNatives.h"
 #include "launch/steps/LauncherPartLaunch.h"
@@ -114,12 +115,12 @@ std::unique_ptr<LaunchTask> MinecraftInstance::createLaunchTask(AuthSessionPtr s
                                                                 MinecraftTargetPtr target)
 {
     auto task = std::make_unique<LaunchTask>(this);
-    task->appendStep(std::make_unique<ClaimAuthSession>(task.get(), session));
-    task->appendStep(std::make_unique<ResolveLibraries>(task.get(), this));
-    task->appendStep(std::make_unique<ResolveAssets>(task.get(), this));
-    task->appendStep(std::make_unique<ExtractNatives>(task.get(), this));
-    task->appendStep(std::make_unique<VerifyJava>(task.get(), this));
-    task->appendStep(std::make_unique<LauncherPartLaunch>(task.get(), this, session, target));
+    task->appendStep(new ClaimAuthSession(task.get(), session));
+    task->appendStep(new ResolveLibraries(task.get(), this));
+    task->appendStep(new ResolveAssets(task.get(), this));
+    task->appendStep(new ExtractNatives(task.get(), this));
+    task->appendStep(new VerifyJava(task.get(), this));
+    task->appendStep(new LauncherPartLaunch(task.get(), this, session, target));
     return task;
 }
 

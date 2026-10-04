@@ -5,7 +5,6 @@ package api
 
 import (
 	"context"
-	"crypto/subtle"
 	"encoding/json"
 	"errors"
 	"log"
@@ -99,6 +98,17 @@ type errorResponse struct {
 	Error string `json:"error"`
 }
 
+// dummyPasswordHash is a valid bcrypt hash used to keep the login response
+// time constant when the account does not exist. It must never match a real
+// password.
+var dummyPasswordHash = func() string {
+	h, err := auth.HashPassword("password-not-in-use", 12)
+	if err != nil {
+		panic(err)
+	}
+	return h
+}()
+
 // ---- handlers ----
 
 func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
@@ -146,7 +156,10 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	acc, err := s.db.AccountByUsername(strings.TrimSpace(req.Username))
 	if err != nil {
 		if errors.Is(err, database.ErrNotFound) {
-			// Do not reveal whether the account exists.
+			// Run a bcrypt comparison against a dummy hash so the response
+			// time does not reveal whether the account exists (timing-based
+			// user enumeration).
+			_ = auth.VerifyPassword(dummyPasswordHash, req.Password)
 			writeError(w, http.StatusUnauthorized, "invalid credentials")
 			return
 		}
@@ -223,14 +236,7 @@ func (s *Server) handleLogoutAll(w http.ResponseWriter, r *http.Request) {
 // token is configured (AUTH_ADMIN_TOKEN); requests must present it in the
 // X-Admin-Token header. It never echoes command output to the client.
 func (s *Server) handleStartServer(w http.ResponseWriter, r *http.Request) {
-	if s.cfg.AdminToken == "" {
-		// Endpoint disabled: do not reveal its existence.
-		http.NotFound(w, r)
-		return
-	}
-	provided := r.Header.Get("X-Admin-Token")
-	if subtle.ConstantTimeCompare([]byte(provided), []byte(s.cfg.AdminToken)) != 1 {
-		writeError(w, http.StatusUnauthorized, "unauthorized")
+	if !s.adminAuthorized(w, r) {
 		return
 	}
 

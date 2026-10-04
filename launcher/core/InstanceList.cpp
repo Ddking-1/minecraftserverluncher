@@ -66,7 +66,7 @@ bool InstanceList::loadList()
 void InstanceList::saveNow()
 {
     for (auto &inst : m_instances) {
-        // Mentés megvalósítása
+        inst->saveNow();
     }
 }
 

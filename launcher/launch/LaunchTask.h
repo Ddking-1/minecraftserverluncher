@@ -5,7 +5,6 @@
 #include <QObject>
 #include <QString>
 #include <vector>
-#include <memory>
 
 class LaunchStep;
 class BaseInstance;
@@ -29,8 +28,9 @@ public:
     explicit LaunchTask(BaseInstance *instance, QObject *parent = nullptr);
     ~LaunchTask() override;
 
-    // Append a step to the pipeline. Must be called before start().
-    void appendStep(std::unique_ptr<LaunchStep> step);
+    // Append a step to the pipeline and take ownership of it. Must be called
+    // before start(). The step is reparented to this task (single ownership).
+    void appendStep(LaunchStep *step);
 
     // Begin executing the pipeline.
     void start();
@@ -54,7 +54,7 @@ private:
     void setState(State state);
 
     BaseInstance *m_instance;
-    std::vector<std::unique_ptr<LaunchStep>> m_steps;
+    std::vector<LaunchStep *> m_steps;
     int m_currentStep = -1;
     State m_state = State::NotStarted;
 };
