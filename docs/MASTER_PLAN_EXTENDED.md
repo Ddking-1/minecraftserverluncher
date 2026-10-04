@@ -69,8 +69,8 @@ Status legend: `DONE`, `BLOCKED`, `PENDING`.
 | T41 | Backend OpenAPI-ish endpoint doc | docs/API.md | DONE (ad2b67c) |
 | T42 | CI: launcher build matrix on windows-latest | GitHub Actions | DONE (e7190de) |
 | T43 | CI: go vet + test on ubuntu-latest | GitHub Actions | DONE (e7190de) |
-| T44 | Documentation sync pass | AI_CONTEXT/WORK_STATE/PROGRESS/CHANGELOG | PENDING |
-| T45 | Final verification, merge, push, report | full build + go test | PENDING |
+| T44 | Documentation sync pass | AI_CONTEXT/WORK_STATE/PROGRESS/CHANGELOG | DONE (014f117) |
+| T45 | Final verification, merge, push, report | full build + go test | DONE (014f117) |
 
 ## Non-negotiables
 
