@@ -32,6 +32,7 @@ add_executable(MinecraftLauncher
     launch/steps/ResolveLibraries.cpp
     launch/steps/VerifyJava.cpp
     updates/UpdateManifest.cpp
+    updates/UpdateChecker.cpp
 )
 
 target_include_directories(MinecraftLauncher PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
@@ -89,3 +90,8 @@ add_executable(test_rotating_logger tests/test_rotating_logger.cpp core/Rotating
 target_include_directories(test_rotating_logger PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(test_rotating_logger PRIVATE Qt6::Core)
 add_test(NAME rotating_logger COMMAND test_rotating_logger)
+
+add_executable(test_update_checker tests/test_update_checker.cpp updates/UpdateChecker.cpp)
+target_include_directories(test_update_checker PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(test_update_checker PRIVATE Qt6::Core)
+add_test(NAME update_checker COMMAND test_update_checker)
