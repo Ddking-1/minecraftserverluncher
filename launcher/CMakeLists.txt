@@ -16,6 +16,7 @@ add_executable(MinecraftLauncher
     core/SkinCache.cpp
     core/SettingsStore.cpp
     core/RotatingFileLogger.cpp
+    core/FileIntegrity.cpp
     core/HWIDExtractor.cpp
     game/JavaDetector.cpp
     game/MinecraftLauncher.cpp
@@ -95,3 +96,8 @@ add_executable(test_update_checker tests/test_update_checker.cpp updates/UpdateC
 target_include_directories(test_update_checker PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(test_update_checker PRIVATE Qt6::Core)
 add_test(NAME update_checker COMMAND test_update_checker)
+
+add_executable(test_file_integrity tests/test_file_integrity.cpp core/FileIntegrity.cpp)
+target_include_directories(test_file_integrity PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(test_file_integrity PRIVATE Qt6::Core)
+add_test(NAME file_integrity COMMAND test_file_integrity)
