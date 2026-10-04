@@ -15,6 +15,7 @@ add_executable(MinecraftLauncher
     core/SkinModel.cpp
     core/SkinCache.cpp
     core/SettingsStore.cpp
+    core/RotatingFileLogger.cpp
     core/HWIDExtractor.cpp
     game/JavaDetector.cpp
     game/MinecraftLauncher.cpp
@@ -83,3 +84,8 @@ add_executable(test_skin_cache tests/test_skin_cache.cpp core/SkinCache.cpp core
 target_include_directories(test_skin_cache PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(test_skin_cache PRIVATE Qt6::Core)
 add_test(NAME skin_cache COMMAND test_skin_cache)
+
+add_executable(test_rotating_logger tests/test_rotating_logger.cpp core/RotatingFileLogger.cpp)
+target_include_directories(test_rotating_logger PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(test_rotating_logger PRIVATE Qt6::Core)
+add_test(NAME rotating_logger COMMAND test_rotating_logger)
