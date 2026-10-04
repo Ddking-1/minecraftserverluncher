@@ -3,8 +3,11 @@ package api
 import (
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
+
+	"minecraftserverluncher/server/config"
 )
 
 // rateLimiter is a minimal per-client-IP token bucket used to protect
@@ -49,7 +52,7 @@ func (l *rateLimiter) allow(key string) bool {
 // limit wraps a handler with per-IP rate limiting.
 func (s *Server) limit(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ip := clientIP(r)
+		ip := clientIP(r, s.cfg)
 		if !s.limiter.allow(ip) {
 			writeError(w, http.StatusTooManyRequests, "rate limit exceeded")
 			return
@@ -58,10 +61,54 @@ func (s *Server) limit(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func clientIP(r *http.Request) string {
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		return r.RemoteAddr
+func clientIP(r *http.Request, cfg *config.Config) string {
+	remote := parseRemoteIP(r.RemoteAddr)
+	if !isTrustedProxy(remote, cfg) {
+		return remote.String()
 	}
-	return host
+
+	if headerIP := forwardedClientIP(r); headerIP != nil {
+		return headerIP.String()
+	}
+	return remote.String()
+}
+
+func parseRemoteIP(remoteAddr string) net.IP {
+	host, _, err := net.SplitHostPort(remoteAddr)
+	if err != nil {
+		host = remoteAddr
+	}
+	ip := net.ParseIP(strings.TrimSpace(host))
+	if ip == nil {
+		// keep deterministic fallback for malformed test and local transports
+		return net.ParseIP("0.0.0.0")
+	}
+	return ip
+}
+
+func isTrustedProxy(remote net.IP, cfg *config.Config) bool {
+	if cfg == nil || !cfg.TrustedProxyHeaders || remote == nil {
+		return false
+	}
+	for _, cidr := range cfg.TrustedProxyCIDRs {
+		if cidr != nil && cidr.Contains(remote) {
+			return true
+		}
+	}
+	return false
+}
+
+func forwardedClientIP(r *http.Request) net.IP {
+	if xff := strings.TrimSpace(r.Header.Get("X-Forwarded-For")); xff != "" {
+		first := strings.TrimSpace(strings.Split(xff, ",")[0])
+		if ip := net.ParseIP(first); ip != nil {
+			return ip
+		}
+	}
+	if xrip := strings.TrimSpace(r.Header.Get("X-Real-IP")); xrip != "" {
+		if ip := net.ParseIP(xrip); ip != nil {
+			return ip
+		}
+	}
+	return nil
 }

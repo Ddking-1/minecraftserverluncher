@@ -7,17 +7,16 @@
 #include "core/InstanceTypes.h"
 
 // Persists a session's tokens to disk so the user stays logged in across
-// launches. On Windows the token blob is protected with the current user's
-// DPAPI credentials (CryptProtectData); on other platforms, or if DPAPI is
-// unavailable, it falls back to plaintext JSON (documented limitation,
-// docs/AUTH.md).
+// launches. Tokens are only saved when OS-protected encryption is available.
+// Unsafe usernames are rejected to prevent path traversal.
 class TokenStorage
 {
 public:
     // Directory that will hold the token file. Created on demand.
     explicit TokenStorage(const QString &dataDir);
 
-    // Save the session's tokens. Returns false on write failure.
+    // Save the session's tokens. Returns false if secure encryption or write
+    // fails.
     bool save(const AuthSession &session) const;
 
     // Load a stored session for the given username. Returns false if absent.

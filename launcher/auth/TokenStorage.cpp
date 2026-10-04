@@ -6,6 +6,7 @@
 #include <QFileInfo>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QRegularExpression>
 #include <QSaveFile>
 
 #ifdef Q_OS_WIN
@@ -17,6 +18,16 @@ namespace {
 
 // Marker prefix for DPAPI-protected files (version 1).
 constexpr char kDpapiPrefix[] = "DPAPI1:";
+
+bool isSafeTokenUsername(const QString &username)
+{
+    if (username.isEmpty() || username.size() > 64)
+        return false;
+    if (username.contains(QStringLiteral("..")))
+        return false;
+    static const QRegularExpression re(QStringLiteral("^[A-Za-z0-9_-]+$"));
+    return re.match(username).hasMatch();
+}
 
 #ifdef Q_OS_WIN
 // Protect plaintext with the current user's DPAPI credentials.
@@ -64,12 +75,16 @@ TokenStorage::TokenStorage(const QString &dataDir) : m_dataDir(dataDir)
 
 QString TokenStorage::filePathFor(const QString &username) const
 {
+    if (!isSafeTokenUsername(username))
+        return QString();
     return m_dataDir + QStringLiteral("/tokens/") + username + QStringLiteral(".json");
 }
 
 bool TokenStorage::save(const AuthSession &session) const
 {
     const QString path = filePathFor(session.username);
+    if (path.isEmpty())
+        return false;
     QDir().mkpath(QFileInfo(path).absolutePath());
 
     QJsonObject obj;
@@ -82,15 +97,15 @@ bool TokenStorage::save(const AuthSession &session) const
 
     const QByteArray json = QJsonDocument(obj).toJson(QJsonDocument::Compact);
 
-    // Protect the token blob with the OS credential store (Windows DPAPI).
-    // If DPAPI is unavailable, fall back to plaintext so the launcher still
-    // works (documented limitation; docs/AUTH.md).
-    QByteArray data = json;
+    QByteArray data;
 #ifdef Q_OS_WIN
     const QByteArray protectedBlob = dpapiProtect(json);
-    if (!protectedBlob.isEmpty()) {
-        data = QByteArray(kDpapiPrefix) + protectedBlob.toBase64();
-    }
+    if (protectedBlob.isEmpty())
+        return false;
+    data = QByteArray(kDpapiPrefix) + protectedBlob.toBase64();
+#else
+    Q_UNUSED(json);
+    return false;
 #endif
 
     QSaveFile file(path);
@@ -103,24 +118,29 @@ bool TokenStorage::save(const AuthSession &session) const
 
 bool TokenStorage::load(const QString &username, AuthSession &out) const
 {
-    QFile file(filePathFor(username));
+    const QString path = filePathFor(username);
+    if (path.isEmpty())
+        return false;
+
+    QFile file(path);
     if (!file.open(QIODevice::ReadOnly))
         return false;
     const QByteArray raw = file.readAll();
     file.close();
 
-    QByteArray data = raw;
-    if (raw.startsWith(kDpapiPrefix)) {
-#ifdef Q_OS_WIN
-        const QByteArray blob = QByteArray::fromBase64(raw.mid(static_cast<int>(sizeof(kDpapiPrefix)) - 1));
-        data = dpapiUnprotect(blob);
-        if (data.isEmpty())
-            return false;
-#else
-        // DPAPI-protected file on a non-Windows host cannot be read.
+    if (!raw.startsWith(kDpapiPrefix))
         return false;
+
+    QByteArray data;
+#ifdef Q_OS_WIN
+    const QByteArray blob = QByteArray::fromBase64(raw.mid(static_cast<int>(sizeof(kDpapiPrefix)) - 1));
+    data = dpapiUnprotect(blob);
+    if (data.isEmpty())
+        return false;
+#else
+    // DPAPI-protected file on a non-Windows host cannot be read.
+    return false;
 #endif
-    }
 
     QJsonParseError err{};
     const QJsonDocument doc = QJsonDocument::fromJson(data, &err);
@@ -139,5 +159,8 @@ bool TokenStorage::load(const QString &username, AuthSession &out) const
 
 void TokenStorage::remove(const QString &username) const
 {
-    QFile::remove(filePathFor(username));
+    const QString path = filePathFor(username);
+    if (path.isEmpty())
+        return;
+    QFile::remove(path);
 }
