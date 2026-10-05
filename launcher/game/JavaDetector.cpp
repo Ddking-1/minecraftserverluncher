@@ -3,6 +3,7 @@
 
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QProcess>
 #include <QProcessEnvironment>
 #include <QRegularExpression>
@@ -73,11 +74,30 @@ QString JavaDetector::detectJava24()
 {
     for (const QString &home : candidateJavaHomes()) {
         QString exe = home + "/bin/java.exe";
-        if (QFile::exists(exe) && javaMajorVersion(exe) >= kMinJavaMajor) {
+        if (QFile::exists(exe) && isPlausibleJava(exe) && javaMajorVersion(exe) >= kMinJavaMajor) {
             return exe;
         }
     }
     return "";
+}
+
+bool JavaDetector::isPlausibleJava(const QString &javaExe)
+{
+    if (javaExe.isEmpty())
+        return false;
+    // Must be an existing, non-directory, executable file.
+    QFileInfo info(javaExe);
+    if (!info.exists() || info.isDir() || !info.isExecutable())
+        return false;
+    // The path must end with the conventional bin/java(.exe) layout.
+    const QDir parent = info.dir();
+    if (parent.dirName().compare(QStringLiteral("bin"), Qt::CaseInsensitive) != 0)
+        return false;
+    // The binary name must be java.exe / java (no arbitrary executable name).
+    const QString base = info.fileName().toLower();
+    if (base != QStringLiteral("java.exe") && base != QStringLiteral("java"))
+        return false;
+    return true;
 }
 
 bool JavaDetector::isJavaAvailable()

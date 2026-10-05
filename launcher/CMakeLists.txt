@@ -125,3 +125,8 @@ add_executable(test_download_queue tests/test_download_queue.cpp core/DownloadQu
 target_include_directories(test_download_queue PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(test_download_queue PRIVATE Qt6::Core Qt6::Network)
 add_test(NAME download_queue COMMAND test_download_queue)
+
+add_executable(test_java_detector tests/test_java_detector.cpp game/JavaDetector.cpp)
+target_include_directories(test_java_detector PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(test_java_detector PRIVATE Qt6::Core)
+add_test(NAME java_detector COMMAND test_java_detector)
