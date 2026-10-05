@@ -9,16 +9,21 @@
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QSaveFile>
+#include <QTimer>
 
 DownloadAsset::DownloadAsset(QObject *parent)
     : QObject(parent), m_nam(new QNetworkAccessManager(this))
 {
     m_nam->setTransferTimeout(30000);
 }
-
 bool DownloadAsset::isRunning() const
 {
     return m_reply != nullptr;
+}
+
+void DownloadAsset::setMaxRetries(int retries)
+{
+    m_maxRetries = qMax(0, retries);
 }
 
 void DownloadAsset::start(const QUrl &url, const QString &localPath, const QString &expectedSha256)
@@ -40,10 +45,17 @@ void DownloadAsset::start(const QUrl &url, const QString &localPath, const QStri
     // write outside its intended directory via relative/.. paths.
     const QString canonical = QFileInfo(localPath).absoluteFilePath();
 
-    QNetworkRequest req(url);
-    req.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
+    m_url = url;
     m_localPath = canonical;
     m_expectedSha256 = expectedSha256.trimmed();
+    m_attempts = 0;
+    issueRequest();
+}
+
+void DownloadAsset::issueRequest()
+{
+    QNetworkRequest req(m_url);
+    req.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
     m_reply = m_nam->get(req);
     connect(m_reply, &QNetworkReply::downloadProgress, this, [this](qint64 recv, qint64 total) {
         if (total > 0)
@@ -56,16 +68,26 @@ void DownloadAsset::handleReply()
 {
     QNetworkReply *reply = m_reply;
     m_reply = nullptr;
+    ++m_attempts;
 
     if (reply->error() != QNetworkReply::NoError) {
         const QString err = reply->errorString();
         reply->deleteLater();
+        // Transient network error: retry if we have attempts left.
+        if (m_attempts <= m_maxRetries) {
+            scheduleRetry();
+            return;
+        }
         finish(err);
         return;
     }
     const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
     if (status < 200 || status >= 300) {
         reply->deleteLater();
+        if (status >= 500 && m_attempts <= m_maxRetries) {
+            scheduleRetry();
+            return;
+        }
         finish(QStringLiteral("HTTP %1").arg(status));
         return;
     }
@@ -89,11 +111,21 @@ void DownloadAsset::handleReply()
 
     if (!FileIntegrity::verify(m_localPath, m_expectedSha256)) {
         QFile::remove(m_localPath);
+        // Never retry a checksum mismatch: the file is corrupt, not transient.
         finish(QStringLiteral("SHA-256 mismatch"));
         return;
     }
     emit progress(100.0);
     emit finished(m_localPath);
+}
+
+void DownloadAsset::scheduleRetry()
+{
+    // Retry after a short delay without blocking the event loop.
+    QTimer::singleShot(200, this, [this]() {
+        if (m_reply == nullptr)
+            issueRequest();
+    });
 }
 
 void DownloadAsset::finish(const QString &error)

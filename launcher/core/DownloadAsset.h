@@ -33,6 +33,11 @@ public:
     // True if a download is currently in progress.
     bool isRunning() const;
 
+    // Set how many times a transient failure (network error or non-2xx HTTP
+    // status) is retried before failed() is emitted. SHA-256 mismatches are
+    // never retried, because a corrupt file is not a transient condition.
+    void setMaxRetries(int retries);
+
 signals:
     // Emitted with the resolved absolute destination path on success.
     void finished(const QString &localPath);
@@ -43,10 +48,15 @@ signals:
 
 private:
     void handleReply();
+    void issueRequest();
+    void scheduleRetry();
     void finish(const QString &error);
 
     QNetworkAccessManager *m_nam = nullptr;
     QNetworkReply *m_reply = nullptr;
+    QUrl m_url;
     QString m_localPath;
     QString m_expectedSha256;
+    int m_maxRetries = 0;
+    int m_attempts = 0;
 };

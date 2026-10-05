@@ -14,7 +14,6 @@
 #include "core/FileIntegrity.h"
 
 #include <cstdio>
-
 static int failures = 0;
 
 static void check(bool cond, const char *msg)
@@ -92,6 +91,41 @@ int main(int argc, char **argv)
     badLoop.exec();
     check(badState != 1, "bad digest not accepted");
     check(!QFile::exists(badDest), "bad digest leaves no file");
+
+    // Retry logic: a server that fails with 500 twice then succeeds. With
+    // maxRetries >= 2 the download must eventually succeed; the digest is
+    // correct for the body served.
+    QTcpServer flaky;
+    check(flaky.listen(QHostAddress::LocalHost, 0), "flaky listen");
+    int serveCount = 0;
+    QObject::connect(&flaky, &QTcpServer::newConnection, &flaky, [&flaky, &serveCount, &payload]() {
+        QTcpSocket *sock = flaky.nextPendingConnection();
+        QObject::connect(sock, &QTcpSocket::readyRead, sock, [sock, &serveCount, &payload]() {
+            sock->readAll();
+            ++serveCount;
+            const QByteArray body = payload.toUtf8();
+            if (serveCount <= 2) {
+                sock->write("HTTP/1.1 500 Internal Server Error\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+            } else {
+                sock->write("HTTP/1.1 200 OK\r\nContent-Length: "
+                            + QByteArray::number(body.size()) + "\r\nConnection: close\r\n\r\n" + body);
+            }
+            sock->disconnectFromHost();
+        });
+    });
+    const QUrl flakyUrl(QStringLiteral("http://127.0.0.1:%1/asset.bin").arg(flaky.serverPort()));
+    const QString retryDest = dir.path() + QStringLiteral("/retry.bin");
+    DownloadAsset retry;
+    retry.setMaxRetries(3);
+    int retryState = 0;
+    QEventLoop retryLoop;
+    QObject::connect(&retry, &DownloadAsset::finished, &retryLoop, [&](const QString &) { retryState = 1; retryLoop.quit(); });
+    QObject::connect(&retry, &DownloadAsset::failed, &retryLoop, [&](const QString &) { retryState = 2; retryLoop.quit(); });
+    retry.start(flakyUrl, retryDest, digest);
+    QTimer::singleShot(20000, &retryLoop, &QEventLoop::quit);
+    retryLoop.exec();
+    check(retryState == 1, "transient 500 retried to success");
+    check(serveCount >= 3, "server saw >= 3 attempts");
 
     if (failures == 0)
         std::printf("download_asset: all checks passed\n");
