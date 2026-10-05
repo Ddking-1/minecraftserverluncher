@@ -65,6 +65,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("DELETE /api/v1/skins/{variant}", s.limit(s.handleDeleteSkin))
 	mux.HandleFunc("POST /api/v1/skins/upload/{variant}", s.limit(s.handleAsyncSkinUpload))
 	mux.HandleFunc("GET /api/v1/tasks/{id}", s.limit(s.handleTaskStatus))
+	mux.HandleFunc("POST /api/v1/proxy/auth", s.limit(s.handleProxyAuth))
 	mux.HandleFunc("POST /api/admin/hwid/ban", s.limit(s.handleBanHWID))
 	mux.HandleFunc("POST /api/admin/hwid/unban", s.limit(s.handleUnbanHWID))
 	mux.HandleFunc("GET /api/admin/hwid/bans", s.limit(s.handleListHWIDBans))
