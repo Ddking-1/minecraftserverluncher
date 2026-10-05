@@ -150,3 +150,8 @@ add_executable(test_login_dialog tests/test_login_dialog.cpp gui/LoginDialog.cpp
 target_include_directories(test_login_dialog PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(test_login_dialog PRIVATE Qt6::Widgets Qt6::Core)
 add_test(NAME login_dialog COMMAND test_login_dialog)
+
+add_executable(test_skin_upload_widget tests/test_skin_upload_widget.cpp gui/SkinUploadWidget.cpp)
+target_include_directories(test_skin_upload_widget PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(test_skin_upload_widget PRIVATE Qt6::Widgets Qt6::Core)
+add_test(NAME skin_upload_widget COMMAND test_skin_upload_widget)
