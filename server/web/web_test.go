@@ -41,3 +41,15 @@ func TestMissingAssetNotFound(t *testing.T) {
 		t.Fatalf("GET /nope.html status = %d, want 404", rec.Code)
 	}
 }
+
+func TestDashboardServed(t *testing.T) {
+	h := Handler()
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/dashboard", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GET /dashboard status = %d, want 200", rec.Code)
+	}
+	if !strings.Contains(rec.Body.String(), "Account Dashboard") {
+		t.Fatal("dashboard must contain its title")
+	}
+}

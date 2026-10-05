@@ -33,8 +33,11 @@ type indexRedirect struct {
 }
 
 func (h indexRedirect) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path == "/" {
+	switch r.URL.Path {
+	case "/":
 		r.URL.Path = "/skin-manager.html"
+	case "/dashboard":
+		r.URL.Path = "/dashboard.html"
 	}
 	h.next.ServeHTTP(w, r)
 }
