@@ -18,6 +18,7 @@ import (
 	"minecraftserverluncher/server/database"
 	"minecraftserverluncher/server/devices"
 	"minecraftserverluncher/server/sessions"
+	"minecraftserverluncher/server/web"
 )
 
 // Server holds the dependencies for the HTTP handlers.
@@ -64,6 +65,7 @@ func (s *Server) Handler() http.Handler {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
 	mux.HandleFunc("GET /readyz", s.handleReadyz)
+	mux.Handle("/", web.Handler())
 	return s.withSecurityHeaders(s.withRecovery(withRequestID(s.withRequestLog(mux))))
 }
 
