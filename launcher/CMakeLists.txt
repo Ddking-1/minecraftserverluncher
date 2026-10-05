@@ -110,3 +110,8 @@ add_executable(test_editor_config tests/test_editor_config.cpp core/EditorConfig
 target_include_directories(test_editor_config PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(test_editor_config PRIVATE Qt6::Core)
 add_test(NAME editor_config COMMAND test_editor_config)
+
+add_executable(test_skin_client tests/test_skin_client.cpp core/SkinClient.cpp auth/BackendAuthClient.cpp)
+target_include_directories(test_skin_client PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(test_skin_client PRIVATE Qt6::Core Qt6::Network)
+add_test(NAME skin_client COMMAND test_skin_client)
