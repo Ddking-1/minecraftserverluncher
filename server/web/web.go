@@ -38,6 +38,8 @@ func (h indexRedirect) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		r.URL.Path = "/skin-manager.html"
 	case "/dashboard":
 		r.URL.Path = "/dashboard.html"
+	case "/admin":
+		r.URL.Path = "/admin.html"
 	}
 	h.next.ServeHTTP(w, r)
 }

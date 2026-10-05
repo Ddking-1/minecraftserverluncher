@@ -53,3 +53,19 @@ func TestDashboardServed(t *testing.T) {
 		t.Fatal("dashboard must contain its title")
 	}
 }
+
+func TestAdminPageServed(t *testing.T) {
+	h := Handler()
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/admin", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GET /admin status = %d, want 200", rec.Code)
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, "Admin Panel") {
+		t.Fatal("admin page must contain its title")
+	}
+	if !strings.Contains(body, "/api/admin/users") {
+		t.Fatal("admin page must call the admin users API")
+	}
+}

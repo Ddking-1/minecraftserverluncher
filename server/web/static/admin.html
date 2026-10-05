@@ -1,0 +1,86 @@
+﻿```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel</title>
+    <style>
+        body {
+            background-color: #333;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #555;
+            padding: 8px;
+        }
+        th {
+            background-color: #444;
+        }
+        .delete-btn {
+            background-color: #3FB950;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>Admin Panel</h1>
+    <input type="text" id="adminToken" placeholder="Admin token">
+    <input type="text" id="searchUser" placeholder="Search username">
+    <button onclick="loadUsers()">Load users</button>
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Username</th>
+                <th>Created</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody id="userRows"></tbody>
+    </table>
+
+    <script>
+        async function loadUsers() {
+            const adminToken = document.getElementById('adminToken').value;
+            const searchUser = document.getElementById('searchUser').value;
+            const response = await fetch(`/api/admin/users?q=${searchUser}`, {
+                headers: { 'X-Admin-Token': adminToken }
+            });
+            const data = await response.json();
+            const userRows = document.getElementById('userRows');
+            userRows.innerHTML = '';
+            data.users.forEach(user => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${user.id}</td>
+                    <td>${user.username}</td>
+                    <td>${user.created_at}</td>
+                    <td><button class="delete-btn" onclick="deleteUser(${user.id})">Delete</button></td>
+                `;
+                userRows.appendChild(row);
+            });
+        }
+
+        async function deleteUser(id) {
+            const adminToken = document.getElementById('adminToken').value;
+            await fetch(`/api/admin/users/${id}`, {
+                method: 'DELETE',
+                headers: { 'X-Admin-Token': adminToken }
+            });
+            loadUsers();
+        }
+    </script>
+</body>
+</html>
+```
