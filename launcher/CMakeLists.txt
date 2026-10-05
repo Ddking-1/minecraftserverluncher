@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Network)
+find_package(Qt6 REQUIRED COMPONENTS Core Network Widgets)
 
 add_subdirectory(auth)
 add_subdirectory(core)
@@ -140,3 +140,8 @@ add_executable(test_game_launcher tests/test_game_launcher.cpp core/GameLauncher
 target_include_directories(test_game_launcher PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(test_game_launcher PRIVATE Qt6::Core)
 add_test(NAME game_launcher COMMAND test_game_launcher)
+
+add_executable(test_editor_settings_widget tests/test_editor_settings_widget.cpp gui/EditorSettingsWidget.cpp core/EditorConfig.cpp core/InstancePersistence.cpp)
+target_include_directories(test_editor_settings_widget PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(test_editor_settings_widget PRIVATE Qt6::Widgets Qt6::Core)
+add_test(NAME editor_settings_widget COMMAND test_editor_settings_widget)
