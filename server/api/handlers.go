@@ -55,6 +55,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/v1/account/password", s.limit(s.handleChangePassword))
 	mux.HandleFunc("GET /api/v1/account/sessions", s.limit(s.handleListSessions))
 	mux.HandleFunc("POST /api/v1/account/sessions/revoke", s.limit(s.handleRevokeSession))
+	mux.HandleFunc("POST /api/v1/account/sessions/logout-others", s.limit(s.handleLogoutOtherDevices))
 	mux.HandleFunc("POST /api/server/start", s.limit(s.handleStartServer))
 	mux.HandleFunc("PUT /api/v1/skins/{variant}", s.limit(s.handleUploadSkin))
 	mux.HandleFunc("GET /api/v1/skins", s.limit(s.handleListSkins))

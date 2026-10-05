@@ -115,6 +115,29 @@ func (s *Service) ValidateAccess(accessToken string) (int64, error) {
 	return sess.AccountID, nil
 }
 
+// SessionByAccessToken returns the session that owns a valid access token,
+// or ErrInvalidAccess.
+func (s *Service) SessionByAccessToken(accessToken string) (*database.Session, error) {
+	tok, err := s.db.AccessTokenByHash(auth.HashToken(accessToken))
+	if err != nil {
+		if errors.Is(err, database.ErrNotFound) {
+			return nil, ErrInvalidAccess
+		}
+		return nil, err
+	}
+	if time.Now().UTC().After(tok.ExpiresAt) {
+		return nil, ErrInvalidAccess
+	}
+	sess, err := s.db.SessionByID(tok.SessionID)
+	if err != nil {
+		return nil, ErrInvalidAccess
+	}
+	if sess.Revoked {
+		return nil, ErrInvalidAccess
+	}
+	return sess, nil
+}
+
 // Logout revokes the session associated with the given refresh token.
 func (s *Service) Logout(refreshToken string) error {
 	sess, err := s.db.SessionByRefreshHash(auth.HashToken(refreshToken))

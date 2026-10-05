@@ -138,6 +138,32 @@ func (db *DB) TouchSession(id int64) error {
 	return nil
 }
 
+// RevokeAllExcept revokes every session of an account except the one with id
+// keepSessionID, and deletes their access tokens. Used by "log out from all
+// other devices".
+func (db *DB) RevokeAllExcept(accountID, keepSessionID int64) error {
+	tx, err := db.sql.Begin()
+	if err != nil {
+		return fmt.Errorf("database: revoke-except begin: %w", err)
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.Exec(
+		`UPDATE sessions SET revoked = 1 WHERE account_id = ? AND id != ?`,
+		accountID, keepSessionID,
+	); err != nil {
+		return fmt.Errorf("database: revoke-except sessions: %w", err)
+	}
+	if _, err := tx.Exec(
+		`DELETE FROM access_tokens WHERE session_id IN
+		   (SELECT id FROM sessions WHERE account_id = ? AND id != ?)`,
+		accountID, keepSessionID,
+	); err != nil {
+		return fmt.Errorf("database: revoke-except access tokens: %w", err)
+	}
+	return tx.Commit()
+}
+
 // CreateAccessToken stores a short-lived access token digest bound to a
 // session.
 func (db *DB) CreateAccessToken(sessionID int64, hash string, expiresAt time.Time) error {

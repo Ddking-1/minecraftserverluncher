@@ -127,3 +127,24 @@ func (s *Server) handleRevokeSession(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "revoked"})
 }
+
+// handleLogoutOtherDevices handles POST /api/v1/account/sessions/logout-others.
+// It revokes every session of the account except the current one.
+func (s *Server) handleLogoutOtherDevices(w http.ResponseWriter, r *http.Request) {
+	accountID, ok := s.authenticate(w, r)
+	if !ok {
+		return
+	}
+	// Identify the current session from the presented access token.
+	token, _ := bearerToken(r)
+	sess, err := s.sessions.SessionByAccessToken(token)
+	if err != nil {
+		writeError(w, http.StatusUnauthorized, "invalid access token")
+		return
+	}
+	if err := s.db.RevokeAllExcept(accountID, sess.ID); err != nil {
+		writeError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "revoked other devices"})
+}
