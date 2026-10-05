@@ -49,6 +49,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/v1/auth/refresh", s.limit(s.handleRefresh))
 	mux.HandleFunc("POST /api/v1/auth/logout", s.limit(s.handleLogout))
 	mux.HandleFunc("POST /api/v1/auth/logout-all", s.limit(s.handleLogoutAll))
+	mux.HandleFunc("POST /api/v1/auth/forgot", s.limit(s.handleForgotPassword))
+	mux.HandleFunc("POST /api/v1/auth/reset", s.limit(s.handleResetPassword))
 	mux.HandleFunc("GET /api/v1/account/me", s.limit(s.handleAccountMe))
 	mux.HandleFunc("POST /api/v1/account/password", s.limit(s.handleChangePassword))
 	mux.HandleFunc("GET /api/v1/account/sessions", s.limit(s.handleListSessions))

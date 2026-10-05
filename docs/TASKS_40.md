@@ -76,3 +76,50 @@ Roughly 40 items total, grouped into phases. Each item names real paths.
 - T39 CI: add Go `-race` for backend; keep launcher on `windows-2022`.
 - T40 Docs: refresh `docs/AI_CONTEXT.md`, `docs/WORK_STATE.md`, `docs/PROGRESS.md`
   to reflect phases 0–4 completion.
+
+# TASKS_40 ADDENDUM — 25 grounded tasks (Batch 4+)
+
+Remaining full-project coverage, ordered and realistic.
+
+## B4-A — Web dashboard backend + UI
+- N1 `server/api/dashboard.go`: registration HTML route renders the dashboard;
+  keep auth endpoints unchanged.
+- N2 Forgot-password: `POST /api/v1/auth/forgot` — validate identifier, no user
+  enumeration (always returns ok), generates a reset token; store hash + expiry.
+- N3 `server/database`: `password_resets` table + helpers (create, consume, expire).
+- N4 Forgot-password reset: `POST /api/v1/auth/reset` — verify token, set new password,
+  revoke all sessions.
+- N5 Admin panel backend: `GET /api/admin/users` (list users), scoped to admin token.
+- N6 Admin actions: `POST /api/admin/users/{id}/ban` and `/unban` (account-level ban).
+- N7 Admin actions: `POST /api/admin/users/{id}/delete` (cascade sessions/devices/skins).
+- N8 Web dashboard HTML via lmstudio5: register + forgot-password forms wired to real
+  endpoints; admin table wired to admin API (worker output, Architect integration).
+- N9 `server/web/web_test.go`: dashboard route + form-present + admin-page checks.
+
+## B4-B — Launcher UI & editor widgets
+- N10 `launcher/gui/EditorWindow.{h,cpp}`: Qt widget window hosting editor controls.
+- N11 Editor field widgets (title, accent color, background, show/hide tabs) bound to
+  `EditorConfig` load/save.
+- N12 `launcher/CMakeLists.txt`: add EditorWindow + a widget smoke test.
+- N13 Skin preview widget in the launcher: load a skin by username, show in a QLabel.
+- N14 Wire SplashScreen into main flow (show then hand off to UI).
+
+## B4-C — Velocity proxy-auth
+- N15 `velocity/src/main/java/.../auth/BackendAuthClient.java`: HTTP client to backend
+  `POST /api/v1/proxy/auth`.
+- N16 Backend `POST /api/v1/proxy/auth`: accept (uuid, access_token hash, server name),
+  return ok/deny; rate-limited; admin-token gated.
+- N17 `server/database` proxy_sessions helper (optional; else stateless HMAC).
+- N18 Velocity `LoginEvent` listener: validate identity via backend before allow.
+- N19 Velocity `ServerPreConnectEvent` guard: reject joins not backend-authorized.
+- N20 Velocity Gradle build + `./gradlew build` green on master.
+
+## B4-D — Server rate-limit / queue hardening
+- N21 `server/api/ratelimit.go`: per-user (not just per-IP) limit for auth endpoints.
+- N22 Background job: prune expired rate-limit buckets and password resets periodically.
+- N23 `server/api/ratelimit_test.go`: per-user key tests.
+- N24 Body-size middleware test + `Content-Type` sniffing on all uploads.
+
+## B4-E — CI & docs closeout
+- N25 CI: add Go `-race` and `-cover` to backend workflow; update READMEs and
+  `docs/AI_CONTEXT.md` for Batch 4 completion.
