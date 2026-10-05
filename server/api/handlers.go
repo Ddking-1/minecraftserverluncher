@@ -63,6 +63,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/admin/hwid/ban", s.limit(s.handleBanHWID))
 	mux.HandleFunc("POST /api/admin/hwid/unban", s.limit(s.handleUnbanHWID))
 	mux.HandleFunc("GET /api/admin/hwid/bans", s.limit(s.handleListHWIDBans))
+	mux.HandleFunc("GET /api/admin/users", s.limit(s.handleAdminListUsers))
+	mux.HandleFunc("DELETE /api/admin/users/{id}", s.limit(s.handleAdminDeleteUser))
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
