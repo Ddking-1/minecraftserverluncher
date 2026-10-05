@@ -97,7 +97,8 @@ func TestRegisterLoginRefreshLogoutFlow(t *testing.T) {
 		t.Fatalf("bad login status = %d, want 401", code)
 	}
 
-	// Refresh the original session.
+	// Refresh the original session. Rotation returns a NEW refresh token and
+	// invalidates the old one.
 	code, out = doJSON(t, h, http.MethodPost, "/api/v1/auth/refresh", map[string]any{
 		"refresh_token": refresh,
 	}, "")
@@ -105,8 +106,28 @@ func TestRegisterLoginRefreshLogoutFlow(t *testing.T) {
 		t.Fatalf("refresh status = %d, body = %v", code, out)
 	}
 	newAccess := out["access_token"].(string)
+	rotatedRefresh := out["refresh_token"].(string)
 	if newAccess == "" {
 		t.Fatal("refresh must return a new access token")
+	}
+	if rotatedRefresh == "" || rotatedRefresh == refresh {
+		t.Fatal("refresh must return a new (rotated) refresh token")
+	}
+
+	// The OLD refresh token is invalidated after use (rotation).
+	code, _ = doJSON(t, h, http.MethodPost, "/api/v1/auth/refresh", map[string]any{
+		"refresh_token": refresh,
+	}, "")
+	if code != http.StatusUnauthorized {
+		t.Fatalf("refresh with consumed token status = %d, want 401", code)
+	}
+
+	// The rotated refresh token still works.
+	code, _ = doJSON(t, h, http.MethodPost, "/api/v1/auth/refresh", map[string]any{
+		"refresh_token": rotatedRefresh,
+	}, "")
+	if code != http.StatusOK {
+		t.Fatalf("refresh with rotated token status = %d, want 200", code)
 	}
 
 	// Logout-all using the new access token revokes every session.

@@ -1,2 +1,4 @@
-backend-url = "http://localhost:8080"
+# Production must use https:// with a valid TLS certificate so the plugin
+# validates the backend server. http:// is only for local development.
+backend-url = "https://api.example.com"
 admin-token = "change-me"

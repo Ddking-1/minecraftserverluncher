@@ -138,6 +138,27 @@ func (db *DB) TouchSession(id int64) error {
 	return nil
 }
 
+// RotateRefreshHash replaces the stored refresh-token digest for a session
+// with a new digest, and updates last_used_at. Used for refresh-token rotation
+// so a stolen refresh token is invalidated once used.
+func (db *DB) RotateRefreshHash(sessionID int64, newRefreshHash string) error {
+	res, err := db.sql.Exec(
+		`UPDATE sessions SET refresh_hash = ?, last_used_at = ? WHERE id = ?`,
+		newRefreshHash, nowText(), sessionID,
+	)
+	if err != nil {
+		return fmt.Errorf("database: rotate refresh hash: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("database: rotate refresh hash rows: %w", err)
+	}
+	if n == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
 // RevokeAllExcept revokes every session of an account except the one with id
 // keepSessionID, and deletes their access tokens. Used by "log out from all
 // other devices".

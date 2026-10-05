@@ -51,8 +51,10 @@ func (s *Service) Create(accountID, deviceID int64) (*TokenPair, error) {
 	return s.issueAccess(refresh)
 }
 
-// Refresh validates a refresh token and issues a new access token. The
-// session is revoked if the token is unknown, expired or already revoked.
+// Refresh validates a refresh token and issues a new access token and a NEW
+// refresh token (rotation). The old refresh token is invalidated on use so a
+// stolen refresh token is only usable once. The session is revoked if the
+// token is unknown, expired or already revoked.
 func (s *Service) Refresh(refreshToken string) (*TokenPair, error) {
 	sess, err := s.db.SessionByRefreshHash(auth.HashToken(refreshToken))
 	if err != nil {
@@ -64,10 +66,16 @@ func (s *Service) Refresh(refreshToken string) (*TokenPair, error) {
 	if sess.Revoked || time.Now().UTC().After(sess.RefreshExpiresAt) {
 		return nil, ErrInvalidRefresh
 	}
-	if err := s.db.TouchSession(sess.ID); err != nil {
+	// Generate a new refresh token and rotate the stored digest. If the rotate
+	// fails, do not issue new tokens from the (now stale) lookup.
+	newRefresh, err := auth.NewToken()
+	if err != nil {
 		return nil, err
 	}
-	return s.issueAccess(refreshToken)
+	if err := s.db.RotateRefreshHash(sess.ID, auth.HashToken(newRefresh)); err != nil {
+		return nil, err
+	}
+	return s.issueAccess(newRefresh)
 }
 
 // issueAccess creates a short-lived access token for the session identified

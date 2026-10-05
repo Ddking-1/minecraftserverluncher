@@ -129,7 +129,8 @@ Verified by code inspection:
 ### Recorded findings (3c)
 | ID | Source | Severity | Status |
 |----|--------|----------|--------|
-| CI-2 | workflows | Low | FINDING (pin action SHAs) |
-| VEL-1 | velocity.toml.example | Low | FINDING (default http, use https+TLS) |
+| CI-2 | workflows | Low | FINDING → FIXED (SHA-pinned actions) |
+| VEL-1 | velocity.toml.example | Low | FINDING → FIXED (https+TLS guidance) |
+| AUTH-1 | sessions/service.go | Medium | FINDING → FIXED (refresh rotation + test) |
 | CXX-1 | none | — | PASS (ownership/token/path/integrity) |
 | AI-1 | none | — | N/A (no AI runtime in product) |
