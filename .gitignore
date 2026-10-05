@@ -21,6 +21,10 @@ Desktop.ini
 /bin/
 node_modules/
 
+# Velocity Gradle build output and wrapper runtime state
+velocity/build/
+velocity/.gradle/
+
 # Local / IDE / Reference ignored directories
 .abacusai/
 reference/
