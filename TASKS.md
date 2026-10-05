@@ -37,3 +37,6 @@ after 5 attempts, the Architect fixes the specific piece (Smart Fallback).
       (register → login → forgot/reset → async skin upload+poll → admin
       list/ban/delete); auto-fix loop via lmstudio5 until 100% green; cleanup
       of processes and temp dir. (`scripts/e2e_test.go` or `server/integration_test.go`)
+- [x] **Auto-runner two-step stop test**: `scripts/auto_runner.ps1` created;
+      `scripts/test_runner_check.tmp` created, verified, then deleted on manual
+      "continue". (DONE — `scripts/auto_runner.ps1`)
