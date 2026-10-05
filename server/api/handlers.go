@@ -28,6 +28,7 @@ type Server struct {
 	devices  *devices.Service
 	cfg      *config.Config
 	limiter  *rateLimiter
+	queue    *skinQueue
 }
 
 // NewServer constructs the API server.
@@ -38,6 +39,7 @@ func NewServer(db *database.DB, cfg *config.Config) *Server {
 		devices:  devices.NewService(db),
 		cfg:      cfg,
 		limiter:  newRateLimiter(10, time.Minute),
+		queue:    newSkinQueue(),
 	}
 }
 
@@ -61,6 +63,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/v1/skins", s.limit(s.handleListSkins))
 	mux.HandleFunc("GET /api/v1/skins/{account}/{variant}", s.limit(s.handleGetSkin))
 	mux.HandleFunc("DELETE /api/v1/skins/{variant}", s.limit(s.handleDeleteSkin))
+	mux.HandleFunc("POST /api/v1/skins/upload/{variant}", s.limit(s.handleAsyncSkinUpload))
+	mux.HandleFunc("GET /api/v1/tasks/{id}", s.limit(s.handleTaskStatus))
 	mux.HandleFunc("POST /api/admin/hwid/ban", s.limit(s.handleBanHWID))
 	mux.HandleFunc("POST /api/admin/hwid/unban", s.limit(s.handleUnbanHWID))
 	mux.HandleFunc("GET /api/admin/hwid/bans", s.limit(s.handleListHWIDBans))
