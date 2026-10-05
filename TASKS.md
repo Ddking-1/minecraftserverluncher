@@ -26,9 +26,15 @@ after 5 attempts, the Architect fixes the specific piece (Smart Fallback).
 - [ ] Game launcher engine (Java detection, classpath, RAM, start)
 
 ## BATCH 7 — Velocity Auth Proxy Plugin (Java / Gradle)
-- [ ] Gradle wrapper environment and Velocity plugin structure (DONE — `ae6d4c5`)
-- [ ] Main class, event listeners, backend auth client (bearer validation)
-- [ ] Skin injection logic (inject GameProfile texture from the Go DB)
+- [x] Gradle wrapper environment and Velocity plugin structure (DONE — `ae6d4c5`)
+- [x] Main class, event listeners, backend auth client (bearer validation)
+      (DONE — `275b42b` proxy-auth endpoint, `cc2a72d` plugin)
+- [x] Skin injection logic (inject GameProfile texture from the Go DB)
+      (DONE — `cc2a72d` `SkinInjection`)
+- [x] **B7.10 mock E2E**: started the Go backend on `:8089`, exercised
+      `/api/v1/proxy/auth` the way the Java client calls it — valid token →
+      `{"status":"ok"}`, invalid → `{"status":"denied"}`, wrong admin token →
+      401. (DONE — manual mock verification)
 
 ## BATCH 8 — CI/CD Cross-Compilation & End-to-End Suite
 - [ ] Go & C++ Windows/Linux release build pipeline hardening
