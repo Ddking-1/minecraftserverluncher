@@ -14,6 +14,9 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    # Minimal, least-privilege token: contents read is all this job needs.
+    permissions:
+      contents: read
     defaults:
       run:
         working-directory: server

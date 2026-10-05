@@ -14,6 +14,9 @@ on:
 jobs:
   build:
     runs-on: windows-2022
+    # Least privilege: only read contents.
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - name: Install Qt
