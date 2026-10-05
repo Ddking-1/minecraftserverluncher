@@ -105,3 +105,8 @@ add_executable(test_file_integrity tests/test_file_integrity.cpp core/FileIntegr
 target_include_directories(test_file_integrity PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(test_file_integrity PRIVATE Qt6::Core)
 add_test(NAME file_integrity COMMAND test_file_integrity)
+
+add_executable(test_editor_config tests/test_editor_config.cpp core/EditorConfig.cpp core/InstancePersistence.cpp)
+target_include_directories(test_editor_config PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(test_editor_config PRIVATE Qt6::Core)
+add_test(NAME editor_config COMMAND test_editor_config)

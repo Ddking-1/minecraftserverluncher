@@ -163,6 +163,12 @@ CREATE TABLE IF NOT EXISTS skins (
     updated_at   TEXT    NOT NULL,
     UNIQUE (account_id, variant)
 );
+
+CREATE TABLE IF NOT EXISTS skin_upload_limits (
+    account_id   INTEGER PRIMARY KEY REFERENCES accounts(id) ON DELETE CASCADE,
+    count        INTEGER NOT NULL DEFAULT 0,
+    window_start TEXT    NOT NULL
+);
 `
 	if _, err := db.sql.Exec(schema); err != nil {
 		return fmt.Errorf("database: migrate: %w", err)

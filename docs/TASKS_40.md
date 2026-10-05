@@ -28,6 +28,17 @@ Roughly 40 items total, grouped into phases. Each item names real paths.
   UI layout config (no server calls), load/save JSON.
 - T13 Editor end-to-end: read/write local editor config file; unit test.
 
+## Phase 2b — Skin security & limits (Extended Batch)
+- T-A (Backend) Skin upload per-user rate limit: max 2 uploads per 3 hours,
+  resets after the window. Returns 429 when exceeded.
+- T-B (Backend) Strict skin format validation: verify image dimensions are a
+  Minecraft-valid skin size (64x64 or 64x32).
+- T-C (Security) Payload inspection: strict magic-byte MIME sniffing so a
+  PHP/EXE cannot be uploaded with a .png extension. Applied client- and
+  server-side expectations.
+- T-D (Launcher C++) Skin client UI: upload + display logic in the launcher.
+- T-E (Web frontend) Skin manager UI on the website (login + upload).
+
 ## Phase 3 — Website (Batch 4)
 - T14 `web/` Go http.Handler (embed) + template index.
 - T15 Login form (HTML/CSS via local worker).

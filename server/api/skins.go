@@ -9,15 +9,9 @@ import (
 	"net/http"
 	"time"
 
+	"minecraftserverluncher/server/auth"
 	"minecraftserverluncher/server/database"
 )
-
-// Allowed skin content types.
-var skinContentTypes = map[string]bool{
-	"image/png":  true,
-	"image/jpeg": true,
-	"image/webp": true,
-}
 
 // maxSkinBytes caps a skin upload at 1 MiB.
 const maxSkinBytes = 1 << 20
@@ -33,15 +27,18 @@ func (s *Server) handleUploadSkin(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid variant")
 		return
 	}
-	contentType := r.Header.Get("Content-Type")
-	if contentType == "" {
-		writeError(w, http.StatusBadRequest, "missing content type")
+
+	// Enforce the per-user upload rate limit before doing any work.
+	allowed, err := s.db.AllowSkinUpload(accountID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal error")
 		return
 	}
-	if !skinContentTypes[contentType] {
-		writeError(w, http.StatusUnsupportedMediaType, "unsupported content type")
+	if !allowed {
+		writeError(w, http.StatusTooManyRequests, "skin upload limit reached (max 2 per 3 hours)")
 		return
 	}
+
 	data, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxSkinBytes+1))
 	if err != nil {
 		var maxErr *http.MaxBytesError
@@ -52,15 +49,23 @@ func (s *Server) handleUploadSkin(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "could not read body")
 		return
 	}
-	if len(data) > maxSkinBytes {
-		writeError(w, http.StatusRequestEntityTooLarge, "skin too large")
-		return
-	}
 	if len(data) == 0 {
 		writeError(w, http.StatusBadRequest, "empty skin data")
 		return
 	}
-	if _, err := s.db.UpsertSkin(accountID, variant, contentType, data); err != nil {
+
+	// Never trust the declared Content-Type: sniff the actual bytes (T-C).
+	info, err := auth.SniffImage(data)
+	if err != nil {
+		writeError(w, http.StatusUnsupportedMediaType, "not a PNG or JPEG image")
+		return
+	}
+	// Validate the pixel dimensions against the Minecraft skin standard (T-B).
+	if !auth.ValidSkinDimensions(info.Width, info.Height) {
+		writeError(w, http.StatusBadRequest, "invalid skin dimensions (must be 64x64 or 64x32)")
+		return
+	}
+	if _, err := s.db.UpsertSkin(accountID, variant, info.ContentType, data); err != nil {
 		writeError(w, http.StatusInternalServerError, "internal error")
 		return
 	}
