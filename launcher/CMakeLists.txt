@@ -120,3 +120,8 @@ add_executable(test_download_asset tests/test_download_asset.cpp core/DownloadAs
 target_include_directories(test_download_asset PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(test_download_asset PRIVATE Qt6::Core Qt6::Network)
 add_test(NAME download_asset COMMAND test_download_asset)
+
+add_executable(test_download_queue tests/test_download_queue.cpp core/DownloadQueue.cpp core/DownloadAsset.cpp core/FileIntegrity.cpp)
+target_include_directories(test_download_queue PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(test_download_queue PRIVATE Qt6::Core Qt6::Network)
+add_test(NAME download_queue COMMAND test_download_queue)
