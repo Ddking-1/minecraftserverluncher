@@ -130,3 +130,8 @@ add_executable(test_java_detector tests/test_java_detector.cpp game/JavaDetector
 target_include_directories(test_java_detector PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(test_java_detector PRIVATE Qt6::Core)
 add_test(NAME java_detector COMMAND test_java_detector)
+
+add_executable(test_game_paths tests/test_game_paths.cpp core/GamePaths.cpp)
+target_include_directories(test_game_paths PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(test_game_paths PRIVATE Qt6::Core)
+add_test(NAME game_paths COMMAND test_game_paths)
