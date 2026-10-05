@@ -37,4 +37,29 @@ Format:
 
 ---
 
+## 2026-10-05 — WORKER MODEL BENCHMARKS (lmstudio3 14B vs lmstudio5 7B)
+
+- Branch: n/a
+- Symptom / result: Two candidate local worker models were benchmarked over
+  the LM Studio REST API (`http://localhost:1234/v1/chat/completions`).
+- `lmstudio3` (`qwen2.5-coder-14b-instruct`, IQ4_XS): first-token latency
+  11–20s even for trivial prompts; a 40-token JSON completion took ~283s; a
+  200-token Go helper and a 250-token HTML component both exceeded a 300s
+  timeout. It followed a JSON *shape* but not the exact value contract
+  (`model:"test"` → returned `"Qwen"`). **REJECTED** for the worker role.
+- `lmstudio5` (`qwen2.5-coder-7b-instruct-abliterated`, Q6_K_L): ping 2.56s;
+  JSON contract `{"ok":true,"model":"test"}` exact (3.25s, 78 tokens); Go
+  helper correct (10.0s, 105 completion tokens, ~10.5 tok/s); HTML button
+  correct (13.0s, 140 completion tokens, ~10.8 tok/s). No timeouts. **ACCEPTED.**
+- Build/check output (excerpt): both code generations were syntactically valid
+  and matched the requested contract.
+- Worker attempts: n/a (benchmark, not a task retry)
+- Suspected cause: the 14B IQ4_XS quantization is too slow for this runtime;
+  the 7B Q6_K_L is a good latency/size trade-off.
+- Next action required: `lmstudio5` (`qwen2.5-coder-7b-instruct`) is now the
+  local worker model for grunt-work (HTML/CSS/JSON/boilerplate). The previous
+  `deepseek-coder-v2-lite-instruct` remains usable as a fallback.
+
+---
+
 (no blocked product tasks recorded yet)
