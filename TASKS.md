@@ -32,3 +32,8 @@ after 5 attempts, the Architect fixes the specific piece (Smart Fallback).
 
 ## BATCH 8 — CI/CD Cross-Compilation & End-to-End Suite
 - [ ] Go & C++ Windows/Linux release build pipeline hardening
+- [ ] **Local E2E test harness (no Docker, no GPU, <=6GB RAM)**: isolated
+      `./tmp_test_env` on port `:8089` running the Go binary; full lifecycle
+      (register → login → forgot/reset → async skin upload+poll → admin
+      list/ban/delete); auto-fix loop via lmstudio5 until 100% green; cleanup
+      of processes and temp dir. (`scripts/e2e_test.go` or `server/integration_test.go`)
