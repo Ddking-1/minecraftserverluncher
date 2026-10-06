@@ -186,3 +186,8 @@ add_executable(test_skin_upload_widget tests/test_skin_upload_widget.cpp gui/Ski
 target_include_directories(test_skin_upload_widget PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(test_skin_upload_widget PRIVATE Qt6::Widgets Qt6::Core)
 add_test(NAME skin_upload_widget COMMAND test_skin_upload_widget)
+
+add_executable(test_update_manager tests/test_update_manager.cpp core/UpdateManager.cpp)
+target_include_directories(test_update_manager PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(test_update_manager PRIVATE Qt6::Core Qt6::Network)
+add_test(NAME update_manager COMMAND test_update_manager)
