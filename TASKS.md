@@ -37,12 +37,27 @@ after 5 attempts, the Architect fixes the specific piece (Smart Fallback).
       401. (DONE — manual mock verification)
 
 ## BATCH 8 — CI/CD Cross-Compilation & End-to-End Suite
-- [ ] Go & C++ Windows/Linux release build pipeline hardening
-- [ ] **Local E2E test harness (no Docker, no GPU, <=6GB RAM)**: isolated
+- [x] Go & C++ Windows/Linux release build pipeline hardening
+      (DONE — Windows launcher `windows-2022`, least-privilege CI)
+- [x] **Local E2E test harness (no Docker, no GPU, <=6GB RAM)**: isolated
       `./tmp_test_env` on port `:8089` running the Go binary; full lifecycle
       (register → login → forgot/reset → async skin upload+poll → admin
       list/ban/delete); auto-fix loop via lmstudio5 until 100% green; cleanup
-      of processes and temp dir. (`scripts/e2e_test.go` or `server/integration_test.go`)
+      of processes and temp dir. (`scripts/e2e.go` — DONE)
 - [x] **Auto-runner two-step stop test**: `scripts/auto_runner.ps1` created;
       `scripts/test_runner_check.tmp` created, verified, then deleted on manual
       "continue". (DONE — `scripts/auto_runner.ps1`)
+- [x] **Batch 8 GenAI/Vibe-coding security audit** (DONE — `11e07a0`,
+      `7e28a1c`, `040ecc1`, `6445375`): findings + remediation (refresh-token
+      rotation AUTH-1, CI least-privilege CI-1, SHA-pinned actions CI-2,
+      https guidance VEL-1) + final matrix
+      (`docs/audit-slices/05-final-verification-matrix.md`)
+
+## BATCH 9 — Packaging, Enterprise Hardening & Auto-Update
+- [x] **B9.1 NSIS installer**: NSIS v3.12 installed via winget, `makensis`
+      verified, Qt DLLs + qwindows plugin staged,
+      `packaging/nsis/MinecraftServerLauncher.nsi` built to
+      `MinecraftServerLauncher-0.1.0-setup.exe` (6.8 MB). (DONE — `652ffec`)
+- [ ] B9.2 CMake staging target (copy Qt DLLs + platforms next to exe)
+- [ ] B9.3 C++ UpdateManager (manifest fetch + SHA-256)
+- [ ] B9.4 Go backend `GET /api/v1/updates/manifest` + tests
