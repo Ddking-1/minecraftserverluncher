@@ -32,6 +32,15 @@ type Config struct {
 	// PteroScript is the path of the server-control script invoked by the
 	// admin start endpoint.
 	PteroScript string
+	// LauncherVersion is the current launcher version reported by the update
+	// manifest.
+	LauncherVersion string
+	// UpdateBaseURL is the base URL from which launcher installers are served.
+	UpdateBaseURL string
+	// UpdateSHA256 is the SHA-256 of the currently shipped installer.
+	UpdateSHA256 string
+	// UpdateMandatory forces clients to update regardless of choice.
+	UpdateMandatory bool
 }
 
 // Default values. These are non-secret operational defaults only.
@@ -42,6 +51,8 @@ const (
 	defaultRefreshTTL = 30 * 24 * time.Hour // 30 days, per docs/AUTH.md
 	defaultBcryptCost = 12
 	defaultPteroScript = "scripts/ptero_control.py"
+	defaultLauncherVersion = "0.1.0"
+	defaultUpdateBaseURL = ""
 )
 
 // maxRefreshTTL caps the configured refresh/session lifetime at 30 days.
@@ -59,6 +70,10 @@ func Load() (*Config, error) {
 		BcryptCost:      defaultBcryptCost,
 		AdminToken:      os.Getenv("AUTH_ADMIN_TOKEN"),
 		PteroScript:     envOr("AUTH_PTERO_SCRIPT", defaultPteroScript),
+		LauncherVersion: envOr("AUTH_LAUNCHER_VERSION", defaultLauncherVersion),
+		UpdateBaseURL:   os.Getenv("AUTH_UPDATE_BASE_URL"),
+		UpdateSHA256:    os.Getenv("AUTH_UPDATE_SHA256"),
+		UpdateMandatory: os.Getenv("AUTH_UPDATE_MANDATORY") == "1",
 	}
 
 	if v := os.Getenv("AUTH_ACCESS_TOKEN_TTL"); v != "" {
