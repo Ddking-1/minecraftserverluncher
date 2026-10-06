@@ -75,7 +75,7 @@ func (s *Server) Handler() http.Handler {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
 	mux.HandleFunc("GET /readyz", s.handleReadyz)
-	mux.HandleFunc("GET /api/v1/updates/manifest", s.handleUpdatesManifest)
+	mux.HandleFunc("GET /api/v1/updates/manifest", s.limit(s.handleUpdatesManifest))
 	mux.Handle("/", web.Handler())
 	return s.withSecurityHeaders(s.withRecovery(withRequestID(s.withRequestLog(mux))))
 }

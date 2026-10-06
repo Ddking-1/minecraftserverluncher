@@ -41,6 +41,9 @@ type Config struct {
 	UpdateSHA256 string
 	// UpdateMandatory forces clients to update regardless of choice.
 	UpdateMandatory bool
+	// UpdateSigningKey signs the update manifest (HMAC-SHA256) so clients can
+	// verify integrity. Never hardcoded; read from the environment.
+	UpdateSigningKey string
 }
 
 // Default values. These are non-secret operational defaults only.
@@ -74,6 +77,7 @@ func Load() (*Config, error) {
 		UpdateBaseURL:   os.Getenv("AUTH_UPDATE_BASE_URL"),
 		UpdateSHA256:    os.Getenv("AUTH_UPDATE_SHA256"),
 		UpdateMandatory: os.Getenv("AUTH_UPDATE_MANDATORY") == "1",
+		UpdateSigningKey: os.Getenv("AUTH_UPDATE_SIGNING_KEY"),
 	}
 
 	if v := os.Getenv("AUTH_ACCESS_TOKEN_TTL"); v != "" {
