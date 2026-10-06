@@ -47,6 +47,37 @@ if(WIN32)
     target_link_libraries(MinecraftLauncher PRIVATE bcrypt crypt32 iphlpapi wbemuuid ole32 oleaut32)
 endif()
 
+# B9.2: staging target that copies the Qt runtime DLLs and the qwindows
+# platform plugin next to the built launcher so the binary is runnable without
+# Qt on the PATH. Used by the CI/installer packaging step.
+if(WIN32)
+    # Resolve the Qt bin dir from the actual Qt6::Core location (robust to
+    # layout differences). On Windows: <qt>/bin/Qt6Core.dll.
+    get_target_property(QT_CORE_PATH Qt6::Core IMPORTED_LOCATION_RELEASE)
+    if(NOT QT_CORE_PATH)
+        get_target_property(QT_CORE_PATH Qt6::Core IMPORTED_LOCATION)
+    endif()
+    get_filename_component(QT_BIN_DIR "${QT_CORE_PATH}" DIRECTORY)
+
+    set(QT_PLATFORM_SRC "${QT_BIN_DIR}/../plugins/platforms/qwindows.dll")
+
+    add_custom_target(stage_qt_runtime ALL
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${QT_BIN_DIR}/Qt6Core.dll"
+            "${QT_BIN_DIR}/Qt6Network.dll"
+            "${QT_BIN_DIR}/Qt6Widgets.dll"
+            $<TARGET_FILE_DIR:MinecraftLauncher>/
+        COMMAND ${CMAKE_COMMAND} -E make_directory
+            "$<TARGET_FILE_DIR:MinecraftLauncher>/platforms"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${QT_PLATFORM_SRC}"
+            "$<TARGET_FILE_DIR:MinecraftLauncher>/platforms/"
+        COMMENT "Staging Qt runtime next to launcher"
+        DEPENDS MinecraftLauncher
+    )
+    add_dependencies(stage_qt_runtime MinecraftLauncher)
+endif()
+
 enable_testing()
 
 add_executable(test_hwid tests/test_hwid.cpp core/HWIDExtractor.cpp)
