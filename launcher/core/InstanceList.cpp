@@ -147,5 +147,5 @@ void InstanceList::updateInstanceAt(int index, std::string_view newName)
     auto *inst = m_instances[index].get();
     if (inst)
         inst->setName(QString::fromStdString(std::string(newName)));
-    emit dataChanged(index, index);
+    emit dataChanged(createIndex(index, 0), createIndex(index, 0));
 }

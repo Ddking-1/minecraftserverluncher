@@ -39,7 +39,7 @@ void clamp(Settings &s)
         s.minMemoryMb = s.maxMemoryMb;
 }
 
-bool isSafeJvmArg(const QString &arg)
+bool isSafeJvmArg(QStringView arg)
 {
     if (arg.isEmpty() || arg.size() > 1024)
         return false;

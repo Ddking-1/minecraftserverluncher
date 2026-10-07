@@ -1,116 +1,119 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// Standalone verification for the launcher settings store.
-#include <iostream>
+// Qt Test-based verification for the launcher settings store.
+#include <QtTest>
 
 #include <QFile>
 #include <QTemporaryDir>
 
 #include "core/SettingsStore.h"
 
-namespace {
-
-bool check(bool cond, const char *what)
+class TestSettingsStore : public QTest
 {
-    if (!cond)
-        std::cerr << "FAIL: " << what << std::endl;
-    return cond;
+    Q_OBJECT
+
+private slots:
+    void defaults();
+    void clamp();
+    void saveAndLoad();
+    void missingFile();
+    void malformedFile();
+    void jvmArgSafety();
+    void validationBounds();
+};
+
+void TestSettingsStore::defaults()
+{
+    const SettingsStore::Settings def = SettingsStore::defaults();
+    QCOMPARE(def.minMemoryMb, 2048);
+    QCOMPARE(def.maxMemoryMb, 4096);
 }
 
-} // namespace
-
-int main()
+void TestSettingsStore::clamp()
 {
-    using namespace SettingsStore;
+    SettingsStore::Settings s;
+    s.minMemoryMb = 100;
+    s.maxMemoryMb = 50;
+    SettingsStore::clamp(s);
+    QCOMPARE(s.minMemoryMb, 512);
+    QCOMPARE(s.maxMemoryMb, 512);
+}
 
-    const Settings def = defaults();
-    if (!check(def.minMemoryMb == 2048, "default min")
-        || !check(def.maxMemoryMb == 4096, "default max"))
-        return 1;
-
-    {
-        Settings s;
-        s.minMemoryMb = 100;
-        s.maxMemoryMb = 50;
-        clamp(s);
-        if (!check(s.minMemoryMb == 512, "min clamped to 512")
-            || !check(s.maxMemoryMb == 512, "max raised to min"))
-            return 1;
-    }
-
+void TestSettingsStore::saveAndLoad()
+{
     QTemporaryDir dir;
-    if (!check(dir.isValid(), "temporary dir"))
-        return 1;
+    QVERIFY(dir.isValid());
     const QString path = dir.filePath(QStringLiteral("launcher.json"));
 
-    Settings out;
+    SettingsStore::Settings out;
     out.javaPath = QStringLiteral("C:/java/bin/java.exe");
     out.minMemoryMb = 1024;
     out.maxMemoryMb = 8192;
     out.jvmArgs = QStringList{QStringLiteral("-XX:+UseG1GC"), QStringLiteral("-Dfoo=bar")};
 
-    if (!check(save(path, out), "save succeeds"))
-        return 1;
+    QVERIFY(SettingsStore::save(path, out));
 
-    Settings in;
-    if (!check(load(path, in), "load succeeds"))
-        return 1;
-    if (!check(in.javaPath == out.javaPath, "round-trip javaPath")
-        || !check(in.minMemoryMb == out.minMemoryMb, "round-trip min")
-        || !check(in.maxMemoryMb == out.maxMemoryMb, "round-trip max")
-        || !check(in.jvmArgs == out.jvmArgs, "round-trip jvmArgs"))
-        return 1;
+    SettingsStore::Settings in;
+    QVERIFY(SettingsStore::load(path, in));
+    QCOMPARE(in.javaPath, out.javaPath);
+    QCOMPARE(in.minMemoryMb, out.minMemoryMb);
+    QCOMPARE(in.maxMemoryMb, out.maxMemoryMb);
+    QCOMPARE(in.jvmArgs, out.jvmArgs);
+}
 
-    if (!check(!load(dir.filePath(QStringLiteral("missing.json")), in), "missing file fails"))
-        return 1;
+void TestSettingsStore::missingFile()
+{
+    SettingsStore::Settings in;
+    QVERIFY(!SettingsStore::load(QString(), in));
+}
 
+void TestSettingsStore::malformedFile()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString path = dir.filePath(QStringLiteral("bad.json"));
     {
         QFile bad(path);
-        if (!check(bad.open(QIODevice::WriteOnly), "open bad json"))
-            return 1;
+        QVERIFY(bad.open(QIODevice::WriteOnly));
         bad.write("{not valid json");
-        bad.close();
-        if (!check(!load(path, in), "malformed file fails"))
-            return 1;
     }
-
-    // JVM argument safety.
-    if (!check(isSafeJvmArg(QStringLiteral("-XX:+UseG1GC")), "safe jvm arg")
-        || !check(!isSafeJvmArg(QString()), "empty arg unsafe")
-        || !check(!isSafeJvmArg(QStringLiteral(" -Xmx1G")), "leading space unsafe")
-        || !check(!isSafeJvmArg(QStringLiteral("bad\narg")), "control char unsafe")
-        || !check(!isSafeJvmArg(QString(2000, QLatin1Char('a'))), "overlong arg unsafe"))
-        return 1;
-
-    // Validation bounds.
-    {
-        QString error;
-        Settings good;
-        good.minMemoryMb = 2048;
-        good.maxMemoryMb = 4096;
-        if (!check(validate(good, &error), "valid settings"))
-            return 1;
-
-        Settings lowMin;
-        lowMin.minMemoryMb = 100;
-        lowMin.maxMemoryMb = 4096;
-        if (!check(!validate(lowMin, &error), "min below 512 invalid")
-            || !check(!error.isEmpty(), "error message set"))
-            return 1;
-
-        Settings inverted;
-        inverted.minMemoryMb = 8192;
-        inverted.maxMemoryMb = 4096;
-        if (!check(!validate(inverted, &error), "max below min invalid"))
-            return 1;
-
-        Settings unsafe;
-        unsafe.minMemoryMb = 2048;
-        unsafe.maxMemoryMb = 4096;
-        unsafe.jvmArgs = QStringList{QStringLiteral("bad\narg")};
-        if (!check(!validate(unsafe, &error), "unsafe jvm arg invalid"))
-            return 1;
-    }
-
-    std::cout << "OK" << std::endl;
-    return 0;
+    SettingsStore::Settings in;
+    QVERIFY(!SettingsStore::load(path, in));
 }
+
+void TestSettingsStore::jvmArgSafety()
+{
+    QVERIFY(SettingsStore::isSafeJvmArg(QStringLiteral("-XX:+UseG1GC")));
+    QVERIFY(!SettingsStore::isSafeJvmArg(QString()));
+    QVERIFY(!SettingsStore::isSafeJvmArg(QStringLiteral(" -Xmx1G")));
+    QVERIFY(!SettingsStore::isSafeJvmArg(QStringLiteral("bad\narg")));
+    QVERIFY(!SettingsStore::isSafeJvmArg(QString(2000, QLatin1Char('a'))));
+}
+
+void TestSettingsStore::validationBounds()
+{
+    QString error;
+    SettingsStore::Settings good;
+    good.minMemoryMb = 2048;
+    good.maxMemoryMb = 4096;
+    QVERIFY(SettingsStore::validate(good, &error));
+
+    SettingsStore::Settings lowMin;
+    lowMin.minMemoryMb = 100;
+    lowMin.maxMemoryMb = 4096;
+    QVERIFY(!SettingsStore::validate(lowMin, &error));
+    QVERIFY(!error.isEmpty());
+
+    SettingsStore::Settings inverted;
+    inverted.minMemoryMb = 8192;
+    inverted.maxMemoryMb = 4096;
+    QVERIFY(!SettingsStore::validate(inverted, &error));
+
+    SettingsStore::Settings unsafe;
+    unsafe.minMemoryMb = 2048;
+    unsafe.maxMemoryMb = 4096;
+    unsafe.jvmArgs = QStringList{QStringLiteral("bad\narg")};
+    QVERIFY(!SettingsStore::validate(unsafe, &error));
+}
+
+QTEST_APPLESS_MAIN(TestSettingsStore)
+#include "test_settings_store.moc"

@@ -18,15 +18,18 @@ public:
     explicit TokenStorage(const QString &dataDir);
 
     // Save the session's tokens. Returns false on write failure.
+    [[nodiscard]]
     bool save(const AuthSession &session) const;
 
     // Load a stored session for the given username. Returns false if absent.
+    [[nodiscard]]
     bool load(const QString &username, AuthSession &out) const;
 
     // Remove the stored session for the given username.
     void remove(const QString &username) const;
 
     // Path of the token file for a username.
+    [[nodiscard]]
     QString filePathFor(const QString &username) const;
 
 private:

@@ -18,11 +18,11 @@ bool isSafePath(QStringView path)
 {
     if (path.isEmpty())
         return false;
-    if (path.startsWith(QLatin1Char('/')) || path.startsWith(QLatin1Char('\\')))
+    if (path.startsWith(QLatin1Char('/')) || path.startsWith(QLatin1Char('\')))
         return false;
     if (path.contains(QLatin1Char(':'))) // drive letter or URI scheme
         return false;
-    const auto parts = path.split(QRegularExpression(QStringLiteral("[/\\\\]")), Qt::SkipEmptyParts);
+    const auto parts = path.split(QRegularExpression(QStringLiteral("[/\\]")), Qt::SkipEmptyParts);
     for (const auto &part : parts) {
         if (part.compare(QLatin1String(".."), Qt::CaseInsensitive) == 0)
             return false;
@@ -73,7 +73,15 @@ ParseResult parse(const QJsonObject &obj)
 
         ManifestFile file;
         file.path = fileObj.value(QStringLiteral("path")).toString();
-        file.size = static_cast<qint64>(fileObj.value(QStringLiteral("size")).toDouble());
+        const QJsonValue sizeValue = fileObj.value(QStringLiteral("size"));
+        if (sizeValue.type() == QJsonValue::Double) {
+            file.size = static_cast<qint64>(sizeValue.toDouble());
+        } else if (sizeValue.type() == QJsonValue::String) {
+            bool ok = false;
+            const qint64 size = sizeValue.toString().toLongLong(&ok);
+            if (ok)
+                file.size = size;
+        }
         file.sha256 = fileObj.value(QStringLiteral("sha256")).toString();
         file.url = fileObj.value(QStringLiteral("url")).toString();
 
@@ -95,9 +103,9 @@ ParseResult parse(const QJsonObject &obj)
     return result;
 }
 
-ParseResult parseFile(const QString &path)
+ParseResult parseFile(QStringView path)
 {
-    QFile file(path);
+    QFile file(QString(path));
     if (!file.open(QIODevice::ReadOnly))
         return fail(QStringLiteral("manifest: cannot open '%1'").arg(path));
 

@@ -18,7 +18,7 @@
 std::string HWIDExtractor::getSMBIOSUUID()
 {
     HKEY hKey = nullptr;
-    if (RegOpenKeyExA(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Cryptography", 0,
+    if (RegOpenKeyExA(HKEY_LOCAL_MACHINE, "SOFTWARE\Microsoft\Cryptography", 0,
                       KEY_QUERY_VALUE | KEY_WOW64_64KEY, &hKey) != ERROR_SUCCESS) {
         return {};
     }
@@ -68,7 +68,7 @@ std::string HWIDExtractor::getPrimaryMACAddress()
     return oss.str();
 }
 
-std::string HWIDExtractor::generateSHA256(const std::string &input)
+std::string HWIDExtractor::generateSHA256(std::string_view input)
 {
     BCRYPT_ALG_HANDLE alg = nullptr;
     if (!BCRYPT_SUCCESS(BCryptOpenAlgorithmProvider(&alg, BCRYPT_SHA256_ALGORITHM,
@@ -91,7 +91,7 @@ std::string HWIDExtractor::generateSHA256(const std::string &input)
         return {};
     }
 
-    const PUCHAR data = reinterpret_cast<PUCHAR>(const_cast<char *>(input.data()));
+    const PUCHAR data = reinterpret_cast<PUCHAR>(const_cast<char*>(input.data()));
     const ULONG dataLen = static_cast<ULONG>(input.size());
     if (!BCRYPT_SUCCESS(BCryptHashData(hash, data, dataLen, 0))) {
         BCryptDestroyHash(hash);

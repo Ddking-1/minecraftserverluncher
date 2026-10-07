@@ -1,64 +1,102 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// Standalone verification for the file integrity verifier.
-#include <iostream>
+// Qt Test-based verification for the file integrity verifier.
+#include <QtTest>
 
 #include <QFile>
 #include <QTemporaryDir>
 
 #include "core/FileIntegrity.h"
 
-namespace {
+class TestFileIntegrity : public QTest
+{
+    Q_OBJECT
 
-// SHA-256 of the empty input, used to validate known-answer hashing.
+private slots:
+    void emptyFileHash();
+    void nonEmptyHash();
+    void verifyMatch();
+    void verifyCaseInsensitive();
+    void verifyMismatch();
+    void missingFile();
+};
+
+namespace {
 const char *const kEmptyHash =
     "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
-
-bool check(bool cond, const char *what)
-{
-    if (!cond)
-        std::cerr << "FAIL: " << what << std::endl;
-    return cond;
-}
-
 } // namespace
 
-int main()
+void TestFileIntegrity::emptyFileHash()
 {
-    using namespace FileIntegrity;
-
     QTemporaryDir dir;
-    if (!check(dir.isValid(), "temporary dir"))
-        return 1;
-
+    QVERIFY(dir.isValid());
     const QString empty = dir.filePath(QStringLiteral("empty.bin"));
     {
         QFile f(empty);
-        if (!check(f.open(QIODevice::WriteOnly), "create empty"))
-            return 1;
+        QVERIFY(f.open(QIODevice::WriteOnly));
     }
+    QCOMPARE(FileIntegrity::sha256File(empty), QString::fromLatin1(kEmptyHash));
+}
 
-    if (!check(sha256File(empty) == QString::fromLatin1(kEmptyHash), "empty file hash"))
-        return 1;
-
+void TestFileIntegrity::nonEmptyHash()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
     const QString data = dir.filePath(QStringLiteral("data.bin"));
     {
         QFile f(data);
-        if (!check(f.open(QIODevice::WriteOnly), "create data"))
-            return 1;
+        QVERIFY(f.open(QIODevice::WriteOnly));
         f.write("hello");
     }
-
-    const QString hash = sha256File(data);
-    if (!check(!hash.isEmpty(), "non-empty hash")
-        || !check(verify(data, hash), "verify match")
-        || !check(verify(data, hash.toUpper()), "verify case-insensitive")
-        || !check(!verify(data, QString::fromLatin1(kEmptyHash)), "verify mismatch"))
-        return 1;
-
-    if (!check(sha256File(dir.filePath(QStringLiteral("missing.bin"))).isEmpty(), "missing file empty")
-        || !check(!verify(dir.filePath(QStringLiteral("missing.bin")), hash), "missing verify false"))
-        return 1;
-
-    std::cout << "OK" << std::endl;
-    return 0;
+    const QString hash = FileIntegrity::sha256File(data);
+    QVERIFY(!hash.isEmpty());
 }
+
+void TestFileIntegrity::verifyMatch()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString data = dir.filePath(QStringLiteral("data.bin"));
+    {
+        QFile f(data);
+        QVERIFY(f.open(QIODevice::WriteOnly));
+        f.write("hello");
+    }
+    const QString hash = FileIntegrity::sha256File(data);
+    QVERIFY(FileIntegrity::verify(data, hash));
+}
+
+void TestFileIntegrity::verifyCaseInsensitive()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString data = dir.filePath(QStringLiteral("data.bin"));
+    {
+        QFile f(data);
+        QVERIFY(f.open(QIODevice::WriteOnly));
+        f.write("hello");
+    }
+    const QString hash = FileIntegrity::sha256File(data);
+    QVERIFY(FileIntegrity::verify(data, hash.toUpper()));
+}
+
+void TestFileIntegrity::verifyMismatch()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString data = dir.filePath(QStringLiteral("data.bin"));
+    {
+        QFile f(data);
+        QVERIFY(f.open(QIODevice::WriteOnly));
+        f.write("hello");
+    }
+    QVERIFY(!FileIntegrity::verify(data, QString::fromLatin1(kEmptyHash)));
+}
+
+void TestFileIntegrity::missingFile()
+{
+    QVERIFY(FileIntegrity::sha256File(QString()).isEmpty());
+    QVERIFY(!FileIntegrity::verify(QString(), QString()));
+}
+
+QTEST_APPLESS_MAIN(TestFileIntegrity)
+#include "test_file_integrity.moc"

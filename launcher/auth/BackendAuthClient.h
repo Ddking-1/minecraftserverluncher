@@ -13,8 +13,7 @@ class QNetworkAccessManager;
 class QNetworkReply;
 
 // Result of an auth request against the backend.
-struct AuthResult
-{
+struct AuthResult {
     bool success = false;
     QString error; // human-readable error message on failure
     QString accessToken;
@@ -33,10 +32,11 @@ class BackendAuthClient : public QObject
     Q_OBJECT
 public:
     using Callback = std::function<void(const AuthResult &)>;
-    
+
     explicit BackendAuthClient(QObject *parent = nullptr);
 
     // Base URL of the backend, e.g. "https://api.example.com".
+    [[nodiscard]]
     QString backendUrl() const;
     void setBackendUrl(const QString &url);
 

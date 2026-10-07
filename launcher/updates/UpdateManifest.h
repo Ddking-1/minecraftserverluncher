@@ -9,8 +9,7 @@
 namespace UpdateManifest {
 
 // A single file entry in a component manifest.
-struct ManifestFile
-{
+struct ManifestFile {
     QString path;
     qint64 size = 0;
     QString sha256;
@@ -18,8 +17,7 @@ struct ManifestFile
 };
 
 // A versioned, independently updatable component (launcher, Fabric, modpack...).
-struct ManifestComponent
-{
+struct ManifestComponent {
     QString name;
     QString version;
     QList<ManifestFile> files;
@@ -30,8 +28,7 @@ struct ManifestComponent
 
 // Result of parsing a manifest. On failure `error` explains why and
 // `component` is empty.
-struct ParseResult
-{
+struct ParseResult {
     bool ok = false;
     QString error;
     ManifestComponent component;
@@ -44,6 +41,6 @@ ParseResult parse(const QJsonObject &obj);
 
 // Reads and parses a manifest from a JSON file.
 [[nodiscard]]
-ParseResult parseFile(const QString &path);
+ParseResult parseFile(QStringView path);
 
 } // namespace UpdateManifest

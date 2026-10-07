@@ -20,6 +20,7 @@ constexpr char kDpapiPrefix[] = "DPAPI1:";
 
 #ifdef Q_OS_WIN
 // Protect plaintext with the current user's DPAPI credentials.
+[[nodiscard]]
 QByteArray dpapiProtect(const QByteArray &plain)
 {
     DATA_BLOB in;
@@ -38,6 +39,7 @@ QByteArray dpapiProtect(const QByteArray &plain)
 }
 
 // Unprotect a DPAPI blob produced by dpapiProtect.
+[[nodiscard]]
 QByteArray dpapiUnprotect(const QByteArray &blob)
 {
     DATA_BLOB in;
