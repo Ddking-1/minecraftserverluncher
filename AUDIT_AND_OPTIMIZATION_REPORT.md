@@ -388,8 +388,8 @@ Nothing catastrophic stood out in the hot paths I read. The backend is lightweig
   - `server/api/queue.go`: a `skinQueue.Close()` metódus publikussá téve, worker goroutine-ok kilépnek a range ciklusból.
   - `server/api/handlers.go`: `Server.Close()` most már lezárja a sori (`s.queue.Close()`) és az adatbázis kapcsolatot (`s.db.Close()`), valamint a háttér-függvényeket.
   - Minden `server/api/*_test.go` tesztfájl frissítve a `defer srv.Close()` / `defer s.Close()` teardown hívásokkal, így a tesztek után nem marad nyitott goroutine.
-  - `server/api/ratelimit_test.go`: minden teszt lezárja a rate limitert (`defer l.Close()`).
-  - `server/api/auth_fuzz_test.go`: új natív Go fuzz teszt a session token parsinghez (`FuzzParseSessionToken`), amely a `sessions.NewService(nil, 0, 0).ParsePair()` hívásokat fuzzolja.
+  - `server/api/ratelimit_test.go`: törölve a nemlétező `l.Close()` hívások (a rateLimiter típusnak nincs Close metódusa).
+  - `server/api/auth_fuzz_test.go`: új natív Go fuzz teszt az auth tokenek kezelésére (`FuzzHashToken`), amely az `auth.HashToken()` függvényt fuzzolja.
   - `scripts/e2e.go`: bővítve az auth és skin feltöltési végpontok ellenőrzésével, plusz a skin fetch és delete verificációkkal.
   - `AUDIT_AND_OPTIMIZATION_REPORT.md`: frissítve a Go backend szekció a sikeres teszteredményekkel.
 - **Teszt eredmények:**

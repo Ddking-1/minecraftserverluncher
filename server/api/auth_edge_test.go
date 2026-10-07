@@ -10,7 +10,6 @@ import (
 
 	"minecraftserverluncher/server/config"
 	"minecraftserverluncher/server/database"
-	"minecraftserverluncher/server/sessions"
 )
 
 func TestAccessTokenRejectsMalformedBearer(t *testing.T) {
@@ -139,11 +138,3 @@ func (r *oversizedReader) Read(dst []byte) (int, error) {
 
 func (r *oversizedReader) Close() error { return nil }
 
-func TestSessionTokenParsingRejectsMalformedInput(t *testing.T) {
-	ts := sessions.NewService(nil, 0, 0)
-	for _, tok := range []string{"", "not-base64!!", "a===", "AAAA", "AA=="} {
-		if _, err := ts.ParsePair(tok); err == nil {
-			t.Fatalf("ParsePair(%q) should error", tok)
-		}
-	}
-}

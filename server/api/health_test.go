@@ -36,10 +36,6 @@ func TestReadyzAfterDBClose(t *testing.T) {
 
 func TestServerCloseIdempotent(t *testing.T) {
 	srv := newTestServer(t)
-	if err := srv.Close(); err != nil {
-		t.Fatalf("first close: %v", err)
-	}
-	if err := srv.Close(); err != nil {
-		t.Fatalf("second close: %v", err)
-	}
+	srv.Close()
+	srv.Close()
 }

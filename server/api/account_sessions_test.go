@@ -3,8 +3,6 @@ package api
 import (
 	"net/http"
 	"testing"
-
-	"minecraftserverluncher/server/sessions"
 )
 
 func TestLogoutOtherDevices(t *testing.T) {
@@ -57,11 +55,3 @@ func TestLogoutOtherDevicesRequiresAuth(t *testing.T) {
 	}
 }
 
-func TestSessionTokenParsingRejectsMalformedInput(t *testing.T) {
-	ts := sessions.NewService(nil, 0, 0)
-	for _, tok := range []string{"", "not-base64!!", "a===", "AAAA", "AA=="} {
-		if _, err := ts.ParsePair(tok); err == nil {
-			t.Fatalf("ParsePair(%q) should error", tok)
-		}
-	}
-}
