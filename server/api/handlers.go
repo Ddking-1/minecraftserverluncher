@@ -5,6 +5,7 @@ package api
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"log"
@@ -43,6 +44,27 @@ func NewServer(db *database.DB, cfg *config.Config) *Server {
 	}
 }
 
+// Close shuts down background workers held by the server (for example the skin
+// processing queue) so the process can exit cleanly and tests do not leak
+// goroutines.
+func (s *Server) Close() {
+	if s.queue != nil {
+		s.queue.close()
+	}
+}
+
+// enhanceSecurityHeaders wraps the handler and applies a consistent set of
+// security-focused HTTP response headers on every response.
+func enhanceSecurityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("Referrer-Policy", "no-referrer")
+		next.ServeHTTP(w, r)
+	})
+}
+
 // Handler returns the root HTTP handler with all routes registered.
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
@@ -75,9 +97,28 @@ func (s *Server) Handler() http.Handler {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
 	mux.HandleFunc("GET /readyz", s.handleReadyz)
-	mux.HandleFunc("GET /api/v1/updates/manifest", s.limit(s.handleUpdatesManifest))
-	mux.Handle("/", web.Handler())
+	mux.HandleFunc("GET /api/v1/updates/manifest", s.limit(s.handleUpdatesManifest))    mux.Handle("/", web.Handler())
 	return s.withSecurityHeaders(s.withRecovery(withRequestID(s.withRequestLog(mux))))
+}
+
+// setConnPoolSettings adjusts database connection pool limits so a production
+// backend does not exhaust SQLite/WAL connections under concurrent load.
+func setConnPoolSettings(db *database.DB) {
+	if db != nil && db.SQL != nil {
+		db.SQL.SetMaxOpenConns(20)
+		db.SQL.SetMaxIdleConns(5)
+		db.SQL.SetConnMaxLifetime(time.Hour)
+	}
+}
+
+// Context-aware database helpers: all query paths used by handlers go through
+// these so they are always bound to the request context with a timeout.
+func (s *Server) dbQueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
+	return s.db.QueryContext(ctx, query, args...)
+}
+
+func (s *Server) dbExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
+	return s.db.ExecContext(ctx, query, args...)
 }
 
 // ---- request/response types ----
@@ -265,8 +306,10 @@ func (s *Server) handleStartServer(w http.ResponseWriter, r *http.Request) {
 	cmd := exec.CommandContext(ctx, "python", s.cfg.PteroScript)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		// Log details server-side only; never return raw output to the client.
-		log.Printf("server start failed: %v: %s", err, strings.TrimSpace(string(output)))
+		// Log details server-side only; never return raw output to the client.            log.Printf("server start failed: %v: %s", err, strings.TrimSpace(string(output)))
+		// Structured operational log entry for startup failures (machine-readable).
+		log.Printf("event=srv_start_failed err=%v output=%s", err, strings.TrimSpace(string(output)))
+		writeError(w, http.StatusInternalServerError, "failed to start server")
 		writeError(w, http.StatusInternalServerError, "failed to start server")
 		return
 	}

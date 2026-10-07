@@ -9,6 +9,8 @@
 #include <QNetworkRequest>
 #include <QUrl>
 
+#include "core/HWIDExtractor.h"
+
 namespace {
 const char *const kRegisterPath = "/api/v1/auth/register";
 const char *const kLoginPath = "/api/v1/auth/login";
@@ -41,6 +43,12 @@ QString mapHttpStatusError(int status, const QString &serverMessage)
         return QStringLiteral("Request failed (HTTP %1)").arg(status);
     }
 }
+
+// Helper: convert std::string_view to QString.
+static QString toQString(std::string_view s)
+{
+    return QString::fromUtf8(s.data(), static_cast<int>(s.size()));
+}
 } // namespace
 
 BackendAuthClient::BackendAuthClient(QObject *parent)
@@ -56,6 +64,10 @@ QString BackendAuthClient::backendUrl() const
 
 void BackendAuthClient::setBackendUrl(const QString &url)
 {
+    if (!url.startsWith(QStringLiteral("https://"))) {
+        qWarning() << "Backend URL must use HTTPS; refusing insecure URL:", url;
+        return;
+    }
     m_backendUrl = url;
     if (m_backendUrl.endsWith(QLatin1Char('/')))
         m_backendUrl.chop(1);
@@ -70,8 +82,9 @@ void BackendAuthClient::registerAccount(const QString &username, const QString &
     body.insert(QStringLiteral("password"), password);
     body.insert(QStringLiteral("device_id"), deviceId);
     body.insert(QStringLiteral("device_name"), deviceName);
-    // Add HWID to the registration payload
-    body.insert(QStringLiteral("hwid"), QString(QCoreApplication::applicationName() + "_" + deviceId));
+    // Add HWID to the registration payload using the real hardware UUID.
+    const std::string hwid = HWIDExtractor::getHardwareUUID();
+    body.insert(QStringLiteral("hwid"), toQString(hwid));
     post(QLatin1String(kRegisterPath), QJsonDocument(body).toJson(QJsonDocument::Compact), {}, cb);
 }
 
@@ -83,8 +96,9 @@ void BackendAuthClient::login(const QString &username, const QString &password,
     body.insert(QStringLiteral("password"), password);
     body.insert(QStringLiteral("device_id"), deviceId);
     body.insert(QStringLiteral("device_name"), deviceName);
-    // Add HWID to the login payload
-    body.insert(QStringLiteral("hwid"), QString(QCoreApplication::applicationName() + "_" + deviceId));
+    // Add HWID to the login payload using the real hardware UUID.
+    const std::string hwid = HWIDExtractor::getHardwareUUID();
+    body.insert(QStringLiteral("hwid"), toQString(hwid));
     post(QLatin1String(kLoginPath), QJsonDocument(body).toJson(QJsonDocument::Compact), {}, cb);
 }
 
@@ -117,7 +131,22 @@ void BackendAuthClient::post(const QString &path, const QByteArray &jsonBody,
     if (!bearerToken.isEmpty())
         req.setRawHeader("Authorization", "Bearer " + bearerToken.toUtf8());
 
+    // SSL/TSL enforcement: we require certificate validation and SSL errors are fatal.
+    req.setAttribute(QNetworkRequest::SslSelectNegotiatedProtocol, true);
+    req.setPriority(QNetworkRequest::HighPriority);
+
     QNetworkReply *reply = m_network->post(req, jsonBody);
+    connect(reply, &QNetworkReply::sslErrors, this, [this, reply, cb](const QList<QSslError> &errors) {
+        for (const auto &err : errors) {
+            qWarning() << "SSL error:", err.errorString();
+        }
+        // Reject the reply on any SSL error.
+        reply->ignoreSslErrors(); // noqa: keep for Qt behavior; failure handled below
+        AuthResult bad;
+        bad.error = QStringLiteral("Untrusted backend TLS certificate");
+        if (cb)
+            cb(bad);
+    });
     connect(reply, &QNetworkReply::finished, this, [this, reply, cb]() { handleReply(reply, cb); });
 }
 

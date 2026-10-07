@@ -9,6 +9,7 @@
 #include <QTimer>
 
 #include "core/UpdateManager.h"
+#include "core/UpdateManagerHMAC.h"
 
 #include <cstdio>
 
@@ -21,6 +22,16 @@ static void check(bool cond, const char *msg)
     }
 }
 
+// Helper: compute expected HMAC signature for manifest fields.
+static QString expectedSignature(const QString &key,
+                                 const QString &version,
+                                 const QString &url,
+                                 const QString &sha256,
+                                 bool mandatory)
+{
+    return hmacManifestSignature(key, version, url, sha256, mandatory);
+}
+
 int main(int argc, char **argv)
 {
     QCoreApplication app(argc, argv);
@@ -31,18 +42,64 @@ int main(int argc, char **argv)
     check(mgr.currentVersion() == QStringLiteral("0.1.0"), "current version stored");
     // (Endpoint trimming + network behavior is covered by the running server below.)
 
-    // Local server that serves a valid manifest.
+    // --- HMAC verification unit tests (TDD) ---
+    const QString signingKey = QStringLiteral("test-signing-key-12345");
+    const QString version = QStringLiteral("0.2.0");
+    const QString url = QStringLiteral("https://cdn.example.com/updates/x.exe");
+    const QString sha256 = QStringLiteral("abcdef1234567890");
+
+    // Valid signature should verify.
+    QString validSig = expectedSignature(signingKey, version, url, sha256, true);
+    check(verifyManifestSignature(signingKey, version, url, sha256, true, validSig),
+          "valid HMAC signature accepted");
+
+    // Empty key should reject.
+    check(!verifyManifestSignature(QString(), version, url, sha256, true, validSig),
+          "empty key rejected");
+
+    // Empty signature should reject.
+    check(!verifyManifestSignature(signingKey, version, url, sha256, true, QString()),
+          "empty signature rejected");
+
+    // Wrong signature should reject.
+    check(!verifyManifestSignature(signingKey, version, url, sha256, true, QStringLiteral("badsig")),
+          "invalid HMAC signature rejected");
+
+    // Different mandatory flag should reject.
+    QString sigNotMandatory = expectedSignature(signingKey, version, url, sha256, false);
+    check(!verifyManifestSignature(signingKey, version, url, sha256, true, sigNotMandatory),
+          "mandatory mismatch rejected");
+
+    // Tampering with URL should reject.
+    QString sigTamperedUrl = expectedSignature(signingKey, version, url, sha256, true);
+    check(!verifyManifestSignature(signingKey, version, QStringLiteral("https://evil.com/x.exe"), sha256, true, sigTamperedUrl),
+          "tampered URL rejected");
+
+    // Tampered SHA-256 should reject.
+    QString sigTamperedSha = expectedSignature(signingKey, version, url, sha256, true);
+    check(!verifyManifestSignature(signingKey, version, url, QStringLiteral("0000aabb"), true, sigTamperedSha),
+          "tampered sha256 rejected");
+
+    // --- End HMAC verification unit tests ---
+
+    // Local server that serves a valid manifest with HMAC signature.
     QTcpServer server;
     check(server.listen(QHostAddress::LocalHost, 0), "listen");
-    QObject::connect(&server, &QTcpServer::newConnection, &server, [&server]() {
+    QObject::connect(&server, &QTcpServer::newConnection, &server, [&server, &signingKey]() {
         QTcpSocket *sock = server.nextPendingConnection();
-        QObject::connect(sock, &QTcpSocket::readyRead, sock, [sock]() {
+        QObject::connect(sock, &QTcpSocket::readyRead, sock, [sock, &signingKey]() {
             sock->readAll();
             QJsonObject u;
             u.insert(QStringLiteral("version"), QStringLiteral("0.2.0"));
             u.insert(QStringLiteral("url"), QStringLiteral("https://cdn.example.com/x.exe"));
             u.insert(QStringLiteral("sha256"), QStringLiteral("aabb"));
             u.insert(QStringLiteral("mandatory"), true);
+            QString sig = hmacManifestSignature(signingKey,
+                                                 QStringLiteral("0.2.0"),
+                                                 QStringLiteral("https://cdn.example.com/x.exe"),
+                                                 QStringLiteral("aabb"),
+                                                 true);
+            u.insert(QStringLiteral("signature"), sig);
             QJsonObject root;
             root.insert(QStringLiteral("update"), u);
             const QByteArray body = QJsonDocument(root).toJson(QJsonDocument::Compact);

@@ -17,9 +17,13 @@ public:
     // backendBase like "https://api.example.com", current like "0.1.0".
     void setEndpoints(const QString &backendBase, const QString &currentVersion);
 
+    // Set the update signing key for HMAC verification.
+    void setSigningKey(QStringView key);
+
     QString currentVersion() const;
 
     // Fetch the manifest from /api/v1/updates/manifest and emit updateInfo.
+    // The manifest signature is verified before the update is reported.
     void checkForUpdate();
 
 signals:
@@ -30,5 +34,6 @@ signals:
 private:
     QString m_backend;
     QString m_current;
+    QString m_signingKey;
     QNetworkAccessManager *m_nam = nullptr;
 };

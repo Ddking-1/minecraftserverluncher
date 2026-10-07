@@ -39,9 +39,11 @@ struct ParseResult
 
 // Parses a manifest object. Rejects missing required fields, malformed file
 // entries and unsafe (path-traversing / absolute) file paths.
+[[nodiscard]]
 ParseResult parse(const QJsonObject &obj);
 
 // Reads and parses a manifest from a JSON file.
+[[nodiscard]]
 ParseResult parseFile(const QString &path);
 
 } // namespace UpdateManifest

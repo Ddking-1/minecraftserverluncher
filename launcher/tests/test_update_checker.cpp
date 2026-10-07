@@ -13,7 +13,7 @@ bool check(bool cond, const char *what)
     return cond;
 }
 
-UpdateManifest::ManifestComponent component(const QString &version, const QString &minLauncher)
+UpdateManifest::ManifestComponent component(QStringView version, QStringView minLauncher)
 {
     UpdateManifest::ManifestComponent c;
     c.name = QStringLiteral("launcher");

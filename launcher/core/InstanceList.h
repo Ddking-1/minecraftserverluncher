@@ -47,6 +47,7 @@ public:
     BaseInstance *getInstanceById(const QString &id) const;
 
     void addInstance(std::unique_ptr<BaseInstance> instance);
+    void removeInstance(int index);
 
 signals:
     void instancesChanged();
@@ -55,4 +56,7 @@ private:
     QString m_instancesDir;
     InstanceFactory m_factory;
     std::vector<std::unique_ptr<BaseInstance>> m_instances;
+    // C++17/20 modernization: use std::string_view for read-only string parameters
+    // to avoid unnecessary QString copies in the instance list.
+    void updateInstanceAt(int index, std::string_view newName);
 };
