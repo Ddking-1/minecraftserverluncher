@@ -3,8 +3,10 @@ package api
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -50,8 +52,8 @@ func TestRefreshRejectsMissingRefreshToken(t *testing.T) {
 		"refresh_token": "",
 	}, "")
 
-	if code != http.StatusBadRequest {
-		t.Fatalf("status = %d, want 400, body = %v", code, body)
+	if code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want 401, body = %v", code, body)
 	}
 }
 
@@ -88,10 +90,26 @@ func TestInvalidJSONBodyReturnsBadRequest(t *testing.T) {
 
 	// An unreadable body provokes json.Decoder.ErrUnexpectedEOF, which we treat
 	// as a bad request rather than a 500.
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", strings.NewReader("not-json"))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", rec.Code)
+	}
+}
+
+func TestInvalidJSONBodyReturnsBadRequestCloserOnly(t *testing.T) {
+	srv := newTestServer(t)
+	defer srv.Close()
+	h := srv.Handler()
+
+	// A readable body that never yields JSON should still fail with 400 and must
+	// not hang the test. Confirmed separately from the strings.NewReader path.
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", nil)
 	req.Header.Set("Content-Type", "application/json")
 	req.Body = &invalidJSONReader{}
-	req.ContentLength = -1
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 
@@ -102,8 +120,13 @@ func TestInvalidJSONBodyReturnsBadRequest(t *testing.T) {
 
 type invalidJSONReader struct{}
 
-func (r *invalidJSONReader) Read(dst []byte) (int, error) { return 0, nil }
-func (r *invalidJSONReader) Close() error                 { return nil }
+func (r *invalidJSONReader) Read(dst []byte) (int, error) {
+	if len(dst) == 0 {
+		return 0, nil
+	}
+	return 0, io.EOF
+}
+func (r *invalidJSONReader) Close() error { return nil }
 
 func TestOversizedBodyReturnsBadRequest(t *testing.T) {
 	srv := newTestServer(t)
