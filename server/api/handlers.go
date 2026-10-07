@@ -306,10 +306,8 @@ func (s *Server) handleStartServer(w http.ResponseWriter, r *http.Request) {
 	cmd := exec.CommandContext(ctx, "python", s.cfg.PteroScript)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		// Log details server-side only; never return raw output to the client.            log.Printf("server start failed: %v: %s", err, strings.TrimSpace(string(output)))
 		// Structured operational log entry for startup failures (machine-readable).
 		log.Printf("event=srv_start_failed err=%v output=%s", err, strings.TrimSpace(string(output)))
-		writeError(w, http.StatusInternalServerError, "failed to start server")
 		writeError(w, http.StatusInternalServerError, "failed to start server")
 		return
 	}
