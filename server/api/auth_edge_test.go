@@ -10,10 +10,12 @@ import (
 
 	"minecraftserverluncher/server/config"
 	"minecraftserverluncher/server/database"
+	"minecraftserverluncher/server/sessions"
 )
 
 func TestAccessTokenRejectsMalformedBearer(t *testing.T) {
 	srv := newTestServer(t)
+	defer srv.Close()
 	h := srv.Handler()
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/account/me", nil)
@@ -28,6 +30,7 @@ func TestAccessTokenRejectsMalformedBearer(t *testing.T) {
 
 func TestRefreshRejectsMalformedRefreshToken(t *testing.T) {
 	srv := newTestServer(t)
+	defer srv.Close()
 	h := srv.Handler()
 
 	code, body := doJSON(t, h, http.MethodPost, "/api/v1/auth/refresh", map[string]any{
@@ -41,6 +44,7 @@ func TestRefreshRejectsMalformedRefreshToken(t *testing.T) {
 
 func TestRefreshRejectsMissingRefreshToken(t *testing.T) {
 	srv := newTestServer(t)
+	defer srv.Close()
 	h := srv.Handler()
 
 	code, body := doJSON(t, h, http.MethodPost, "/api/v1/auth/refresh", map[string]any{
@@ -65,6 +69,7 @@ func TestRefreshRejectsExpiredRefreshToken(t *testing.T) {
 		BcryptCost:      10,
 	}
 	srv := NewServer(db, cfg)
+	defer srv.Close()
 	h := srv.Handler()
 	var buf bytes.Buffer
 	_ = json.NewEncoder(&buf).Encode(map[string]any{"refresh_token": ""})
@@ -79,6 +84,7 @@ func TestRefreshRejectsExpiredRefreshToken(t *testing.T) {
 
 func TestInvalidJSONBodyReturnsBadRequest(t *testing.T) {
 	srv := newTestServer(t)
+	defer srv.Close()
 	h := srv.Handler()
 
 	// An unreadable body provokes json.Decoder.ErrUnexpectedEOF, which we treat
@@ -102,6 +108,7 @@ func (r *invalidJSONReader) Close() error                 { return nil }
 
 func TestOversizedBodyReturnsBadRequest(t *testing.T) {
 	srv := newTestServer(t)
+	defer srv.Close()
 	h := srv.Handler()
 
 	payload := make([]byte, 2<<20)
@@ -131,3 +138,12 @@ func (r *oversizedReader) Read(dst []byte) (int, error) {
 }
 
 func (r *oversizedReader) Close() error { return nil }
+
+func TestSessionTokenParsingRejectsMalformedInput(t *testing.T) {
+	ts := sessions.NewService(nil, 0, 0)
+	for _, tok := range []string{"", "not-base64!!", "a===", "AAAA", "AA=="} {
+		if _, err := ts.ParsePair(tok); err == nil {
+			t.Fatalf("ParsePair(%q) should error", tok)
+		}
+	}
+}

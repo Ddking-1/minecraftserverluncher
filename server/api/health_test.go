@@ -7,6 +7,7 @@ import (
 
 func TestReadyzHealthy(t *testing.T) {
 	srv := newTestServer(t)
+	defer srv.Close()
 	h := srv.Handler()
 
 	code, body := doJSON(t, h, http.MethodGet, "/readyz", nil, "")
@@ -20,6 +21,7 @@ func TestReadyzHealthy(t *testing.T) {
 
 func TestReadyzAfterDBClose(t *testing.T) {
 	srv := newTestServer(t)
+	defer srv.Close()
 	h := srv.Handler()
 
 	if err := srv.db.Close(); err != nil {
@@ -29,5 +31,15 @@ func TestReadyzAfterDBClose(t *testing.T) {
 	code, _ := doJSON(t, h, http.MethodGet, "/readyz", nil, "")
 	if code != http.StatusServiceUnavailable {
 		t.Fatalf("readyz after close status = %d, want 503", code)
+	}
+}
+
+func TestServerCloseIdempotent(t *testing.T) {
+	srv := newTestServer(t)
+	if err := srv.Close(); err != nil {
+		t.Fatalf("first close: %v", err)
+	}
+	if err := srv.Close(); err != nil {
+		t.Fatalf("second close: %v", err)
 	}
 }

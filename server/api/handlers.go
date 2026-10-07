@@ -20,6 +20,7 @@ import (
 	"minecraftserverluncher/server/devices"
 	"minecraftserverluncher/server/sessions"
 	"minecraftserverluncher/server/web"
+	"sync"
 )
 
 // Server holds the dependencies for the HTTP handlers.
@@ -30,6 +31,8 @@ type Server struct {
 	cfg      *config.Config
 	limiter  *rateLimiter
 	queue    *skinQueue
+	bg       []func()
+	mu       sync.Mutex
 }
 
 // NewServer constructs the API server.
@@ -44,12 +47,23 @@ func NewServer(db *database.DB, cfg *config.Config) *Server {
 	}
 }
 
-// Close shuts down background workers held by the server (for example the skin
-// processing queue) so the process can exit cleanly and tests do not leak
-// goroutines.
+// Close shuts down background workers and connections held by the server so the
+// process can exit cleanly and tests do not leak goroutines or DB connections.
+// It is safe to call Close more than once.
 func (s *Server) Close() {
 	if s.queue != nil {
-		s.queue.close()
+		s.queue.Close()
+	}
+	if s.db != nil {
+		s.db.Close()
+	}
+	if s.bg != nil {
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		for _, fn := range s.bg {
+			fn()
+		}
+		s.bg = nil
 	}
 }
 
@@ -97,17 +111,18 @@ func (s *Server) Handler() http.Handler {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
 	mux.HandleFunc("GET /readyz", s.handleReadyz)
-	mux.HandleFunc("GET /api/v1/updates/manifest", s.limit(s.handleUpdatesManifest))    mux.Handle("/", web.Handler())
+	mux.HandleFunc("GET /api/v1/updates/manifest", s.limit(s.handleUpdatesManifest))
+	mux.Handle("/", web.Handler())
 	return s.withSecurityHeaders(s.withRecovery(withRequestID(s.withRequestLog(mux))))
 }
 
 // setConnPoolSettings adjusts database connection pool limits so a production
 // backend does not exhaust SQLite/WAL connections under concurrent load.
 func setConnPoolSettings(db *database.DB) {
-	if db != nil && db.SQL != nil {
-		db.SQL.SetMaxOpenConns(20)
-		db.SQL.SetMaxIdleConns(5)
-		db.SQL.SetConnMaxLifetime(time.Hour)
+	if db != nil {
+		db.SQL().SetMaxOpenConns(20)
+		db.SQL().SetMaxIdleConns(5)
+		db.SQL().SetConnMaxLifetime(time.Hour)
 	}
 }
 

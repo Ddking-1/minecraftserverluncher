@@ -22,6 +22,7 @@ func newUpdateTestServer(t *testing.T) *Server {
 
 func TestUpdatesManifest(t *testing.T) {
 	srv := newUpdateTestServer(t)
+	defer srv.Close()
 	h := srv.Handler()
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/updates/manifest", nil)
@@ -65,6 +66,7 @@ func TestUpdatesManifest(t *testing.T) {
 
 func TestUpdatesManifestSignatureTampered(t *testing.T) {
 	srv := newUpdateTestServer(t)
+	defer srv.Close()
 	h := srv.Handler()
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/updates/manifest", nil)
 	rec := httptest.NewRecorder()
@@ -96,6 +98,7 @@ func TestUpdatesManifestSignatureTampered(t *testing.T) {
 
 func TestUpdatesManifestNoAuth(t *testing.T) {
 	srv := newTestServer(t)
+	defer srv.Close()
 	h := srv.Handler()
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/updates/manifest", nil)
 	rec := httptest.NewRecorder()

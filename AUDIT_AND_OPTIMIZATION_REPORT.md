@@ -384,10 +384,17 @@ Nothing catastrophic stood out in the hot paths I read. The backend is lightweig
 - **Kódrefaktorálás és tisztítás:**
   - C++ kódbázis: a Qt parenting rendszer miatt a nyers mutatók használata elfogadható, a `std::string` másolások minimalizálva a `const QString &` használatával.
   - Go backend: a goroutineok életciklusa megfelelően kezelve, mutexek helyesen használva, nincs goroutine leak.
-- **Extrémi szélsőérték és edge-case tesztek bővítése:**
-  - Go backend: új tesztek a hibás config betöltésére (pl. invalid AUTH_ACCESS_TOKEN_TTL, missing signing key with mandatory).
-  - C++: új tesztek a hibás JSON konfiguráció betöltésére és a empty JSON object kezelésére.
+- **Go backend goroutine leak javítás és teszt teardown:**
+  - `server/api/queue.go`: a `skinQueue.Close()` metódus publikussá téve, worker goroutine-ok kilépnek a range ciklusból.
+  - `server/api/handlers.go`: `Server.Close()` most már lezárja a sori (`s.queue.Close()`) és az adatbázis kapcsolatot (`s.db.Close()`), valamint a háttér-függvényeket.
+  - Minden `server/api/*_test.go` tesztfájl frissítve a `defer srv.Close()` / `defer s.Close()` teardown hívásokkal, így a tesztek után nem marad nyitott goroutine.
+  - `server/api/ratelimit_test.go`: minden teszt lezárja a rate limitert (`defer l.Close()`).
+  - `server/api/auth_fuzz_test.go`: új natív Go fuzz teszt a session token parsinghez (`FuzzParseSessionToken`), amely a `sessions.NewService(nil, 0, 0).ParsePair()` hívásokat fuzzolja.
+  - `scripts/e2e.go`: bővítve az auth és skin feltöltési végpontok ellenőrzésével, plusz a skin fetch és delete verificációkkal.
+  - `AUDIT_AND_OPTIMIZATION_REPORT.md`: frissítve a Go backend szekció a sikeres teszteredményekkel.
 - **Teszt eredmények:**
-  - Go backend tesztek: `go test ./...` a `server/` mappában **PASS** (összes csomag: api, auth, config, database, devices, sessions, web). A mới tesztek is sikeresen lefutottak.
+  - Go backend tesztek: `go test ./...` a `server/` mappában **PASS** (összes csomag: api, auth, config, database, devices, sessions, web).
+  - Go fuzz teszt: `server/api/auth_fuzz_test.go` (`FuzzParseSessionToken`) létrehozva, native Go fuzzing kapacitással.
+  - E2E script (`scripts/e2e.go`) frissítve: 12 lépéses end-to-end flow, beleértve a skin feltöltést, task polling, fetch és delete verificációt.
   - C++ tesztek: a meglévő `build/` mappában nincsenek generált tesztek, de a friss build elvégezhető a `cmake` paranccsal a Qt6 környezetben. A 3 GUI teszt mostantól headless módban is futtatható.
 

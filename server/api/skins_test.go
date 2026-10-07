@@ -37,6 +37,7 @@ func uploadSkin(t *testing.T, h http.Handler, access, variant, contentType strin
 
 func TestSkinLifecycle(t *testing.T) {
 	srv := newTestServer(t)
+	defer srv.Close()
 	h := srv.Handler()
 
 	_, out := register(t, h, "skinuser", "supersecret")
@@ -79,6 +80,7 @@ func TestSkinLifecycle(t *testing.T) {
 
 func TestSkinUploadRequiresAuth(t *testing.T) {
 	srv := newTestServer(t)
+	defer srv.Close()
 	h := srv.Handler()
 	body := decodeB64(t, png64x64B64)
 	if code := uploadSkin(t, h, "", "default", "image/png", body); code != http.StatusUnauthorized {
@@ -88,6 +90,7 @@ func TestSkinUploadRequiresAuth(t *testing.T) {
 
 func TestSkinRejectsNonImage(t *testing.T) {
 	srv := newTestServer(t)
+	defer srv.Close()
 	h := srv.Handler()
 	_, out := register(t, h, "skinuser2", "supersecret")
 	access := out["access_token"].(string)
@@ -101,6 +104,7 @@ func TestSkinRejectsNonImage(t *testing.T) {
 
 func TestSkinRejectsBadDimensions(t *testing.T) {
 	srv := newTestServer(t)
+	defer srv.Close()
 	h := srv.Handler()
 	_, out := register(t, h, "skinuser3", "supersecret")
 	access := out["access_token"].(string)
@@ -117,6 +121,7 @@ func TestSkinRejectsBadDimensions(t *testing.T) {
 
 func TestSkinUploadRateLimit(t *testing.T) {
 	srv := newTestServer(t)
+	defer srv.Close()
 	h := srv.Handler()
 	_, out := register(t, h, "skinlimit", "supersecret")
 	access := out["access_token"].(string)
@@ -136,6 +141,7 @@ func TestSkinUploadRateLimit(t *testing.T) {
 
 func TestSkinRejectsForeignDelete(t *testing.T) {
 	srv := newTestServer(t)
+	defer srv.Close()
 	h := srv.Handler()
 	_, outA := register(t, h, "skinuserA", "supersecret")
 	accessA := outA["access_token"].(string)

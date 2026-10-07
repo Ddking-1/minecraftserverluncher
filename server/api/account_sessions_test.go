@@ -3,10 +3,13 @@ package api
 import (
 	"net/http"
 	"testing"
+
+	"minecraftserverluncher/server/sessions"
 )
 
 func TestLogoutOtherDevices(t *testing.T) {
 	srv := newTestServer(t)
+	defer srv.Close()
 	h := srv.Handler()
 
 	_, out := register(t, h, "multi", "supersecret")
@@ -45,10 +48,20 @@ func TestLogoutOtherDevices(t *testing.T) {
 
 func TestLogoutOtherDevicesRequiresAuth(t *testing.T) {
 	srv := newTestServer(t)
+	defer srv.Close()
 	h := srv.Handler()
 
 	code, _ := doJSON(t, h, http.MethodPost, "/api/v1/account/sessions/logout-others", nil, "")
 	if code != http.StatusUnauthorized {
 		t.Fatalf("logout-others without token status = %d, want 401", code)
+	}
+}
+
+func TestSessionTokenParsingRejectsMalformedInput(t *testing.T) {
+	ts := sessions.NewService(nil, 0, 0)
+	for _, tok := range []string{"", "not-base64!!", "a===", "AAAA", "AA=="} {
+		if _, err := ts.ParsePair(tok); err == nil {
+			t.Fatalf("ParsePair(%q) should error", tok)
+		}
 	}
 }

@@ -26,6 +26,7 @@ func jsonUnmarshal(b []byte, dst any) error { return json.Unmarshal(b, dst) }
 
 func TestAsyncSkinUploadAccepted(t *testing.T) {
 	srv := newTestServer(t)
+	defer srv.Close()
 	h := srv.Handler()
 
 	_, out := register(t, h, "asynuser", "supersecret")
@@ -62,6 +63,7 @@ func TestAsyncSkinUploadAccepted(t *testing.T) {
 
 func TestTaskStatusNotFound(t *testing.T) {
 	srv := newTestServer(t)
+	defer srv.Close()
 	h := srv.Handler()
 	_, out := register(t, h, "taskuser", "supersecret")
 	access := out["access_token"].(string)
@@ -74,6 +76,7 @@ func TestTaskStatusNotFound(t *testing.T) {
 
 func TestAsyncSkinRejectsNonImage(t *testing.T) {
 	srv := newTestServer(t)
+	defer srv.Close()
 	h := srv.Handler()
 	_, out := register(t, h, "asynbad", "supersecret")
 	access := out["access_token"].(string)

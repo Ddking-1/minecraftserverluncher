@@ -7,6 +7,7 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -98,6 +99,20 @@ func (db *DB) Close() error { return db.sql.Close() }
 
 // Ping verifies that the database is reachable.
 func (db *DB) Ping() error { return db.sql.Ping() }
+
+// SQL returns the underlying database handle for advanced operations such as
+// connection pool tuning. The wrapper still owns migration and model methods.
+func (db *DB) SQL() *sql.DB { return db.sql }
+
+// QueryContext executes a query with the request context.
+func (db *DB) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
+	return db.sql.QueryContext(ctx, query, args...)
+}
+
+// ExecContext executes a statement with the request context.
+func (db *DB) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
+	return db.sql.ExecContext(ctx, query, args...)
+}
 
 // migrate applies the schema idempotently.
 func (db *DB) migrate() error {

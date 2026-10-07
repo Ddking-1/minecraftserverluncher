@@ -7,6 +7,7 @@ import (
 
 func TestAccountMe(t *testing.T) {
 	srv := newTestServer(t)
+	defer srv.Close()
 	h := srv.Handler()
 
 	_, out := register(t, h, "player9", "supersecret")
@@ -29,6 +30,7 @@ func TestAccountMe(t *testing.T) {
 
 func TestAccountMeRequiresAuth(t *testing.T) {
 	srv := newTestServer(t)
+	defer srv.Close()
 	h := srv.Handler()
 
 	code, _ := doJSON(t, h, http.MethodGet, "/api/v1/account/me", nil, "")
@@ -39,6 +41,7 @@ func TestAccountMeRequiresAuth(t *testing.T) {
 
 func TestChangePassword(t *testing.T) {
 	srv := newTestServer(t)
+	defer srv.Close()
 	h := srv.Handler()
 
 	_, out := register(t, h, "pwuser", "supersecret")
@@ -85,6 +88,7 @@ func TestChangePassword(t *testing.T) {
 
 func TestChangePasswordRevokesSessions(t *testing.T) {
 	srv := newTestServer(t)
+	defer srv.Close()
 	h := srv.Handler()
 
 	_, out := register(t, h, "pwuser2", "supersecret")

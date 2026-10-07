@@ -10,6 +10,7 @@ import (
 
 func TestAdminUserListAndDelete(t *testing.T) {
 	srv := newAdminTestServer(t, "secret-admin", "")
+	defer srv.Close()
 	h := srv.Handler()
 
 	if code, _ := register(t, h, "adminlistuser1", "supersecret"); code != http.StatusCreated {
@@ -68,6 +69,7 @@ func TestAdminUserListAndDelete(t *testing.T) {
 
 func TestAdminUserListSearch(t *testing.T) {
 	srv := newAdminTestServer(t, "secret-admin", "")
+	defer srv.Close()
 	h := srv.Handler()
 
 	register(t, h, "searchalpha", "supersecret")

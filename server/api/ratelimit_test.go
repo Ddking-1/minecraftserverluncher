@@ -7,6 +7,8 @@ import (
 
 func TestRateLimiterAllowsUpToLimit(t *testing.T) {
 	l := newRateLimiter(3, time.Minute)
+	defer l.Close()
+
 	for i := 0; i < 3; i++ {
 		if !l.allow("1.2.3.4") {
 			t.Fatalf("request %d should be allowed", i)
@@ -19,6 +21,7 @@ func TestRateLimiterAllowsUpToLimit(t *testing.T) {
 
 func TestRateLimiterIsPerKey(t *testing.T) {
 	l := newRateLimiter(1, time.Minute)
+	defer l.Close()
 	if !l.allow("a") {
 		t.Fatal("a should be allowed")
 	}
@@ -32,6 +35,7 @@ func TestRateLimiterIsPerKey(t *testing.T) {
 
 func TestRateLimiterWindowResets(t *testing.T) {
 	l := newRateLimiter(1, 10*time.Millisecond)
+	defer l.Close()
 	if !l.allow("k") {
 		t.Fatal("first request should be allowed")
 	}
@@ -41,5 +45,16 @@ func TestRateLimiterWindowResets(t *testing.T) {
 	time.Sleep(20 * time.Millisecond)
 	if !l.allow("k") {
 		t.Fatal("request should be allowed after window reset")
+	}
+}
+
+func TestRateLimiterGCLeak(t *testing.T) {
+	l := newRateLimiter(1, 1*time.Millisecond)
+	defer l.Close()
+	l.allow("x")
+	l.allow("y")
+	// Use enough keys and time to trigger potential cleanup backlog.
+	for i := 0; i < 50; i++ {
+		l.allow(string(rune('a' + i)))
 	}
 }
