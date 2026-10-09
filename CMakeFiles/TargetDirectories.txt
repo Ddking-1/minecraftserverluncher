@@ -1,3 +1,0 @@
-D:/projektek/ai/minecraftserverluncher/CMakeFiles/MinecraftLauncher.dir
-D:/projektek/ai/minecraftserverluncher/CMakeFiles/ALL_BUILD.dir
-D:/projektek/ai/minecraftserverluncher/CMakeFiles/ZERO_CHECK.dir

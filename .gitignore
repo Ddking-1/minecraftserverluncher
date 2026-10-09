@@ -39,4 +39,11 @@ mcp.json
 # Packaged installer artifacts and staged Qt runtime (built, not source)
 packaging/nsis/*.exe
 packaging/nsis/*.dll
-packaging/nsis/platforms/
+packaging/nsis/platforms/CMakeFiles/
+CMakeCache.txt
+server/tmp/
+working/
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+*.dir/
