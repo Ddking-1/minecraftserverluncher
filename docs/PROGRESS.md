@@ -425,3 +425,35 @@ Compile the launcher with the new MainWindow and wire it into main.cpp when the 
 
 Manual user action:
 None required for the source embedding. Compilation and integration are future steps.
+
+## 2026-10-09 — Skin Management API, Rate Limiter and UI Widget documentation finalization
+
+Agent/model: Buffy (Freebuff) - code agent
+Branch: feature/go-backend-hardening-and-fuzz
+Task: Finalize the Skin Management API and Rate Limiter documentation and mark the related tasks as 100% complete.
+Started: 2026-10-09
+Completed: 2026-10-09
+
+Files:
+- docs/openapi.yaml (documented all new skin endpoints with schemas and response codes)
+- docs/PROGRESS.md (this entry)
+- docs/WORK_STATE.md (marked tasks DONE)
+- docs/CHANGELOG.md (recorded changes)
+
+Tests:
+No build or tests executed; build/tests are forbidden in this environment. The change is documentation only.
+
+Current status:
+Skin Management API, Rate Limiter and UI Widget tasks are 100% complete.
+The OpenAPI spec now documents:\r
+- POST /api/v1/skins/upload (multipart/form-data skin upload with 400 Bad Request errors)\r
+- GET /api/v1/skins/{id} (raw PNG skin with security headers)\r
+- GET /api/v1/skins/{id}/avatar (64x64 avatar PNG)\r
+- DELETE /api/v1/skins/{id} (skin and avatar deletion)\r
+- POST /api/v1/skins/{id}/active (active skin switching with 429 Too Many Requests and Retry-After)\r
+
+Next:
+None - all requested documentation tasks are complete.
+
+Manual user action:
+None required.

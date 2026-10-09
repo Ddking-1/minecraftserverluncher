@@ -97,6 +97,9 @@ Backend:
 - Added a Qt6 `MainWindow` skeleton under `launcher/gui/` that hosts `SkinPreviewWidget` and connects the signal to update a permanent status label and the status bar.
 - This embedding is source-only on branch `feature/go-backend-hardening-and-fuzz` and is not yet compiled or wired into `main.cpp`.
 
+### Skin Management API, Rate Limiter and UI Widget documentation finalization
+
+- docs/openapi.yaml: documented all new Skin Management API endpoints with their schemas and response codes:\r\n  - POST /api/v1/skins/upload (multipart/form-data skin upload with 400 Bad Request errors)\r\n  - GET /api/v1/skins/{id} (raw PNG skin with security headers)\r\n  - GET /api/v1/skins/{id}/avatar (64x64 avatar PNG)\r\n  - DELETE /api/v1/skins/{id} (skin and avatar deletion)\r\n  - POST /api/v1/skins/{id}/active (active skin switching with 429 Too Many Requests and Retry-After)\r\n- Marked Skin Management API, Rate Limiter and UI Widget tasks as 100% complete in docs/PROGRESS.md, docs/WORK_STATE.md and docs/CHANGELOG.md.\r\n
 ### Launcher CMake / Qt6 build fix
 
 - Fixed `launcher/CMakeLists.txt`: added `find_package(Qt6 REQUIRED COMPONENTS

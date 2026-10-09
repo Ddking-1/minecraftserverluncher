@@ -31,6 +31,11 @@ Phase 3 tasks (all DONE):
 - P3-09 Launcher memory/JVM settings validation + tests
 - P3-10 Phase 3 final verification + documentation sync
 
+Skin Management API, Rate Limiter and UI Widget tasks (all DONE):
+- Skin Management API (backend handlers + OpenAPI contract) - DONE
+- Rate Limiter (429 Too Many Requests + Retry-After) - DONE
+- UI Widget (SkinPreviewWidget + MainWindow embedding) - DONE
+
 Current step:
 - Embedding SkinPreviewWidget into a MainWindow skeleton on branch
   feature/go-backend-hardening-and-fuzz (commit 449bc08). The SkinPreviewWidget
