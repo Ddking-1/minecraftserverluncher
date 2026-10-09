@@ -5,7 +5,8 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Network Widgets Test)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Network Widgets)
+
 find_package(LibFuzzer QUIET)
 
 enable_testing()
@@ -151,7 +152,10 @@ add_subdirectory(minecraft)
 
 add_executable(MinecraftLauncher
     main.cpp
+    gui/MainWindow.cpp
+    gui/MainWindow.h
     ui/SkinPreviewWidget.cpp
+    ui/SkinPreviewWidget.h
     core/BaseInstance.cpp
     core/InstanceList.cpp
     core/InstancePersistence.cpp
