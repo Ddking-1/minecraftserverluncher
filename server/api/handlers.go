@@ -33,6 +33,10 @@ type Server struct {
 	queue    *skinQueue
 	bg       []func()
 	mu       sync.Mutex
+
+	// Skin/v1 tooling wired directly to the server/skins package.
+	SkinHandler        *SkinHandler
+	PterodactylWebhook *PterodactylWebhook
 }
 
 // NewServer constructs the API server.
@@ -113,6 +117,17 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /readyz", s.handleReadyz)
 	mux.HandleFunc("GET /api/v1/updates/manifest", s.limit(s.handleUpdatesManifest))
 	mux.Handle("/", web.Handler())
+
+	if s.SkinHandler != nil {
+		mux.HandleFunc("POST /api/v1/skins/upload", s.SkinHandler.handleUpload)
+		mux.HandleFunc("GET /api/v1/skins/{id}", s.SkinHandler.handleGetSkin)
+		mux.HandleFunc("GET /api/v1/skins/{id}/avatar", s.SkinHandler.handleGetAvatar)
+		mux.HandleFunc("DELETE /api/v1/skins/{id}", s.SkinHandler.handleDeleteSkin)
+	}
+	if s.PterodactylWebhook != nil {
+		mux.HandleFunc("POST /api/v1/webhooks/pterodactyl", s.PterodactylWebhook.Handle())
+	}
+
 	return s.withSecurityHeaders(s.withRecovery(withRequestID(s.withRequestLog(mux))))
 }
 

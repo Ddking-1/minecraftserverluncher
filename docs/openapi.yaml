@@ -1,0 +1,1971 @@
+openapi: 3.0.3
+info:
+  title: Freebuff Auth Backend API
+  description: |
+    REST API for the Freebuff private Minecraft network auth backend.
+
+    Provides user registration, login, session refresh/logout, device management,
+    and skin upload/retrieval. All authenticated endpoints require a Bearer access
+    token issued by `/api/v1/auth/login` or `/api/v1/auth/register`.
+
+    ## Security model
+    - Access tokens are short-lived (default 15 min) and validated server-side.
+    - Refresh tokens are long-lived (default 30 days, capped) and rotated on use.
+    - Only SHA-256 digests of tokens are persisted; raw tokens never leave the
+      client except in transit over TLS.
+    - Passwords are hashed with bcrypt (configurable cost, default 12).
+    - Hardware IDs can be banned server-side; banned HWIDs cause login to fail
+      with 403.
+  version: 1.0.0
+  contact:
+    name: Freebuff Auth Backend Maintainers
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+  - url: https://auth.freebuff.example
+    description: Production server (HTTPS required)
+
+security:
+  - BearerAuth: []
+
+tags:
+  - name: Authentication
+    description: Registration, login, token refresh, logout
+  - name: Devices
+    description: Device identity registration and management
+  - name: Skins
+    description: Minecraft skin upload, list, retrieve, and delete
+  - name: Account
+    description: Account profile and session management
+  - name: Admin
+    description: Hardware ID ban management and user administration
+  - name: Health
+    description: Liveness and readiness probes
+
+paths:
+  # =========================================================================
+  # Authentication
+  # =========================================================================
+
+  /api/v1/auth/register:
+    post:
+      tags: [Authentication]
+      summary: Register a new account
+      description: |
+        Creates a new user account and returns an access + refresh token pair
+        for the registering device. The username must be 3-32 characters and
+        contain only `[a-zA-Z0-9_-]`. The password must be at least 8 characters.
+
+        On success the response also registers/updates the supplied `device_id`
+        (if non-empty) on the account.
+      operationId: register
+      parameters:
+        - $ref: '#/components/parameters/RateLimit'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+            examples:
+              desktop:
+                summary: Desktop registration
+                value:
+                  username: mcinigi
+                  password: correct-horse-battery-staple
+                  device_id: dev-mcinigi-01
+                  device_name: "Márti's Desktop"
+      responses:
+        '201':
+          description: Account created and first session issued.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+              examples:
+                created:
+                  $ref: '#/components/examples/TokenResponseExample'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Username already taken.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                conflict:
+                  value:
+                    error: "username already taken"
+        '422':
+          description: Unprocessable entity — request body parsed but semantically invalid (bad username or password).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                bad_username:
+                  value:
+                    error: "invalid username"
+                bad_password:
+                  value:
+                    error: "password must be at least 8 characters"
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/auth/login:
+    post:
+      tags: [Authentication]
+      summary: Log in with username and password
+      description: |
+        Authenticates an existing account and issues a fresh access + refresh
+        token pair. The optional `device_id` and `device_name` fields associate
+        the login with a device; if the HWID is banned the request is rejected
+        with 403.
+
+        To prevent username enumeration, the response time is kept constant
+        whether the account exists or not (a dummy bcrypt comparison is run for
+        unknown usernames).
+      operationId: login
+      parameters:
+        - $ref: '#/components/parameters/RateLimit'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            examples:
+              desktop_with_hwid:
+                summary: Login from a known device
+                value:
+                  username: mcinigi
+                  password: correct-horse-battery-staple
+                  device_id: dev-mcinigi-01
+                  device_name: "Márti's Desktop"
+              minimal:
+                summary: Login with no device metadata
+                value:
+                  username: mcinigi
+                  password: correct-horse-battery-staple
+      responses:
+        '200':
+          description: Login successful; new token pair issued.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+              examples:
+                ok:
+                  $ref: '#/components/examples/TokenResponseExample'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Invalid credentials (wrong password, unknown username, or malformed body).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalid_credentials:
+                  value:
+                    error: "invalid credentials"
+        '403':
+          description: The account or the supplied hardware ID is banned.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                banned:
+                  value:
+                    error: "Account or hardware is banned"
+        '422':
+          description: Unprocessable entity — semantically invalid request (e.g. missing required fields).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/auth/refresh:
+    post:
+      tags: [Authentication]
+      summary: Refresh an access token using a refresh token
+      description: |
+        Takes a valid refresh token and returns a new access token and a NEW
+        refresh token (rotation). The old refresh token is invalidated on use,
+        so a stolen refresh token is usable only once.
+
+        Refresh tokens are SHA-256 hashed before lookup. Unknown, expired, or
+        already-revoked refresh tokens return 401.
+      operationId: refresh
+      parameters:
+        - $ref: '#/components/parameters/RateLimit'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+            examples:
+              valid:
+                summary: Refresh with a valid refresh token
+                value:
+                  refresh_token: "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNrxPvr5gSWTDY7NxhECuswnEi7C2pHKnFlRIialQ"
+      responses:
+        '200':
+          description: Refresh successful; new token pair returned.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+              examples:
+                rotated:
+                  $ref: '#/components/examples/TokenResponseExample'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Invalid, expired, or already-used refresh token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalid_refresh:
+                  value:
+                    error: "invalid or expired refresh token"
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/auth/logout:
+    post:
+      tags: [Authentication]
+      summary: Log out the current session
+      description: |
+        Revokes the session identified by the supplied refresh token. After
+        logout the associated access token is also invalidated. The call is
+        idempotent: revoking an already-revoked or unknown refresh token
+        succeeds (returns 200).
+      operationId: logout
+      parameters:
+        - $ref: '#/components/parameters/RateLimit'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogoutRequest'
+            examples:
+              revoke:
+                summary: Revoke a specific session
+                value:
+                  refresh_token: "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNrxPvr5gSWTDY7NxhECuswnEi7C2pHKnFlRIialQ"
+      responses:
+        '200':
+          description: Session revoked (or already revoked).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ok"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/auth/logout-all:
+    post:
+      tags: [Authentication]
+      summary: Log out from all devices
+      description: |
+        Revokes every session for the authenticated account. Requires a valid
+        Bearer access token. After this call all access and refresh tokens for
+        the account are invalidated.
+      operationId: logoutAll
+      parameters:
+        - $ref: '#/components/parameters/RateLimit'
+      responses:
+        '200':
+          description: All sessions revoked.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ok"
+        '401':
+          description: Missing or invalid Bearer access token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                missing_token:
+                  value:
+                    error: "missing bearer token"
+                invalid_token:
+                  value:
+                    error: "invalid or expired access token"
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/auth/forgot:
+    post:
+      tags: [Authentication]
+      summary: Request a password reset
+      description: |
+        Initiates a password reset flow for an existing account. A reset token
+        is issued and its hash stored; the token itself is intended to be sent
+        out-of-band (e.g. email). This endpoint is rate-limited.
+      operationId: forgotPassword
+      parameters:
+        - $ref: '#/components/parameters/RateLimit'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username]
+              properties:
+                username:
+                  type: string
+                  description: Account username to reset.
+                  minLength: 3
+                  maxLength: 32
+            examples:
+              request:
+                value:
+                  username: mcinigi
+      responses:
+        '200':
+          description: Reset requested (success is silent to avoid enumeration).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ok"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/auth/reset:
+    post:
+      tags: [Authentication]
+      summary: Apply a password reset token
+      description: |
+        Uses a valid password-reset token to set a new password for the account.
+        The token is single-use and time-limited.
+      operationId: resetPassword
+      parameters:
+        - $ref: '#/components/parameters/RateLimit'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, new_password]
+              properties:
+                token:
+                  type: string
+                  description: The password-reset token received out-of-band.
+                new_password:
+                  type: string
+                  description: New password (at least 8 characters).
+                  minLength: 8
+            examples:
+              apply:
+                value:
+                  token: "reset-token-here"
+                  new_password: new-super-secret-password
+      responses:
+        '200':
+          description: Password changed; all sessions revoked.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "password changed"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Invalid or expired reset token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # =========================================================================
+  # Account
+  # =========================================================================
+
+  /api/v1/account/me:
+    get:
+      tags: [Account]
+      summary: Get the current account profile
+      description: |
+        Returns the authenticated account's id, username, and creation time.
+        Requires a valid Bearer access token.
+      operationId: accountMe
+      responses:
+        '200':
+          description: Account profile.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountProfile'
+              examples:
+                profile:
+                  value:
+                    id: 1
+                    username: mcinigi
+                    created_at: "2026-10-05T12:00:00Z"
+        '401':
+          description: Missing or invalid Bearer access token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Account not found (should not normally occur for a valid token).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/account/password:
+    post:
+      tags: [Account]
+      summary: Change the account password
+      description: |
+        Changes the password for the authenticated account. Requires the current
+        password for verification. On success all sessions for the account are
+        revoked (forced logout on all devices).
+      operationId: changePassword
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordChangeRequest'
+            examples:
+              change:
+                value:
+                  current_password: old-secret
+                  new_password: new-super-secret-password
+      responses:
+        '200':
+          description: Password changed; all sessions revoked.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "password changed"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Invalid current password or missing/invalid Bearer token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/account/sessions:
+    get:
+      tags: [Account]
+      summary: List active sessions for the account
+      description: |
+        Returns every session (login) for the authenticated account, including
+        device association, revocation status, and expiry times. Requires a
+        valid Bearer access token.
+      operationId: listSessions
+      responses:
+        '200':
+          description: List of sessions.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionList'
+              examples:
+                sessions:
+                  value:
+                    sessions:
+                      - id: 1
+                        device_id: 1
+                        revoked: false
+                        created_at: "2026-10-05T12:00:00Z"
+                        last_used_at: "2026-10-05T12:05:00Z"
+                        refresh_expires_at: "2026-11-04T12:00:00Z"
+        '401':
+          description: Missing or invalid Bearer access token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/account/sessions/revoke:
+    post:
+      tags: [Account]
+      summary: Revoke a single session
+      description: |
+        Revokes a specific session by its server-side id. The caller must own
+        the session; revoking another account's session returns 403.
+      operationId: revokeSession
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [session_id]
+              properties:
+                session_id:
+                  type: integer
+                  format: int64
+                  description: Server-side session identifier.
+            examples:
+              revoke:
+                value:
+                  session_id: 1
+      responses:
+        '200':
+          description: Session revoked.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "revoked"
+        '400':
+          description: Invalid session id (zero).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing or invalid Bearer access token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: The session does not belong to the authenticated account.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Session not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/account/sessions/logout-others:
+    post:
+      tags: [Account]
+      summary: Log out from all other devices
+      description: |
+        Revokes every session for the authenticated account except the current
+        one (identified by the presented access token). Requires a valid Bearer
+        access token.
+      operationId: logoutOtherDevices
+      responses:
+        '200':
+          description: All other sessions revoked.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "revoked other devices"
+        '401':
+          description: Missing, invalid, or expired access token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # =========================================================================
+  # Devices
+  # =========================================================================
+
+  /api/v1/devices:
+    get:
+      tags: [Devices]
+      summary: List devices registered to the account
+      description: |
+        Returns all devices associated with the authenticated account. Requires
+        a valid Bearer access token.
+
+        **Note:** The current server ships device registration on login/register
+        but the GET/DELETE `/api/v1/devices` endpoints are planned. The OpenAPI
+        below documents the intended contract; implement if/when the backend
+        adds dedicated device-listing and device-deletion handlers.
+      operationId: listDevices
+      responses:
+        '200':
+          description: List of devices.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceList'
+              examples:
+                devices:
+                  value:
+                    devices:
+                      - id: 1
+                        device_id: "dev-mcinigi-01"
+                        device_name: "Márti's Desktop"
+                        public_key: ""
+                        created_at: "2026-10-05T12:00:00Z"
+                        last_seen: "2026-10-05T12:05:00Z"
+        '401':
+          description: Missing or invalid Bearer access token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      tags: [Devices]
+      summary: Delete a device
+      description: |
+        Removes a device registration from the account. The device_id is the
+        client-supplied stable identifier. Requires a valid Bearer access token.
+
+        **Note:** This endpoint documents the intended contract. Implement the
+        handler when device deletion is added to the backend.
+      operationId: deleteDevice
+      parameters:
+        - name: device_id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Client-supplied stable device identifier.
+          example: dev-mcinigi-01
+      responses:
+        '200':
+          description: Device deleted (or not found — idempotent).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "deleted"
+        '401':
+          description: Missing or invalid Bearer access token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # =========================================================================
+  # Skins
+  # =========================================================================
+
+  /api/v1/skins:
+    get:
+      tags: [Skins]
+      summary: List the authenticated account's skins
+      description: |
+        Returns every skin variant uploaded by the authenticated account, with
+        content type and timestamps. Requires a valid Bearer access token.
+      operationId: listSkins
+      responses:
+        '200':
+          description: List of skin variants.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SkinList'
+              examples:
+                skins:
+                  value:
+                    skins:
+                      - variant: "default"
+                        content_type: "image/png"
+                        created_at: "2026-10-05T12:00:00Z"
+                        updated_at: "2026-10-05T12:00:00Z"
+        '401':
+          description: Missing or invalid Bearer access token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/skins/{variant}:
+    put:
+      tags: [Skins]
+      summary: Upload or replace a skin variant
+      description: |
+        Uploads a Minecraft skin (PNG 64x64 or 64x32) for the authenticated
+        account under the given variant name. The body is the raw image bytes.
+
+        Validation:
+        - Content-Type is NOT trusted; the image is sniffed via magic bytes.
+        - Pixel dimensions are validated against the Minecraft skin standard.
+        - Size is capped at 1 MiB.
+        - The authenticated account can upload at most 2 skins per 3-hour window.
+
+        Requires a valid Bearer access token.
+      operationId: uploadSkin
+      parameters:
+        - name: variant
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/SkinVariant'
+          description: Skin variant name (lowercase letters, digits, dashes; 1-32 chars).
+          example: default
+      requestBody:
+        required: true
+        content:
+          image/png:
+            schema:
+              type: string
+              format: binary
+            examples:
+              skin64x64:
+                summary: 64x64 PNG skin
+                value:
+                  $binary: "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAnSURBVHhe7cEBDQAAAMKg909tDjegAAAAAAAAAAAAAAAAAAAAgHcDQEAAAVkKewwAAAAASUVORK5CYII="
+          image/jpeg:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '200':
+          description: Skin saved.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "saved"
+        '400':
+          description: Invalid variant name, empty body, or invalid skin dimensions.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                bad_variant:
+                  value:
+                    error: "invalid variant"
+                bad_dimensions:
+                  value:
+                    error: "invalid skin dimensions (must be 64x64 or 64x32)"
+        '401':
+          description: Missing or invalid Bearer access token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '413':
+          description: Skin payload exceeds 1 MiB.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                too_large:
+                  value:
+                    error: "skin too large"
+        '415':
+          description: Body is not a PNG or JPEG (magic-byte sniffing).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                not_image:
+                  value:
+                    error: "not a PNG or JPEG image"
+        '429':
+          description: Skin upload rate limit exceeded (2 per 3 hours).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                rate_limited:
+                  value:
+                    error: "skin upload limit reached (max 2 per 3 hours)"
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/skins/{account}/{variant}:
+    get:
+      tags: [Skins]
+      summary: Retrieve a public skin
+      description: |
+        Returns the raw skin image bytes for any account's public skin variant.
+        Requires a valid Bearer access token (any authenticated user can fetch
+        public skins). The response uses the stored Content-Type and is
+        cacheable (public, max-age=3600).
+      operationId: getSkin
+      parameters:
+        - name: account
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Account username.
+          example: mcinigi
+        - name: variant
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/SkinVariant'
+          description: Skin variant name.
+          example: default
+      responses:
+        '200':
+          description: Skin image bytes.
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+          headers:
+            Cache-Control:
+              description: Public caching directive.
+              schema:
+                type: string
+                example: "public, max-age=3600"
+        '400':
+          description: Invalid variant name.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing or invalid Bearer access token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Account or skin variant not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                not_found:
+                  value:
+                    error: "skin not found"
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/skins/upload/{variant}:
+    post:
+      tags: [Skins]
+      summary: Queue an asynchronous skin upload
+      description: |
+        Queues a skin upload for background processing (reserved for future
+        heavy-processing pipelines). The current backend implements synchronous
+        PUT /api/v1/skins/{variant}; this endpoint documents the intended async
+        contract. Requires a valid Bearer access token.
+      operationId: asyncSkinUpload
+      parameters:
+        - name: variant
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/SkinVariant'
+          example: default
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '202':
+          description: Upload accepted and queued.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  task_id:
+                    type: string
+                    description: Task identifier for polling status.
+                  status:
+                    type: string
+                    example: "queued"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Missing or invalid Bearer access token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '413':
+          $ref: '#/components/responses/EntityTooLarge'
+        '415':
+          description: Not a PNG or JPEG.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/skins/{variant}:
+    delete:
+      tags: [Skins]
+      summary: Delete a skin variant
+      description: |
+        Deletes the authenticated account's skin variant. Requires a valid
+        Bearer access token. Deleting a variant that does not exist for the
+        account is not an error (idempotent success).
+      operationId: deleteSkin
+      parameters:
+        - name: variant
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/SkinVariant'
+          example: default
+      responses:
+        '200':
+          description: Skin deleted (or did not exist).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "deleted"
+        '400':
+          description: Invalid variant name.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing or invalid Bearer access token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # =========================================================================
+  # Tasks / async status
+  # =========================================================================
+
+  /api/v1/tasks/{id}:
+    get:
+      tags: [Tasks]
+      summary: Poll the status of an async task
+      description: |
+        Returns the current status of a background task (e.g. an async skin
+        processing job). Requires a valid Bearer access token.
+      operationId: taskStatus
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Task identifier returned at submission time.
+          example: "task-abc123"
+      responses:
+        '200':
+          description: Task status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskStatus'
+        '401':
+          description: Missing or invalid Bearer access token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Task not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # =========================================================================
+  # Proxy / server-side auth
+  # =========================================================================
+
+  /api/v1/proxy/auth:
+    post:
+      tags: [Proxy]
+      summary: Validate an access token (server-side, admin-gated)
+      description: |
+        Called by the Velocity proxy plugin to validate an access token
+        presented by a logged-in launcher. This endpoint is gated by the admin
+        token (X-Admin-Token header); it is disabled entirely when
+        AUTH_ADMIN_TOKEN is unset. It never returns account data or tokens,
+        only "ok" or "denied".
+      operationId: proxyAuth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [access_token]
+              properties:
+                access_token:
+                  type: string
+                  description: Access token to validate.
+            examples:
+              check:
+                value:
+                  access_token: "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNrxPvr5gSWTDY7NxhECuswnEi7C2pHKnFlRIialQ"
+      responses:
+        '200':
+          description: Validation result.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [ok, denied]
+                    example: "ok"
+        '401':
+          description: Missing or invalid admin token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # =========================================================================
+  # Admin: HWID bans
+  # =========================================================================
+
+  /api/admin/hwid/ban:
+    post:
+      tags: [Admin]
+      summary: Ban a hardware ID
+      description: |
+        Adds a device_id to the HWID ban list. Requests must present the admin
+        token in the X-Admin-Token header. When AUTH_ADMIN_TOKEN is unset this
+        endpoint returns 404 (disabled).
+      operationId: banHWID
+      parameters:
+        - $ref: '#/components/parameters/AdminToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [device_id]
+              properties:
+                device_id:
+                  type: string
+                  description: Hardware/device identifier to ban.
+            examples:
+              ban:
+                value:
+                  device_id: "banned-device-01"
+      responses:
+        '200':
+          description: HWID banned (or already banned — idempotent).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "banned"
+        '401':
+          description: Missing or invalid admin token (or endpoint disabled).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Admin endpoints disabled (AUTH_ADMIN_TOKEN unset).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/admin/hwid/unban:
+    post:
+      tags: [Admin]
+      summary: Unban a hardware ID
+      description: |
+        Removes a device_id from the HWID ban list. Admin-gated; disabled when
+        AUTH_ADMIN_TOKEN is unset.
+      operationId: unbanHWID
+      parameters:
+        - $ref: '#/components/parameters/AdminToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [device_id]
+              properties:
+                device_id:
+                  type: string
+            examples:
+              unban:
+                value:
+                  device_id: "banned-device-01"
+      responses:
+        '200':
+          description: HWID unbanned.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "unbanned"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Admin endpoints disabled.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/admin/hwid/bans:
+    get:
+      tags: [Admin]
+      summary: List all banned hardware IDs
+      description: |
+        Returns every banned device_id, newest first. Admin-gated; disabled when
+        AUTH_ADMIN_TOKEN is unset.
+      operationId: listHWIDBans
+      parameters:
+        - $ref: '#/components/parameters/AdminToken'
+      responses:
+        '200':
+          description: List of banned device IDs.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HWIDBanList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Admin endpoints disabled.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # =========================================================================
+  # Admin: users
+  # =========================================================================
+
+  /api/admin/users:
+    get:
+      tags: [Admin]
+      summary: List all accounts
+      description: |
+        Returns every registered account (id, username, creation time). Admin-
+        gated; disabled when AUTH_ADMIN_TOKEN is unset.
+      operationId: adminListUsers
+      parameters:
+        - $ref: '#/components/parameters/AdminToken'
+      responses:
+        '200':
+          description: List of accounts.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUserList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Admin endpoints disabled.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/admin/users/{id}:
+    delete:
+      tags: [Admin]
+      summary: Delete an account
+      description: |
+        Permanently deletes an account by its server-side id. Admin-gated;
+        disabled when AUTH_ADMIN_TOKEN is unset.
+      operationId: adminDeleteUser
+      parameters:
+        - $ref: '#/components/parameters/AdminToken'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: Account identifier.
+          example: 1
+      responses:
+        '200':
+          description: Account deleted (or not found — idempotent).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "deleted"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Admin endpoints disabled, or account not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # =========================================================================
+  # Server control (admin)
+  # =========================================================================
+
+  /api/server/start:
+    post:
+      tags: [Admin]
+      summary: Start the Minecraft server
+      description: |
+        Invokes the configured server-control script (AUTH_PTERO_SCRIPT) to
+        start the Minecraft server. Admin-gated; disabled when AUTH_ADMIN_TOKEN
+        is unset. Command output is never echoed to the client. Only the script
+        path is passed as a single argv element; no shell is involved.
+      operationId: startServer
+      parameters:
+        - $ref: '#/components/parameters/AdminToken'
+      responses:
+        '200':
+          description: Server start invoked.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "server started"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Admin endpoints disabled.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server-start script failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Server-start script timed out (30 s context deadline).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # =========================================================================
+  # Health
+  # =========================================================================
+
+  /healthz:
+    get:
+      tags: [Health]
+      summary: Liveness probe
+      description: |
+        Always returns 200 while the process is running. Not protected by rate
+        limiting or authentication.
+      operationId: healthz
+      responses:
+        '200':
+          description: Process alive.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ok"
+
+  /readyz:
+    get:
+      tags: [Health]
+      summary: Readiness probe
+      description: |
+        Returns 200 only when the database is reachable. Used by orchestrators
+        to decide whether to send traffic.
+      operationId: readyz
+      responses:
+        '200':
+          description: Database reachable.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ready"
+        '503':
+          description: Database unavailable.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "database unavailable"
+
+  /api/v1/updates/manifest:
+    get:
+      tags: [Updates]
+      summary: Launcher update manifest
+      description: |
+        Returns the signed update manifest used by the launcher to check for
+        new versions. The manifest includes the current version, installer URL,
+        SHA-256, and an HMAC-SHA256 signature computed with AUTH_UPDATE_SIGNING_KEY.
+      operationId: updatesManifest
+      responses:
+        '200':
+          description: Update manifest.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateManifest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+# =============================================================================
+# Components
+# =============================================================================
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT-like opaque token
+      description: |
+        Bearer access token issued by `/api/v1/auth/login` or
+        `/api/v1/auth/register`. The token is an opaque base64url-encoded
+        random value (32 bytes of entropy). Only its SHA-256 hash is stored
+        server-side. Include as `Authorization: Bearer <token>`.
+
+  parameters:
+    RateLimit:
+      name: RateLimit
+      in: header
+      required: false
+      description: |
+        All authentication endpoints are protected by a generic rate limiter
+        (default 10 requests/minute per IP). Exceeding the limit returns 429.
+        The limiter state is in-memory; restarts reset it.
+      schema:
+        type: string
+
+    AdminToken:
+      name: X-Admin-Token
+      in: header
+      required: true
+      description: |
+        Admin token value configured via AUTH_ADMIN_TOKEN. When this environment
+        variable is unset, all `/api/admin/*` and `/api/server/*` endpoints are
+        disabled and return 404.
+      schema:
+        type: string
+      example: "super-secret-admin-token"
+
+  schemas:
+    RegisterRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          description: |
+            Account username. 3-32 characters, lowercase/uppercase ASCII letters,
+            digits, underscores, and hyphens only.
+          minLength: 3
+          maxLength: 32
+          pattern: "^[a-zA-Z0-9_-]+$"
+          example: mcinigi
+        password:
+          type: string
+          description: Account password (at least 8 characters).
+          minLength: 8
+          example: correct-horse-battery-staple
+        device_id:
+          type: string
+          description: |
+            Optional client-supplied stable device identifier. If provided, the
+            device is registered/updated on the account.
+          example: dev-mcinigi-01
+        device_name:
+          type: string
+          description: Optional human-readable device name.
+          example: "Márti's Desktop"
+
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          description: Account username.
+          minLength: 3
+          maxLength: 32
+          example: mcinigi
+        password:
+          type: string
+          description: Account password.
+          example: correct-horse-battery-staple
+        device_id:
+          type: string
+          description: |
+            Optional client-supplied stable device identifier. If the HWID is
+            banned, login is rejected with 403.
+          example: dev-mcinigi-01
+        device_name:
+          type: string
+          description: Optional human-readable device name.
+          example: "Márti's Desktop"
+
+    RefreshRequest:
+      type: object
+      required: [refresh_token]
+      properties:
+        refresh_token:
+          type: string
+          description: |
+            Opaque refresh token previously issued by login or register. Only
+            its SHA-256 hash is stored server-side.
+          example: "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNrxPvr5gSWTDY7NxhECuswnEi7C2pHKnFlRIialQ"
+
+    LogoutRequest:
+      type: object
+      required: [refresh_token]
+      properties:
+        refresh_token:
+          type: string
+          description: Refresh token to revoke.
+          example: "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNrxPvr5gSWTDY7NxhECuswnEi7C2pHKnFlRIialQ"
+
+    TokenResponse:
+      type: object
+      description: Access + refresh token pair returned by login/register/refresh.
+      required: [access_token, refresh_token, token_type, expires_in]
+      properties:
+        access_token:
+          type: string
+          description: Short-lived Bearer access token.
+          example: "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNrxPvr5gSWTDY7NxhECuswnEi7C2pHKnFlRIialQ"
+        refresh_token:
+          type: string
+          description: Long-lived refresh token (rotate on use).
+          example: "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNrxPvr5gSWTDY7NxhECuswnEi7C2pHKnFlRIialQ"
+        token_type:
+          type: string
+          enum: [Bearer]
+          example: Bearer
+        expires_in:
+          type: integer
+          format: int64
+          description: Access token lifetime in seconds.
+          example: 900
+
+    ErrorResponse:
+      type: object
+      description: Standard error payload used for all non-2xx responses.
+      required: [error]
+      properties:
+        error:
+          type: string
+          description: Human-readable error message.
+          example: "invalid credentials"
+
+    AccountProfile:
+      type: object
+      description: Public account profile for the authenticated user.
+      required: [id, username, created_at]
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        username:
+          type: string
+          example: mcinigi
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-10-05T12:00:00Z"
+
+    PasswordChangeRequest:
+      type: object
+      required: [current_password, new_password]
+      properties:
+        current_password:
+          type: string
+          description: Current account password for verification.
+          example: old-secret
+        new_password:
+          type: string
+          description: New password (at least 8 characters).
+          minLength: 8
+          example: new-super-secret-password
+
+    SessionList:
+      type: object
+      required: [sessions]
+      properties:
+        sessions:
+          type: array
+          items:
+            $ref: '#/components/schemas/SessionInfo'
+          example:
+            - id: 1
+              device_id: 1
+              revoked: false
+              created_at: "2026-10-05T12:00:00Z"
+              last_used_at: "2026-10-05T12:05:00Z"
+              refresh_expires_at: "2026-11-04T12:00:00Z"
+
+    SessionInfo:
+      type: object
+      description: Server-side session metadata.
+      required: [id, revoked, created_at, last_used_at, refresh_expires_at]
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        device_id:
+          type: integer
+          format: int64
+          nullable: true
+          description: Internal device id, or null when not associated.
+          example: 1
+        revoked:
+          type: boolean
+          example: false
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-10-05T12:00:00Z"
+        last_used_at:
+          type: string
+          format: date-time
+          example: "2026-10-05T12:05:00Z"
+        refresh_expires_at:
+          type: string
+          format: date-time
+          example: "2026-11-04T12:00:00Z"
+
+    DeviceList:
+      type: object
+      required: [devices]
+      properties:
+        devices:
+          type: array
+          items:
+            $ref: '#/components/schemas/DeviceInfo'
+          example:
+            - id: 1
+              device_id: "dev-mcinigi-01"
+              device_name: "Márti's Desktop"
+              public_key: ""
+              created_at: "2026-10-05T12:00:00Z"
+              last_seen: "2026-10-05T12:05:00Z"
+
+    DeviceInfo:
+      type: object
+      description: Device registration record.
+      required: [id, device_id, device_name, public_key, created_at, last_seen]
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        device_id:
+          type: string
+          description: Client-supplied stable device identifier.
+          example: dev-mcinigi-01
+        device_name:
+          type: string
+          example: "Márti's Desktop"
+        public_key:
+          type: string
+          description: Optional registered device public key (reserved for future device-bound authorization).
+          example: ""
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-10-05T12:00:00Z"
+        last_seen:
+          type: string
+          format: date-time
+          example: "2026-10-05T12:05:00Z"
+
+    SkinList:
+      type: object
+      required: [skins]
+      properties:
+        skins:
+          type: array
+          items:
+            $ref: '#/components/schemas/SkinInfo'
+          example:
+            - variant: default
+              content_type: image/png
+              created_at: "2026-10-05T12:00:00Z"
+              updated_at: "2026-10-05T12:00:00Z"
+
+    SkinInfo:
+      type: object
+      description: Skin variant metadata.
+      required: [variant, content_type, created_at, updated_at]
+      properties:
+        variant:
+          type: string
+          example: default
+        content_type:
+          type: string
+          example: image/png
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-10-05T12:00:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          example: "2026-10-05T12:00:00Z"
+
+    SkinVariant:
+      type: string
+      description: |
+        Skin variant name. Lowercase ASCII letters, digits, and dashes only.
+        1-32 characters.
+      minLength: 1
+      maxLength: 32
+      pattern: "^[a-z0-9-]+$"
+      example: default
+
+    TaskStatus:
+      type: object
+      required: [id, status]
+      properties:
+        id:
+          type: string
+          example: task-abc123
+        status:
+          type: string
+          enum: [queued, processing, completed, failed]
+          example: completed
+        result:
+          type: object
+          additionalProperties: true
+          description: Task-specific result (present when status is completed).
+
+    HWIDBanList:
+      type: object
+      required: [banned_device_ids]
+      properties:
+        banned_device_ids:
+          type: array
+          items:
+            type: string
+          example:
+            - banned-device-01
+            - banned-device-02
+
+    AdminUserList:
+      type: object
+      required: [users]
+      properties:
+        users:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminUserInfo'
+          example:
+            - id: 1
+              username: mcinigi
+              created_at: "2026-10-05T12:00:00Z"
+
+    AdminUserInfo:
+      type: object
+      required: [id, username, created_at]
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        username:
+          type: string
+          example: mcinigi
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-10-05T12:00:00Z"
+
+    UpdateManifest:
+      type: object
+      required: [version, installer_url, installer_sha256, signature]
+      properties:
+        version:
+          type: string
+          example: 0.1.0
+        installer_url:
+          type: string
+          format: uri
+          example: https://updates.freebuff.example/installer.exe
+        installer_sha256:
+          type: string
+          description: SHA-256 of the installer payload.
+          example: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        mandatory:
+          type: boolean
+          description: When true, clients must update before launching.
+          example: false
+        signature:
+          type: string
+          description: HMAC-SHA256 signature of the manifest (base64url), computed with AUTH_UPDATE_SIGNING_KEY.
+          example: "sig-here"
+
+  examples:
+    TokenResponseExample:
+      value:
+        access_token: "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNrxPvr5gSWTDY7NxhECuswnEi7C2pHKnFlRIialQ"
+        refresh_token: "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNrxPvr5gSWTDY7NxhECuswnEi7C2pHKnFlRIialQ"
+        token_type: Bearer
+        expires_in: 900
+
+  responses:
+    BadRequest:
+      description: Malformed request body or unsupported content.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            invalid_json:
+              value:
+                error: "invalid request body"
+            unsupported_media:
+              value:
+                error: "unsupported content type"
+
+    Unauthorized:
+      description: Missing, invalid, or expired authentication credential.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            missing_bearer:
+              value:
+                error: "missing bearer token"
+            invalid_access:
+              value:
+                error: "invalid or expired access token"
+            invalid_refresh:
+              value:
+                error: "invalid or expired refresh token"
+
+    Forbidden:
+      description: Authenticated but not authorized for the resource.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            forbidden:
+              value:
+                error: "forbidden"
+
+    NotFound:
+      description: Requested resource does not exist.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            not_found:
+              value:
+                error: "not found"
+
+    EntityTooLarge:
+      description: Request body exceeds the server size limit.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            too_large:
+              value:
+                error: "skin too large"
+
+    RateLimited:
+      description: Rate limit exceeded.
+      headers:
+        Retry-After:
+          description: Suggested retry delay in seconds.
+          schema:
+            type: integer
+            example: 60
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            rate_limited:
+              value:
+                error: "rate limit exceeded"
+
+    InternalError:
+      description: Unexpected server error. The response body is intentionally generic to avoid leaking internals.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            internal:
+              value:
+                error: "internal error"

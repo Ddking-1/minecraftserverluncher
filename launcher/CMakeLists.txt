@@ -72,10 +72,21 @@ target_include_directories(test_editor_config PRIVATE ${CMAKE_CURRENT_SOURCE_DIR
 target_link_libraries(test_editor_config PRIVATE Qt6::Core)
 add_test(NAME editor_config COMMAND test_editor_config)
 
-add_executable(test_skin_client tests/test_skin_client.cpp core/SkinClient.cpp auth/BackendAuthClient.cpp)
+add_executable(test_skin_client
+    tests/test_skin_client.cpp
+    core/SkinClient.cpp
+    auth/BackendAuthClient.cpp
+)
 target_include_directories(test_skin_client PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(test_skin_client PRIVATE Qt6::Core Qt6::Network)
-add_test(NAME skin_client COMMAND test_skin_client)
+target_link_libraries(test_skin_client PRIVATE
+    Qt6::Core
+    Qt6::Network
+    Qt6::Test
+)
+
+target_compile_features(test_skin_client PRIVATE cxx_std_17)
+
+add_test(NAME skin_client COMMAND $<TARGET_FILE:test_skin_client>)
 
 add_executable(test_download_asset tests/test_download_asset.cpp core/DownloadAsset.cpp core/FileIntegrity.cpp)
 target_include_directories(test_download_asset PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
@@ -140,6 +151,7 @@ add_subdirectory(minecraft)
 
 add_executable(MinecraftLauncher
     main.cpp
+    ui/SkinPreviewWidget.cpp
     core/BaseInstance.cpp
     core/InstanceList.cpp
     core/InstancePersistence.cpp
@@ -167,8 +179,19 @@ add_executable(MinecraftLauncher
     updates/UpdateChecker.cpp
 )
 
-target_include_directories(MinecraftLauncher PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(MinecraftLauncher PRIVATE launcher_auth launcher_minecraft launcher_core Qt6::Core Qt6::Network)
+target_include_directories(MinecraftLauncher PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui
+)
+
+target_link_libraries(MinecraftLauncher PRIVATE
+    launcher_auth launcher_core launcher_minecraft Qt6::Core Qt6::Network Qt6::Widgets
+)
+
+target_sources(MinecraftLauncher PRIVATE
+    core/SkinClient.cpp
+    auth/BackendAuthClient.cpp
+)
 
 if(WIN32)
     target_link_libraries(MinecraftLauncher PRIVATE bcrypt crypt32 iphlpapi wbemuuid ole32 oleaut32)

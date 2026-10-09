@@ -4,6 +4,7 @@
 #include <QCryptographicHash>
 #include <QByteArray>
 #include <QString>
+#include <cstring>
 
 // Helper: HMAC-SHA256 over data using key, returned as hex.
 static QString hmacSha256Hex(const QByteArray &key, const QByteArray &data)
@@ -20,7 +21,7 @@ static QString hmacSha256Hex(const QByteArray &key, const QByteArray &data)
         // Hash the key if it's longer than block size.
         QCryptographicHash hash(QCryptographicHash::Sha256);
         hash.addData(key);
-        keyBlock = hash.final();
+        keyBlock = hash.result();
     } else {
         keyBlock = key;
     }
@@ -40,7 +41,7 @@ static QString hmacSha256Hex(const QByteArray &key, const QByteArray &data)
     QCryptographicHash inner(QCryptographicHash::Sha256);
     inner.addData(iKeyPad);
     inner.addData(data);
-    QByteArray innerHash = inner.final();
+    QByteArray innerHash = inner.result();
 
     QCryptographicHash outer(QCryptographicHash::Sha256);
     outer.addData(oKeyPad);
@@ -75,7 +76,7 @@ bool hmacSignaturesEqual(const QString &a, const QString &b)
     if (aBytes.size() != bBytes.size())
         return false;
 
-    return qMemEqual(aBytes.constData(), bBytes.constData(), aBytes.size());
+    return memcmp(aBytes.constData(), bBytes.constData(), aBytes.size()) == 0;
 }
 
 bool verifyManifestSignature(const QString &signingKey,

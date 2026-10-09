@@ -2,6 +2,31 @@
 
 ## Unreleased
 
+### Backend - Skin API handlers, Pterodactyl webhook, green test suite (2026-10-09)
+
+- `server/api/skins_handler.go`: Skin API handlers marked DONE - Upload, Get,
+  Avatar, Delete - covered by `skins_handler_test.go`.
+- `server/api/webhook_handler.go`: Pterodactyl webhook handler marked DONE,
+  including the 401 error hint (`missing webhook secret`) returned when
+  `PTERODACTYL_WEBHOOK_SECRET` is unset; `server/pterodactyl/webhook.go`
+  answers 401 for a missing or invalid HMAC signature.
+- `server/pterodactyl/webhook.go`: `HandleWebhook` now panics early on an
+  empty secret so a misconfiguration fails at startup instead of serving 401
+  for every request.
+- Test-suite fixes: duplicate `checkDelete` method in `skins_handler_test.go`;
+  session edge tests use a dedicated server with a raised per-IP rate limit;
+  three incorrect session test expectations (missing registration, missing
+  admin token, order-dependent race assertion); duplicate `suspended_port` JSON
+  tag in `pterodactyl/client.go`; unreachable code in `skins/storage.go`;
+  scratch helpers in `server/tmp` excluded with `//go:build ignore`.
+- `cd server && go test -v ./... -count=1` -> 200 PASS / 0 FAIL; `go build ./...`
+  and `go vet ./...` clean. The module root is `server/`, so
+  `go test -v ./server/...` from the repository root does not work.
+- Open: registering the new Skin API routes panics `Server.Handler()`
+  (`DELETE /api/v1/skins/{id}` conflicts with `DELETE /api/v1/skins/{variant}`),
+  and neither `SkinHandler` nor `PterodactylWebhook` is wired in
+  `server/main.go` yet.
+
 ### Phase 3 — launcher features and backend robustness
 
 Launcher:

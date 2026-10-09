@@ -22,7 +22,13 @@ The Go + SQLite backend is implemented, hardened and fully tested on `master`:
 auth, account management (profile, password change, session list/revoke),
 middleware (request logging, panic recovery, security headers), readiness
 probe, rate limiting, and admin HWID bans. `go build`, `go vet` and
-`go test ./...` pass.
+`go test ./...` pass (run them from `server/`, the Go module root; the current
+baseline is 200 passing tests). The backend also contains the Skin API handlers
+(upload/get/avatar/delete over `server/skins` validation + storage) and the
+Pterodactyl webhook handler (HMAC signature verification, 401 on a missing or
+invalid signature); both are unit-tested but are not wired in `server/main.go`
+yet, and the Skin API `DELETE /api/v1/skins/{id}` route still conflicts with the
+legacy `DELETE /api/v1/skins/{variant}` pattern.
 
 The C++/Qt6 launcher core is implemented on `master` and the build baseline is
 GREEN: CMake configure and a Release build with Qt 6.6.3 MSVC 2022 succeed and

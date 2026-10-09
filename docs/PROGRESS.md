@@ -321,3 +321,80 @@ No unblocked tasks. Await new instructions.
 
 Manual user action:
 Legal sign-off on DECISION-004 and resolution of DECISION-005 remain outstanding.
+
+## 2026-10-09 - BACKEND TEST RUN + SKIN API / PTERODACTYL WEBHOOK STATE UPDATE
+
+Agent/model: Buffy (Freebuff) - code agent
+Branch: feature/go-backend-hardening-and-fuzz
+Task: Run the complete Go server test suite and refresh the project state
+  documentation (mark the Skin API handlers and the Pterodactyl webhook handler
+  with its 401 hint as done).
+Started: 2026-10-09
+Completed: 2026-10-09
+
+Files:
+- server/api/skins_handler_test.go - removed the duplicated `checkDelete`
+  method that broke the package build; GET/DELETE checks now set the router
+  path value (`SetPathValue`) the handlers read in production.
+- server/api/sessions_edge_test.go - added `newSessionTestServer` (raised
+  per-IP rate limit so the edge-case tests are not throttled with 429); set the
+  admin token required by `/api/v1/proxy/auth`; registered the account the
+  logout-all test logs into; made the refresh/logout-all race assertions
+  order-independent.
+- server/pterodactyl/webhook.go - `HandleWebhook` panics early on an empty
+  secret (matches `TestHandleWebhook_PanicsEarlyForInvalidConfig`), doc comment
+  updated.
+- server/pterodactyl/client.go - fixed the duplicate `json:"suspended_port"`
+  tag on `Port` (now `json:"port"`) reported by `go vet`.
+- server/skins/storage.go - removed the unreachable return flagged by `go vet`.
+- server/tmp/*.go - scratch inspection helpers tagged `//go:build ignore` so
+  they no longer break `go test ./...`.
+- docs/PROGRESS.md (this entry), docs/WORK_STATE.md, docs/CHANGELOG.md,
+  docs/AI_CONTEXT.md.
+
+Tests:
+- Command: `cd server && go test -v ./... -count=1`.
+  The Go module root is `server/`, so the repository-root form
+  `go test -v ./server/...` fails with "directory prefix server does not contain
+  main module".
+- Result: 200 PASS / 0 FAIL, exit code 0.
+  - api: ok (9.2s) - includes TestSkinHandlerLifecycle,
+    TestSkinHandlerDeleteNotFound, TestSkinHandlerRejectsBadUploads,
+    TestPterodactylWebhookHandler (401 on bad/missing signature, 405 on GET).
+  - pterodactyl: ok (15.3s), 24 tests.
+  - skins: ok (11 tests) - includes the validator tests
+    (`TestValidateSkinPNG_*`); there is no separate `validator` package,
+    `server/skins/validator.go` is part of `skins`.
+  - auth, config, database, devices, sessions, web: ok.
+- `go build ./...` and `go vet ./...`: clean.
+
+DONE (marked complete):
+- Skin API handlers: Upload, Get, Avatar, Delete (server/api/skins_handler.go
+  with server/skins validation, storage and avatar extraction).
+- Pterodactyl webhook handler and its 401 error hint
+  (server/api/webhook_handler.go answers 401 "missing webhook secret" when
+  PTERODACTYL_WEBHOOK_SECRET is unset; server/pterodactyl/webhook.go answers
+  401 for a missing or invalid signature).
+
+Open issues found during this run (documented, not fixed here):
+1. Route conflict: as soon as `s.SkinHandler != nil`,
+   `Server.Handler()` panics because `DELETE /api/v1/skins/{id}` conflicts with
+   the already-registered `DELETE /api/v1/skins/{variant}`. Endpoint ownership
+   for that URL pattern needs a decision.
+2. `server/main.go` sets neither `SkinHandler` nor `PterodactylWebhook`, so the
+   new endpoints are not reachable in production yet.
+3. `server/tmp/*.go` are local scratch helpers, excluded from the build with
+   `//go:build ignore`; delete them when their investigation is finished.
+
+Current status:
+Backend test suite GREEN (200 tests). Skin API handlers and the Pterodactyl
+webhook handler with its 401 hint are implemented and tested.
+
+Next:
+Decide the owner of `DELETE /api/v1/skins/{id}` vs `DELETE /api/v1/skins/{variant}`,
+then wire `SkinHandler` and `PterodactylWebhook` in `server/main.go`.
+
+Manual user action:
+None for the test run. The changes from this task are uncommitted on
+`feature/go-backend-hardening-and-fuzz`; committing/pushing was not requested
+for this task.

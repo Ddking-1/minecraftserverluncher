@@ -20,7 +20,7 @@ bool isValidSkinId(QStringView id)
     if (id.isEmpty() || id.size() > 64)
         return false;
     static const QRegularExpression re(QStringLiteral("^[a-z0-9_-]+$"));
-    return re.match(QString(id)).hasMatch();
+    return re.match(id.toString()).hasMatch();
 }
 
 bool isValidSha256(QStringView hash)
@@ -28,7 +28,7 @@ bool isValidSha256(QStringView hash)
     if (hash.size() != 64)
         return false;
     static const QRegularExpression re(QStringLiteral("^[0-9a-fA-F]{64}$"));
-    return re.match(QString(hash)).hasMatch();
+    return re.match(hash.toString()).hasMatch();
 }
 
 QJsonObject toJson(const SkinRef &skin)

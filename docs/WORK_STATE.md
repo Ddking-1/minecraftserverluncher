@@ -47,3 +47,32 @@ Repository facts:
 
 Last commit:
 See docs/PROGRESS.md / `git log --oneline`.
+
+## 2026-10-09 - UPDATE: BACKEND TEST RUN + SKIN API / PTERODACTYL WEBHOOK
+
+Status:
+GREEN. `cd server && go test -v ./... -count=1` -> 200 PASS / 0 FAIL
+(api, auth, config, database, devices, pterodactyl, sessions, skins, web).
+`go build ./...` and `go vet ./...` are clean. The Go module root is `server/`,
+so `go test -v ./server/...` from the repository root does not work.
+
+DONE (marked complete in docs/PROGRESS.md):
+- Skin API handlers: Upload, Get, Avatar, Delete (server/api/skins_handler.go,
+  tested by server/api/skins_handler_test.go).
+- Pterodactyl webhook handler + 401 error hint
+  (server/api/webhook_handler.go returns 401 "missing webhook secret" when
+  PTERODACTYL_WEBHOOK_SECRET is unset; server/pterodactyl/webhook.go returns 401
+  for a missing or invalid signature and panics early on an empty secret).
+
+Known issues (exact next step):
+1. `Server.Handler()` panics when `s.SkinHandler != nil`:
+   `DELETE /api/v1/skins/{id}` conflicts with the existing
+   `DELETE /api/v1/skins/{variant}`. Decide which endpoint owns that pattern
+   (or move one of them) before wiring the Skin API.
+2. `server/main.go` sets neither `SkinHandler` nor `PterodactylWebhook`, so the
+   new endpoints are not exposed in production yet.
+3. `server/tmp/*.go` scratch helpers are excluded from the build with
+   `//go:build ignore`; remove them when the related investigation is done.
+
+Branch:
+feature/go-backend-hardening-and-fuzz (this task's changes are uncommitted).
