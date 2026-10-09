@@ -13,6 +13,9 @@ public:
 private slots:
     void onUploadClicked();
 
+signals:
+    void skinUploadFinished(bool success, const QString &skinId, const QString &error);
+
 private:
     QLabel   *m_avatarLabel;
     QPushButton *m_uploadButton;

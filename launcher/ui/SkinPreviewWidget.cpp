@@ -47,17 +47,22 @@ void SkinPreviewWidget::onUploadClicked()
             m_statusLabel->setText(error.isEmpty()
                                        ? tr("Feltöltés sikertelen.")
                                        : tr("Feltöltés sikertelen: %1").arg(error));
+            emit skinUploadFinished(false, QString(), error);
             return;
         }
 
         client->downloadAvatar(skinId, [this, client](bool success, const QPixmap &avatar) {
             if (!success || avatar.isNull()) {
                 m_statusLabel->setText(tr("Ábras betöltése sikertelen."));
+                emit skinUploadFinished(false, skinId, tr("Ábras betöltése sikertelen."));
                 return;
             }
 
             m_avatarLabel->setPixmap(avatar);
             m_statusLabel->setText(tr("Skin sikeresen feltöltve!"));
+            emit skinUploadFinished(true, skinId, QString());
         });
+
+        emit skinUploadFinished(true, skinId, QString());
     });
 }
