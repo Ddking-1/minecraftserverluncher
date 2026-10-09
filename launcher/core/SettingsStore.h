@@ -7,8 +7,7 @@
 namespace SettingsStore {
 
 // Project-owned launcher settings persisted as launcher.json.
-struct Settings
-{
+struct Settings {
     QString javaPath;
     int minMemoryMb = 2048;
     int maxMemoryMb = 4096;
@@ -16,6 +15,7 @@ struct Settings
 };
 
 // Documented defaults.
+[[nodiscard]]
 Settings defaults();
 
 // Fill unset fields with defaults.
@@ -26,17 +26,21 @@ void clamp(Settings &s);
 
 // A JVM argument is safe when it is non-empty, at most 1024 chars, equals its
 // trimmed form and contains no control characters.
-bool isSafeJvmArg(const QString &arg);
+[[nodiscard]]
+bool isSafeJvmArg(QStringView arg);
 
 // Validate memory bounds and JVM arguments. Returns false and sets *error
 // (when non-null) on the first problem.
+[[nodiscard]]
 bool validate(const Settings &s, QString *error = nullptr);
 
 // Read settings from a JSON file. Returns false if the file is missing or
 // malformed. Loaded values are defaulted and clamped.
+[[nodiscard]]
 bool load(const QString &path, Settings &out);
 
 // Atomically write settings as JSON. Returns false on failure.
+[[nodiscard]]
 bool save(const QString &path, const Settings &in);
 
 } // namespace SettingsStore

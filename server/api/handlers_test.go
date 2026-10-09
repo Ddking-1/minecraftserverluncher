@@ -63,6 +63,7 @@ func register(t *testing.T, h http.Handler, username, password string) (int, map
 
 func TestRegisterLoginRefreshLogoutFlow(t *testing.T) {
 	srv := newTestServer(t)
+	defer srv.Close()
 	h := srv.Handler()
 
 	// Register.
@@ -147,6 +148,7 @@ func TestRegisterLoginRefreshLogoutFlow(t *testing.T) {
 
 func TestLogoutRevokesSingleSession(t *testing.T) {
 	srv := newTestServer(t)
+	defer srv.Close()
 	h := srv.Handler()
 
 	_, out := register(t, h, "player2", "supersecret")
@@ -170,6 +172,7 @@ func TestLogoutRevokesSingleSession(t *testing.T) {
 
 func TestLogoutAllRequiresAccessToken(t *testing.T) {
 	srv := newTestServer(t)
+	defer srv.Close()
 	h := srv.Handler()
 
 	code, _ := doJSON(t, h, http.MethodPost, "/api/v1/auth/logout-all", nil, "")
@@ -180,6 +183,7 @@ func TestLogoutAllRequiresAccessToken(t *testing.T) {
 
 func TestRegisterValidation(t *testing.T) {
 	srv := newTestServer(t)
+	defer srv.Close()
 	h := srv.Handler()
 
 	// Short password rejected.

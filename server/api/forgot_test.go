@@ -12,6 +12,7 @@ func hashTokenForTest(token string) string { return auth.HashToken(token) }
 
 func TestForgotPasswordDoesNotEnumerate(t *testing.T) {
 	srv := newTestServer(t)
+	defer srv.Close()
 	h := srv.Handler()
 
 	// Known account.
@@ -34,6 +35,7 @@ func TestForgotPasswordDoesNotEnumerate(t *testing.T) {
 
 func TestForgotPasswordRequiresIdentifier(t *testing.T) {
 	srv := newTestServer(t)
+	defer srv.Close()
 	h := srv.Handler()
 
 	code, _ := doJSON(t, h, http.MethodPost, "/api/v1/auth/forgot", map[string]any{
@@ -46,6 +48,7 @@ func TestForgotPasswordRequiresIdentifier(t *testing.T) {
 
 func TestResetPasswordLifecycle(t *testing.T) {
 	srv := newTestServer(t)
+	defer srv.Close()
 	h := srv.Handler()
 
 	_, _ = register(t, h, "resetuser", "supersecret")

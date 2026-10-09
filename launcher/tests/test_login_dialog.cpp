@@ -1,34 +1,26 @@
 // SPDX-License-Identifier: GPL-3.0-only
-#include <QApplication>
-#include <QTimer>
+#include <QTest>
+#include <QStandardPaths>
 
 #include "gui/LoginDialog.h"
 
-#include <cstdio>
-
-static int failures = 0;
-static void check(bool cond, const char *msg)
+class TestLoginDialog : public QObject
 {
-    if (!cond) {
-        std::fprintf(stderr, "FAIL: %s\n", msg);
-        ++failures;
+    Q_OBJECT
+private slots:
+    void initTestCase()
+    {
+        QStandardPaths::setTestMode(true);
     }
-}
 
-int main(int argc, char **argv)
-{
-    QApplication app(argc, argv);
-    LoginDialog dlg;
-    dlg.setModal(false);
-    dlg.show();
+    void testInitialState()
+    {
+        LoginDialog dlg;
+        QVERIFY(dlg.username().isEmpty());
+        QVERIFY(dlg.password().isEmpty());
+        QVERIFY(!dlg.windowTitle().isEmpty());
+    }
+};
 
-    check(dlg.username().isEmpty(), "username should be empty initially");
-    check(dlg.password().isEmpty(), "password should be empty initially");
-    check(!dlg.windowTitle().isEmpty(), "dialog should have a window title");
-
-    QTimer::singleShot(0, &app, &QCoreApplication::quit);
-
-    if (failures == 0)
-        std::printf("login_dialog: all checks passed\n");
-    return failures == 0 ? 0 : 1;
-}
+QTEST_MAIN(TestLoginDialog)
+#include "test_login_dialog.moc"

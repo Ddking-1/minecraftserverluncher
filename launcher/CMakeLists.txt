@@ -5,78 +5,9 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Network Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Network Widgets)
 
-add_subdirectory(auth)
-add_subdirectory(core)
-add_subdirectory(minecraft)
-
-add_executable(MinecraftLauncher
-    main.cpp
-    core/BaseInstance.cpp
-    core/InstanceList.cpp
-    core/InstancePersistence.cpp
-    core/SkinModel.cpp
-    core/SkinCache.cpp
-    core/SettingsStore.cpp
-    core/RotatingFileLogger.cpp
-    core/FileIntegrity.cpp
-    core/HWIDExtractor.cpp
-    game/JavaDetector.cpp
-    game/MinecraftLauncher.cpp
-    minecraft/MinecraftInstance.cpp
-    minecraft/PackProfile.cpp
-    minecraft/ModScanner.cpp
-    launch/LaunchTask.cpp
-    launch/LaunchStep.cpp
-    launch/java/JavaVersion.cpp
-    launch/steps/ClaimAuthSession.cpp
-    launch/steps/ExtractNatives.cpp
-    launch/steps/LauncherPartLaunch.cpp
-    launch/steps/ResolveAssets.cpp
-    launch/steps/ResolveLibraries.cpp
-    launch/steps/VerifyJava.cpp
-    updates/UpdateManifest.cpp
-    updates/UpdateChecker.cpp
-)
-
-target_include_directories(MinecraftLauncher PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(MinecraftLauncher PRIVATE launcher_auth launcher_minecraft launcher_core Qt6::Core Qt6::Network)
-
-if(WIN32)
-    target_link_libraries(MinecraftLauncher PRIVATE bcrypt crypt32 iphlpapi wbemuuid ole32 oleaut32)
-endif()
-
-# B9.2: staging target that copies the Qt runtime DLLs and the qwindows
-# platform plugin next to the built launcher so the binary is runnable without
-# Qt on the PATH. Used by the CI/installer packaging step.
-if(WIN32)
-    # Resolve the Qt bin dir from the actual Qt6::Core location (robust to
-    # layout differences). On Windows: <qt>/bin/Qt6Core.dll.
-    get_target_property(QT_CORE_PATH Qt6::Core IMPORTED_LOCATION_RELEASE)
-    if(NOT QT_CORE_PATH)
-        get_target_property(QT_CORE_PATH Qt6::Core IMPORTED_LOCATION)
-    endif()
-    get_filename_component(QT_BIN_DIR "${QT_CORE_PATH}" DIRECTORY)
-
-    set(QT_PLATFORM_SRC "${QT_BIN_DIR}/../plugins/platforms/qwindows.dll")
-
-    add_custom_target(stage_qt_runtime ALL
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${QT_BIN_DIR}/Qt6Core.dll"
-            "${QT_BIN_DIR}/Qt6Network.dll"
-            "${QT_BIN_DIR}/Qt6Widgets.dll"
-            $<TARGET_FILE_DIR:MinecraftLauncher>/
-        COMMAND ${CMAKE_COMMAND} -E make_directory
-            "$<TARGET_FILE_DIR:MinecraftLauncher>/platforms"
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${QT_PLATFORM_SRC}"
-            "$<TARGET_FILE_DIR:MinecraftLauncher>/platforms/"
-        COMMENT "Staging Qt runtime next to launcher"
-        DEPENDS MinecraftLauncher
-    )
-    add_dependencies(stage_qt_runtime MinecraftLauncher)
-endif()
+find_package(LibFuzzer QUIET)
 
 enable_testing()
 
@@ -142,17 +73,28 @@ target_include_directories(test_editor_config PRIVATE ${CMAKE_CURRENT_SOURCE_DIR
 target_link_libraries(test_editor_config PRIVATE Qt6::Core)
 add_test(NAME editor_config COMMAND test_editor_config)
 
-add_executable(test_skin_client tests/test_skin_client.cpp core/SkinClient.cpp auth/BackendAuthClient.cpp)
+add_executable(test_skin_client
+    tests/test_skin_client.cpp
+    core/SkinClient.cpp
+    auth/BackendAuthClient.cpp
+)
 target_include_directories(test_skin_client PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(test_skin_client PRIVATE Qt6::Core Qt6::Network)
-add_test(NAME skin_client COMMAND test_skin_client)
+target_link_libraries(test_skin_client PRIVATE
+    Qt6::Core
+    Qt6::Network
+    Qt6::Test
+)
+
+target_compile_features(test_skin_client PRIVATE cxx_std_17)
+
+add_test(NAME skin_client COMMAND $<TARGET_FILE:test_skin_client>)
 
 add_executable(test_download_asset tests/test_download_asset.cpp core/DownloadAsset.cpp core/FileIntegrity.cpp)
 target_include_directories(test_download_asset PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(test_download_asset PRIVATE Qt6::Core Qt6::Network)
 add_test(NAME download_asset COMMAND test_download_asset)
 
-add_executable(test_download_queue tests/test_download_queue.cpp core/DownloadQueue.cpp core/DownloadAsset.cpp core/FileIntegrity.cpp)
+add_executable(test_download_queue tests/test_download_queue.cpp core/DownloadQueue.cpp core/DownloadAsset.cpp)
 target_include_directories(test_download_queue PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(test_download_queue PRIVATE Qt6::Core Qt6::Network)
 add_test(NAME download_queue COMMAND test_download_queue)
@@ -175,19 +117,118 @@ add_test(NAME game_launcher COMMAND test_game_launcher)
 add_executable(test_editor_settings_widget tests/test_editor_settings_widget.cpp gui/EditorSettingsWidget.cpp core/EditorConfig.cpp core/InstancePersistence.cpp)
 target_include_directories(test_editor_settings_widget PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(test_editor_settings_widget PRIVATE Qt6::Widgets Qt6::Core)
+set_target_properties(test_editor_settings_widget PROPERTIES QT_WIX OFF)
 add_test(NAME editor_settings_widget COMMAND test_editor_settings_widget)
+set_tests_properties(editor_settings_widget PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 
 add_executable(test_login_dialog tests/test_login_dialog.cpp gui/LoginDialog.cpp)
 target_include_directories(test_login_dialog PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(test_login_dialog PRIVATE Qt6::Widgets Qt6::Core)
+set_target_properties(test_login_dialog PROPERTIES QT_WIX OFF)
 add_test(NAME login_dialog COMMAND test_login_dialog)
+set_tests_properties(login_dialog PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 
 add_executable(test_skin_upload_widget tests/test_skin_upload_widget.cpp gui/SkinUploadWidget.cpp)
 target_include_directories(test_skin_upload_widget PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(test_skin_upload_widget PRIVATE Qt6::Widgets Qt6::Core)
+set_target_properties(test_skin_upload_widget PROPERTIES QT_WIX OFF)
 add_test(NAME skin_upload_widget COMMAND test_skin_upload_widget)
+set_tests_properties(skin_upload_widget PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 
-add_executable(test_update_manager tests/test_update_manager.cpp core/UpdateManager.cpp)
+add_executable(test_update_manager tests/test_update_manager.cpp core/UpdateManager.cpp core/UpdateManagerHMAC.cpp)
 target_include_directories(test_update_manager PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(test_update_manager PRIVATE Qt6::Core Qt6::Network)
 add_test(NAME update_manager COMMAND test_update_manager)
+
+if(LibFuzzer_FOUND)
+    add_executable(fuzz_manifest_parser tests/fuzz/fuzz_manifest_parser.cpp updates/UpdateManifest.cpp)
+    target_include_directories(fuzz_manifest_parser PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+    target_link_libraries(fuzz_manifest_parser PRIVATE Qt6::Core LibFuzzer)
+endif()
+
+add_subdirectory(auth)
+add_subdirectory(core)
+add_subdirectory(minecraft)
+
+add_executable(MinecraftLauncher
+    main.cpp
+    gui/MainWindow.cpp
+    gui/MainWindow.h
+    ui/SkinPreviewWidget.cpp
+    ui/SkinPreviewWidget.h
+    core/BaseInstance.cpp
+    core/InstanceList.cpp
+    core/InstancePersistence.cpp
+    core/SkinModel.cpp
+    core/SkinCache.cpp
+    core/SettingsStore.cpp
+    core/RotatingFileLogger.cpp
+    core/FileIntegrity.cpp
+    core/HWIDExtractor.cpp
+    game/JavaDetector.cpp
+    game/MinecraftLauncher.cpp
+    minecraft/MinecraftInstance.cpp
+    minecraft/PackProfile.cpp
+    minecraft/ModScanner.cpp
+    launch/LaunchTask.cpp
+    launch/LaunchStep.cpp
+    launch/java/JavaVersion.cpp
+    launch/steps/ClaimAuthSession.cpp
+    launch/steps/ExtractNatives.cpp
+    launch/steps/LauncherPartLaunch.cpp
+    launch/steps/ResolveAssets.cpp
+    launch/steps/ResolveLibraries.cpp
+    launch/steps/VerifyJava.cpp
+    updates/UpdateManifest.cpp
+    updates/UpdateChecker.cpp
+)
+
+target_include_directories(MinecraftLauncher PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui
+)
+
+target_link_libraries(MinecraftLauncher PRIVATE
+    launcher_auth launcher_core launcher_minecraft Qt6::Core Qt6::Network Qt6::Widgets
+)
+
+target_sources(MinecraftLauncher PRIVATE
+    core/SkinClient.cpp
+    auth/BackendAuthClient.cpp
+)
+
+if(WIN32)
+    target_link_libraries(MinecraftLauncher PRIVATE bcrypt crypt32 iphlpapi wbemuuid ole32 oleaut32)
+endif()
+
+if(MSVC)
+    target_compile_options(MinecraftLauncher PRIVATE /W4 /WX)
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "(GNU|Clang)")
+    target_compile_options(MinecraftLauncher PRIVATE -Wall -Wextra -Werror)
+endif()
+
+if(WIN32)
+    get_target_property(QT_CORE_PATH Qt6::Core IMPORTED_LOCATION_RELEASE)
+    if(NOT QT_CORE_PATH)
+        get_target_property(QT_CORE_PATH Qt6::Core IMPORTED_LOCATION)
+    endif()
+    get_filename_component(QT_BIN_DIR "${QT_CORE_PATH}" DIRECTORY)
+    set(QT_PLATFORM_SRC "${QT_BIN_DIR}/../plugins/platforms/qwindows.dll")
+    add_custom_target(stage_qt_runtime ALL
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${QT_BIN_DIR}/Qt6Core.dll"
+            "${QT_BIN_DIR}/Qt6Network.dll"
+            "${QT_BIN_DIR}/Qt6Widgets.dll"
+            $<TARGET_FILE_DIR:MinecraftLauncher>/
+        COMMAND ${CMAKE_COMMAND} -E make_directory
+            "$<TARGET_FILE_DIR:MinecraftLauncher>/platforms"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${QT_PLATFORM_SRC}"
+            "$<TARGET_FILE_DIR:MinecraftLauncher>/platforms/"
+        COMMENT "Staging Qt runtime next to launcher"
+        DEPENDS MinecraftLauncher
+    )
+    add_dependencies(stage_qt_runtime MinecraftLauncher)
+endif()
+
+enable_testing()

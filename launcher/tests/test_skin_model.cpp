@@ -1,57 +1,67 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// Standalone verification for the skin model.
-#include <iostream>
+// Qt Test-based verification for the skin model.
+#include <QtTest>
 
 #include "core/SkinModel.h"
 
-namespace {
+class TestSkinModel : public QTest
+{
+    Q_OBJECT
 
+private slots:
+    void variantToString();
+    void variantFromString();
+    void isValidSkinId();
+    void isValidSha256();
+    void roundTrip();
+};
+
+namespace {
 const char *const kHash =
     "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
-
-bool check(bool cond, const char *what)
-{
-    if (!cond)
-        std::cerr << "FAIL: " << what << std::endl;
-    return cond;
-}
-
 } // namespace
 
-int main()
+void TestSkinModel::variantToString()
 {
-    using namespace SkinModel;
+    QCOMPARE(SkinModel::variantToString(SkinModel::SkinVariant::Classic), QStringLiteral("classic"));
+    QCOMPARE(SkinModel::variantToString(SkinModel::SkinVariant::Slim), QStringLiteral("slim"));
+}
 
-    if (!check(variantToString(SkinVariant::Classic) == QStringLiteral("classic"), "classic string")
-        || !check(variantToString(SkinVariant::Slim) == QStringLiteral("slim"), "slim string")
-        || !check(variantFromString(QStringLiteral("slim")) == SkinVariant::Slim, "slim parse")
-        || !check(variantFromString(QStringLiteral("bogus")) == SkinVariant::Classic, "unknown parse"))
-        return 1;
+void TestSkinModel::variantFromString()
+{
+    QCOMPARE(SkinModel::variantFromString(QStringLiteral("slim")), SkinModel::SkinVariant::Slim);
+    QCOMPARE(SkinModel::variantFromString(QStringLiteral("bogus")), SkinModel::SkinVariant::Classic);
+}
 
-    if (!check(isValidSkinId(QStringLiteral("steve-01")), "valid id")
-        || !check(!isValidSkinId(QStringLiteral("Bad ID")), "space rejected")
-        || !check(!isValidSkinId(QStringLiteral("")), "empty rejected")
-        || !check(!isValidSkinId(QStringLiteral("A")) , "uppercase rejected"))
-        return 1;
+void TestSkinModel::isValidSkinId()
+{
+    QVERIFY(SkinModel::isValidSkinId(QStringLiteral("steve-01")));
+    QVERIFY(!SkinModel::isValidSkinId(QStringLiteral("Bad ID")));
+    QVERIFY(!SkinModel::isValidSkinId(QStringLiteral("")));
+    QVERIFY(!SkinModel::isValidSkinId(QStringLiteral("A")));
+}
 
-    if (!check(isValidSha256(QString::fromLatin1(kHash)), "valid hash")
-        || !check(!isValidSha256(QStringLiteral("deadbeef")), "short hash rejected")
-        || !check(!isValidSha256(QString(64, QLatin1Char('z'))), "non-hex rejected"))
-        return 1;
+void TestSkinModel::isValidSha256()
+{
+    QVERIFY(SkinModel::isValidSha256(QString::fromLatin1(kHash)));
+    QVERIFY(!SkinModel::isValidSha256(QStringLiteral("deadbeef")));
+    QVERIFY(!SkinModel::isValidSha256(QString(64, QLatin1Char('z'))));
+}
 
-    SkinRef skin;
+void TestSkinModel::roundTrip()
+{
+    SkinModel::SkinRef skin;
     skin.id = QStringLiteral("steve-01");
     skin.sha256 = QString::fromLatin1(kHash);
     skin.url = QStringLiteral("https://example.com/skin.png");
-    skin.variant = SkinVariant::Slim;
+    skin.variant = SkinModel::SkinVariant::Slim;
 
-    const SkinRef roundTrip = fromJson(toJson(skin));
-    if (!check(roundTrip.id == skin.id, "round-trip id")
-        || !check(roundTrip.sha256 == skin.sha256, "round-trip sha256")
-        || !check(roundTrip.url == skin.url, "round-trip url")
-        || !check(roundTrip.variant == skin.variant, "round-trip variant"))
-        return 1;
-
-    std::cout << "OK" << std::endl;
-    return 0;
+    const SkinModel::SkinRef roundTrip = SkinModel::fromJson(SkinModel::toJson(skin));
+    QCOMPARE(roundTrip.id, skin.id);
+    QCOMPARE(roundTrip.sha256, skin.sha256);
+    QCOMPARE(roundTrip.url, skin.url);
+    QCOMPARE(roundTrip.variant, skin.variant);
 }
+
+QTEST_APPLESS_MAIN(TestSkinModel)
+#include "test_skin_model.moc"

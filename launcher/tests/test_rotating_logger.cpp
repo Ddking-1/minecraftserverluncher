@@ -1,52 +1,47 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// Standalone verification for the rotating file logger.
-#include <iostream>
+// Qt Test-based verification for the rotating file logger.
+#include <QtTest>
 
 #include <QFile>
 #include <QTemporaryDir>
 
 #include "core/RotatingFileLogger.h"
 
-namespace {
-
-bool check(bool cond, const char *what)
+class TestRotatingLogger : public QTest
 {
-    if (!cond)
-        std::cerr << "FAIL: " << what << std::endl;
-    return cond;
-}
+    Q_OBJECT
 
-} // namespace
+private slots:
+    void rotation();
+    void retentionCap();
+};
 
-int main()
+void TestRotatingLogger::rotation()
 {
-    using namespace RotatingFileLogger;
-
     QTemporaryDir dir;
-    if (!check(dir.isValid(), "temporary dir"))
-        return 1;
+    QVERIFY(dir.isValid());
     const QString logFile = dir.filePath(QStringLiteral("launcher.log"));
 
     // Small threshold forces rotation on the second write.
-    if (!check(log(logFile, QStringLiteral("first line"), 8, 2), "first write"))
-        return 1;
-    if (!check(log(logFile, QStringLiteral("second line"), 8, 2), "second write rotates"))
-        return 1;
+    QVERIFY(RotatingFileLogger::log(logFile, QStringLiteral("first line"), 8, 2));
+    QVERIFY(RotatingFileLogger::log(logFile, QStringLiteral("second line"), 8, 2));
 
-    if (!check(QFile::exists(logFile + QStringLiteral(".1")), "rotated .1 exists"))
-        return 1;
-
-    // Retention cap: only maxFiles rotated files are kept.
-    for (int i = 0; i < 5; ++i)
-        log(logFile, QStringLiteral("line %1").arg(i), 1, 2);
-
-    if (!check(QFile::exists(logFile + QStringLiteral(".1")), "retained .1"))
-        return 1;
-    if (!check(QFile::exists(logFile + QStringLiteral(".2")), "retained .2"))
-        return 1;
-    if (!check(!QFile::exists(logFile + QStringLiteral(".3")), "capped at .2"))
-        return 1;
-
-    std::cout << "OK" << std::endl;
-    return 0;
+    QVERIFY(QFile::exists(logFile + QStringLiteral(".1")));
 }
+
+void TestRotatingLogger::retentionCap()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString logFile = dir.filePath(QStringLiteral("launcher.log"));
+
+    for (int i = 0; i < 5; ++i)
+        RotatingFileLogger::log(logFile, QStringLiteral("line %1").arg(i), 1, 2);
+
+    QVERIFY(QFile::exists(logFile + QStringLiteral(".1")));
+    QVERIFY(QFile::exists(logFile + QStringLiteral(".2")));
+    QVERIFY(!QFile::exists(logFile + QStringLiteral(".3")));
+}
+
+QTEST_APPLESS_MAIN(TestRotatingLogger)
+#include "test_rotating_logger.moc"

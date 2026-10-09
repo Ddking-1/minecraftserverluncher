@@ -7,6 +7,7 @@ import (
 
 func TestReadyzHealthy(t *testing.T) {
 	srv := newTestServer(t)
+	defer srv.Close()
 	h := srv.Handler()
 
 	code, body := doJSON(t, h, http.MethodGet, "/readyz", nil, "")
@@ -20,6 +21,7 @@ func TestReadyzHealthy(t *testing.T) {
 
 func TestReadyzAfterDBClose(t *testing.T) {
 	srv := newTestServer(t)
+	defer srv.Close()
 	h := srv.Handler()
 
 	if err := srv.db.Close(); err != nil {
@@ -30,4 +32,10 @@ func TestReadyzAfterDBClose(t *testing.T) {
 	if code != http.StatusServiceUnavailable {
 		t.Fatalf("readyz after close status = %d, want 503", code)
 	}
+}
+
+func TestServerCloseIdempotent(t *testing.T) {
+	srv := newTestServer(t)
+	srv.Close()
+	srv.Close()
 }

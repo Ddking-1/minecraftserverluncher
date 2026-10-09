@@ -14,6 +14,7 @@ func serveStatusRecorder(h http.Handler, req *http.Request) *httptest.ResponseRe
 
 func TestProxyAuthValidToken(t *testing.T) {
 	srv := newAdminTestServer(t, "proxy-admin", "")
+	defer srv.Close()
 	h := srv.Handler()
 
 	_, out := register(t, h, "proxyuser", "supersecret")
@@ -33,6 +34,7 @@ func TestProxyAuthValidToken(t *testing.T) {
 
 func TestProxyAuthDeniesInvalidToken(t *testing.T) {
 	srv := newAdminTestServer(t, "proxy-admin", "")
+	defer srv.Close()
 	h := srv.Handler()
 
 	req := newJSONRequest(t, http.MethodPost, "/api/v1/proxy/auth", map[string]any{"access_token": "bogus"})
@@ -48,6 +50,7 @@ func TestProxyAuthDeniesInvalidToken(t *testing.T) {
 
 func TestProxyAuthRequiresAdminToken(t *testing.T) {
 	srv := newAdminTestServer(t, "proxy-admin", "")
+	defer srv.Close()
 	h := srv.Handler()
 
 	req := newJSONRequest(t, http.MethodPost, "/api/v1/proxy/auth", map[string]any{"access_token": "x"})

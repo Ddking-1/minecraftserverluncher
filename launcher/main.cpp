@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// Minimal launcher entry point. UI is not yet implemented; this exercises the
+// Launcher entry point. Instantiates the main window GUI and exercises the
 // core instance list so the module graph links.
-#include <QCoreApplication>
+#include <QApplication>
 #include <QDebug>
 #include <QDir>
 #include <QStringList>
@@ -12,6 +12,7 @@
 #include "core/Version.h"
 #include "minecraft/MinecraftInstance.h"
 #include "game/MinecraftLauncher.h"
+#include "gui/MainWindow.h"
 
 namespace {
 
@@ -58,7 +59,10 @@ std::unique_ptr<BaseInstance> makeInstance(const InstanceMetadata &meta, const Q
 
 int main(int argc, char *argv[])
 {
-    QCoreApplication app(argc, argv);
+    QApplication app(argc, argv);
+
+    MainWindow window;
+    window.show();
 
     const CliOptions options = parseArgs(app.arguments().mid(1));
 
@@ -91,5 +95,5 @@ int main(int argc, char *argv[])
 
     qInfo() << "Loaded" << list.count() << "instance(s) from" << options.instancesDir
             << "- showing" << shown;
-    return 0;
+    return app.exec();
 }

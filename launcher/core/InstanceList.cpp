@@ -129,3 +129,23 @@ void InstanceList::addInstance(std::unique_ptr<BaseInstance> instance)
     endInsertRows();
     emit instancesChanged();
 }
+
+void InstanceList::removeInstance(int index)
+{
+    if (index < 0 || index >= static_cast<int>(m_instances.size()))
+        return;
+    beginRemoveRows(QModelIndex(), index, index);
+    m_instances.erase(m_instances.begin() + index);
+    endRemoveRows();
+    emit instancesChanged();
+}
+
+void InstanceList::updateInstanceAt(int index, std::string_view newName)
+{
+    if (index < 0 || index >= static_cast<int>(m_instances.size()))
+        return;
+    auto *inst = m_instances[index].get();
+    if (inst)
+        inst->setName(QString::fromStdString(std::string(newName)));
+    emit dataChanged(createIndex(index, 0), createIndex(index, 0));
+}

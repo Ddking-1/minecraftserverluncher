@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// Contract test: verifies BackendAuthClient sends the expected request path
-// and JSON body for a login against a local fake HTTP server.
-#include <iostream>
+// Qt Test-based contract test: verifies BackendAuthClient sends the expected
+// request path and JSON body for a login against a local fake HTTP server.
+#include <QtTest>
 
 #include <QByteArray>
 #include <QCoreApplication>
@@ -19,11 +19,12 @@
 
 class FakeServer : public QObject
 {
+    Q_OBJECT
 public:
     explicit FakeServer(QObject *parent = nullptr) : QObject(parent)
     {
         if (!m_server.listen(QHostAddress::LocalHost, 0))
-            std::cerr << "FAIL: cannot listen" << std::endl;
+            qFatal("cannot listen");
         connect(&m_server, &QTcpServer::newConnection, this, [this]() {
             QTcpSocket *socket = m_server.nextPendingConnection();
             connect(socket, &QTcpSocket::readyRead, this, [this, socket]() {
@@ -58,10 +59,16 @@ public:
     QByteArray responseBody;
 };
 
-int main(int argc, char *argv[])
+class TestBackendContract : public QTest
 {
-    QCoreApplication app(argc, argv);
+    Q_OBJECT
 
+private slots:
+    void loginRequest();
+};
+
+void TestBackendContract::loginRequest()
+{
     FakeServer server;
     BackendAuthClient client;
     client.setBackendUrl(QStringLiteral("http://127.0.0.1:%1").arg(server.port()));
@@ -80,31 +87,17 @@ int main(int argc, char *argv[])
     QTimer::singleShot(5000, &loop, &QEventLoop::quit);
     loop.exec();
 
-    if (!done) {
-        std::cerr << "FAIL: timeout waiting for response" << std::endl;
-        return 1;
-    }
-    if (!result.success) {
-        std::cerr << "FAIL: login unsuccessful: " << result.error.toStdString() << std::endl;
-        return 1;
-    }
-    if (result.accessToken != QStringLiteral("a") || result.refreshToken != QStringLiteral("r")
-        || result.expiresIn != 900) {
-        std::cerr << "FAIL: response not parsed correctly" << std::endl;
-        return 1;
-    }
-    if (server.lastPath != QStringLiteral("/api/v1/auth/login")) {
-        std::cerr << "FAIL: path mismatch: " << server.lastPath.toStdString() << std::endl;
-        return 1;
-    }
+    QVERIFY(done);
+    QVERIFY(result.success);
+    QCOMPARE(result.accessToken, QStringLiteral("a"));
+    QCOMPARE(result.refreshToken, QStringLiteral("r"));
+    QCOMPARE(result.expiresIn, 900);
+    QCOMPARE(server.lastPath, QStringLiteral("/api/v1/auth/login"));
     const QJsonObject body = QJsonDocument::fromJson(server.lastBody).object();
-    if (body.value(QStringLiteral("username")).toString() != QStringLiteral("bob")
-        || body.value(QStringLiteral("password")).toString() != QStringLiteral("secret")
-        || body.value(QStringLiteral("device_id")).toString() != QStringLiteral("dev-1")) {
-        std::cerr << "FAIL: request body mismatch" << std::endl;
-        return 1;
-    }
-
-    std::cout << "OK" << std::endl;
-    return 0;
+    QCOMPARE(body.value(QStringLiteral("username")).toString(), QStringLiteral("bob"));
+    QCOMPARE(body.value(QStringLiteral("password")).toString(), QStringLiteral("secret"));
+    QCOMPARE(body.value(QStringLiteral("device_id")).toString(), QStringLiteral("dev-1"));
 }
+
+QTEST_APPLESS_MAIN(TestBackendContract)
+#include "test_backend_contract.moc"

@@ -125,6 +125,22 @@ func main() {
 	code, _ = postJSON(baseURL, "/api/v1/auth/logout-all", nil, access)
 	must(code == http.StatusOK, "logout-all != 200")
 
+	// 9. Skin lifecycle with auth token
+	code, _ = postRaw(baseURL, "/api/v1/skins/default", png, "image/png", access)
+	must(code == http.StatusOK, "skin upload != 200")
+
+	// 10. Verify uploaded skin is fetchable.
+	code, body = getJSON(baseURL, "/api/v1/skins/e2euser/default", access)
+	must(code == http.StatusOK, "skin fetch != 200")
+
+	// 11. Delete skin.
+	code, _ = postJSON(baseURL, "/api/v1/skins/default", nil, access)
+	must(code == http.StatusOK, "skin delete != 200")
+
+	// 12. Verify skin gone after delete.
+	code, _ = getJSON(baseURL, "/api/v1/skins/e2euser/default", access)
+	must(code == http.StatusNotFound, "skin still present after delete")
+
 	fmt.Println("PASS")
 }
 

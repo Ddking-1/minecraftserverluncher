@@ -13,45 +13,47 @@ namespace {
 
 // A manifest file path must be relative and must not traverse upwards. This
 // blocks path-traversal attacks described in docs/UPDATE_SPEC.md.
-bool isSafePath(const QString &path)
+[[nodiscard]]
+bool isSafePath(QStringView path)
 {
     if (path.isEmpty())
         return false;
-    if (path.startsWith(QLatin1Char('/')) || path.startsWith(QLatin1Char('\\')))
+    if (path.startsWith(QLatin1Char('/')) || path.startsWith(QLatin1Char('\')))
         return false;
-    if (path.contains(QLatin1String(":"))) // drive letter or URI scheme
+    if (path.contains(QLatin1Char(':'))) // drive letter or URI scheme
         return false;
-    const QStringList parts = path.split(QRegularExpression(QStringLiteral("[/\\\\]")),
-                                         Qt::SkipEmptyParts);
-    for (const QString &part : parts) {
-        if (part == QLatin1String(".."))
+    const auto parts = path.split(QRegularExpression(QStringLiteral("[/\\]")), Qt::SkipEmptyParts);
+    for (const auto &part : parts) {
+        if (part.compare(QLatin1String(".."), Qt::CaseInsensitive) == 0)
             return false;
     }
     return true;
 }
 
-ParseResult fail(const QString &message)
+[[nodiscard]]
+ParseResult fail(QStringView message)
 {
     ParseResult result;
     result.ok = false;
-    result.error = message;
+    result.error = message.toString();
     return result;
 }
 
 } // namespace
 
+[[nodiscard]]
 ParseResult parse(const QJsonObject &obj)
 {
     const QString name = obj.value(QStringLiteral("name")).toString();
     const QString version = obj.value(QStringLiteral("version")).toString();
     if (name.isEmpty())
-        return fail(QStringLiteral("manifest: missing name"));
+        return fail(u"manifest: missing name");
     if (version.isEmpty())
-        return fail(QStringLiteral("manifest: missing version"));
+        return fail(u"manifest: missing version");
 
     const QJsonValue filesValue = obj.value(QStringLiteral("files"));
     if (!filesValue.isArray())
-        return fail(QStringLiteral("manifest: files must be an array"));
+        return fail(u"manifest: files must be an array");
 
     ManifestComponent component;
     component.name = name;
@@ -66,23 +68,31 @@ ParseResult parse(const QJsonObject &obj)
     const QJsonArray files = filesValue.toArray();
     for (const QJsonValue &value : files) {
         if (!value.isObject())
-            return fail(QStringLiteral("manifest: file entry must be an object"));
+            return fail(u"manifest: file entry must be an object");
         const QJsonObject fileObj = value.toObject();
 
         ManifestFile file;
         file.path = fileObj.value(QStringLiteral("path")).toString();
-        file.size = static_cast<qint64>(fileObj.value(QStringLiteral("size")).toDouble());
+        const QJsonValue sizeValue = fileObj.value(QStringLiteral("size"));
+        if (sizeValue.type() == QJsonValue::Double) {
+            file.size = static_cast<qint64>(sizeValue.toDouble());
+        } else if (sizeValue.type() == QJsonValue::String) {
+            bool ok = false;
+            const qint64 size = sizeValue.toString().toLongLong(&ok);
+            if (ok)
+                file.size = size;
+        }
         file.sha256 = fileObj.value(QStringLiteral("sha256")).toString();
         file.url = fileObj.value(QStringLiteral("url")).toString();
 
         if (!isSafePath(file.path))
-            return fail(QStringLiteral("manifest: unsafe file path '%1'").arg(file.path));
+            return fail(u"manifest: unsafe file path '%1'").arg(file.path);
         if (file.sha256.isEmpty())
-            return fail(QStringLiteral("manifest: missing sha256 for '%1'").arg(file.path));
+            return fail(u"manifest: missing sha256 for '%1'").arg(file.path);
         if (file.sha256.size() != 64)
-            return fail(QStringLiteral("manifest: sha256 must be 64 hex chars for '%1'").arg(file.path));
+            return fail(u"manifest: sha256 must be 64 hex chars for '%1'").arg(file.path);
         if (file.url.isEmpty())
-            return fail(QStringLiteral("manifest: missing url for '%1'").arg(file.path));
+            return fail(u"manifest: missing url for '%1'").arg(file.path);
 
         component.files.append(file);
     }
@@ -93,9 +103,9 @@ ParseResult parse(const QJsonObject &obj)
     return result;
 }
 
-ParseResult parseFile(const QString &path)
+ParseResult parseFile(QStringView path)
 {
-    QFile file(path);
+    QFile file(QString(path));
     if (!file.open(QIODevice::ReadOnly))
         return fail(QStringLiteral("manifest: cannot open '%1'").arg(path));
 

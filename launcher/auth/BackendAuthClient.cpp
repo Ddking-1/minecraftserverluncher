@@ -7,7 +7,10 @@
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QNetworkRequest>
+#include <QSslConfiguration>
 #include <QUrl>
+
+#include "core/HWIDExtractor.h"
 
 namespace {
 const char *const kRegisterPath = "/api/v1/auth/register";
@@ -16,12 +19,14 @@ const char *const kRefreshPath = "/api/v1/auth/refresh";
 const char *const kLogoutPath = "/api/v1/auth/logout";
 const char *const kLogoutAllPath = "/api/v1/auth/logout-all";
 
-// Maps a backend HTTP status to a user-facing message. A server-supplied
+// Maps a backend HTTP status to a human-facing message. A server-supplied
 // message always wins so specific backend errors are shown verbatim.
+[[nodiscard]]
 QString mapHttpStatusError(int status, const QString &serverMessage)
 {
-    if (!serverMessage.isEmpty())
+    if (!serverMessage.isEmpty()) {
         return serverMessage;
+    }
     switch (status) {
     case 400:
         return QStringLiteral("Invalid request");
@@ -41,6 +46,29 @@ QString mapHttpStatusError(int status, const QString &serverMessage)
         return QStringLiteral("Request failed (HTTP %1)").arg(status);
     }
 }
+
+// Helper: convert std::string_view to QString.
+[[nodiscard]]
+static QString toQString(std::string_view s)
+{
+    return QString::fromUtf8(s.data(), static_cast<int>(s.size()));
+}
+
+// Apply Qt version-compatible SSL settings to the request.
+// Qt6 uses QSslConfiguration for SSL options; Qt5 uses request attributes.
+void applySslConfiguration(QNetworkRequest &req)
+{
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+    QSslConfiguration sslConfig = QSslConfiguration::defaultConfiguration();
+    sslConfig.setPeerVerifyMode(QSslSocket::VerifyPeer);
+    sslConfig.setProtocol(QSsl::TlsV1_2OrLater);
+    req.setSslConfiguration(sslConfig);
+#else
+    // Qt5: use attribute-based SSL options.
+    req.setAttribute(QNetworkRequest::SslSelectNegotiatedProtocol, true);
+    req.setAttribute(QNetworkRequest::SslOptionDisableSessionTickets, false);
+#endif
+}
 } // namespace
 
 BackendAuthClient::BackendAuthClient(QObject *parent)
@@ -56,6 +84,10 @@ QString BackendAuthClient::backendUrl() const
 
 void BackendAuthClient::setBackendUrl(const QString &url)
 {
+    if (!url.startsWith(QStringLiteral("https://"))) {
+        qWarning() << "Backend URL must use HTTPS; refusing insecure URL:" << url;
+        return;
+    }
     m_backendUrl = url;
     if (m_backendUrl.endsWith(QLatin1Char('/')))
         m_backendUrl.chop(1);
@@ -70,8 +102,9 @@ void BackendAuthClient::registerAccount(const QString &username, const QString &
     body.insert(QStringLiteral("password"), password);
     body.insert(QStringLiteral("device_id"), deviceId);
     body.insert(QStringLiteral("device_name"), deviceName);
-    // Add HWID to the registration payload
-    body.insert(QStringLiteral("hwid"), QString(QCoreApplication::applicationName() + "_" + deviceId));
+    // Add HWID to the registration payload using the real hardware UUID.
+    const std::string hwid = HWIDExtractor::getHardwareUUID();
+    body.insert(QStringLiteral("hwid"), toQString(hwid));
     post(QLatin1String(kRegisterPath), QJsonDocument(body).toJson(QJsonDocument::Compact), {}, cb);
 }
 
@@ -83,8 +116,9 @@ void BackendAuthClient::login(const QString &username, const QString &password,
     body.insert(QStringLiteral("password"), password);
     body.insert(QStringLiteral("device_id"), deviceId);
     body.insert(QStringLiteral("device_name"), deviceName);
-    // Add HWID to the login payload
-    body.insert(QStringLiteral("hwid"), QString(QCoreApplication::applicationName() + "_" + deviceId));
+    // Add HWID to the login payload using the real hardware UUID.
+    const std::string hwid = HWIDExtractor::getHardwareUUID();
+    body.insert(QStringLiteral("hwid"), toQString(hwid));
     post(QLatin1String(kLoginPath), QJsonDocument(body).toJson(QJsonDocument::Compact), {}, cb);
 }
 
@@ -108,7 +142,6 @@ void BackendAuthClient::logoutAll(const QString &accessToken, Callback cb)
 }
 
 
-
 void BackendAuthClient::post(const QString &path, const QByteArray &jsonBody,
                              const QString &bearerToken, Callback cb)
 {
@@ -117,7 +150,22 @@ void BackendAuthClient::post(const QString &path, const QByteArray &jsonBody,
     if (!bearerToken.isEmpty())
         req.setRawHeader("Authorization", "Bearer " + bearerToken.toUtf8());
 
+    // SSL/TSL enforcement: we require certificate validation and SSL errors are fatal.
+    applySslConfiguration(req);
+    req.setPriority(QNetworkRequest::HighPriority);
+
     QNetworkReply *reply = m_network->post(req, jsonBody);
+    connect(reply, &QNetworkReply::sslErrors, this, [this, reply, cb](const QList<QSslError> &errors) {
+        for (const auto &err : errors) {
+            qWarning() << "SSL error:" << err.errorString();
+        }
+        // Reject the reply on any SSL error.
+        reply->ignoreSslErrors(); // noqa: keep for Qt behavior; failure handled below
+        AuthResult bad;
+        bad.error = QStringLiteral("Untrusted backend TLS certificate");
+        if (cb)
+            cb(bad);
+    });
     connect(reply, &QNetworkReply::finished, this, [this, reply, cb]() { handleReply(reply, cb); });
 }
 

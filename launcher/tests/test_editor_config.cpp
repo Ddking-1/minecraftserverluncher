@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 #include <QCoreApplication>
+#include <QJsonDocument>
 #include <QJsonObject>
 #include <QTemporaryDir>
 
@@ -49,6 +50,30 @@ int main(int argc, char **argv)
     // Missing file fails cleanly.
     EditorConfig missing;
     check(!EditorConfig::load(dir.path() + QStringLiteral("/nope.json"), missing), "missing file rejected");
+
+    // --- Edge case: malformed JSON config ---
+    QTemporaryDir badDir;
+    check(badDir.isValid(), "bad temp dir");
+    const QString badPath = badDir.path() + QStringLiteral("/bad.json");
+
+    // Write malformed JSON to file.
+    QFile f(badPath);
+    if (f.open(QIODevice::WriteOnly)) {
+        f.write("this is not json {{{");
+        f.close();
+    }
+    EditorConfig badLoaded;
+    check(!EditorConfig::load(badPath, badLoaded), "malformed JSON rejected");
+
+    // --- Edge case: empty JSON object ---
+    const QString emptyPath = badDir.path() + QStringLiteral("/empty.json");
+    if (f.open(QIODevice::WriteOnly)) {
+        f.write(QJsonDocument(QJsonObject()).toJson());
+        f.close();
+    }
+    EditorConfig emptyLoaded;
+    check(EditorConfig::load(emptyPath, emptyLoaded), "empty JSON loads defaults");
+    check(emptyLoaded.title == EditorConfig::defaults().title, "empty JSON uses default title");
 
     if (failures == 0)
         std::printf("editor_config: all checks passed\n");

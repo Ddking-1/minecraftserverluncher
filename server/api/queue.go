@@ -51,6 +51,18 @@ func newSkinQueue() *skinQueue {
 	return q
 }
 
+// Close shuts down the worker pool so the queue can be garbage-collected
+// after the HTTP server stops (prevents goroutine leaks during tests and
+// shutdown). It is safe to call Close more than once.
+func (q *skinQueue) Close() {
+	select {
+	case <-q.jobs:
+		return
+	default:
+		close(q.jobs)
+	}
+}
+
 // worker processes jobs from the queue until it is closed.
 func (q *skinQueue) worker() {
 	for job := range q.jobs {

@@ -13,11 +13,17 @@ UpdateManager::UpdateManager(QObject *parent)
     m_nam->setTransferTimeout(10000);
 }
 
-void UpdateManager::setEndpoints(const QString &backendBase, const QString &currentVersion)
+void UpdateManager::setEndpoints(QStringView backendBase, QStringView currentVersion)
 {
-    m_backend = backendBase.endsWith(QLatin1Char('/')) ? backendBase.left(backendBase.length() - 1)
-                                                       : backendBase;
-    m_current = currentVersion;
+    m_backend = backendBase.toString();
+    if (m_backend.endsWith(QLatin1Char('/')))
+        m_backend.chop(1);
+    m_current = currentVersion.toString();
+}
+
+void UpdateManager::setSigningKey(QStringView key)
+{
+    m_signingKey = key.toString();
 }
 
 QString UpdateManager::currentVersion() const
@@ -57,6 +63,13 @@ void UpdateManager::checkForUpdate()
         const QString url = obj.value(QStringLiteral("url")).toString();
         const QString sha256 = obj.value(QStringLiteral("sha256")).toString();
         const bool mandatory = obj.value(QStringLiteral("mandatory")).toBool(false);
+        const QString signature = obj.value(QStringLiteral("signature")).toString();
+
+        // Verify the manifest HMAC-SHA256 signature before trusting it.
+        if (!verifyManifestSignature(m_signingKey, version, url, sha256, mandatory, signature)) {
+            emit checkFailed(QStringLiteral("manifest signature verification failed"));
+            return;
+        }
 
         // The caller decides whether an update is needed; this always reports
         // whatever the backend says (even if equal to the current version).

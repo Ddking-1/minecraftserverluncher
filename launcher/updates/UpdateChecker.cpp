@@ -5,10 +5,10 @@
 
 namespace UpdateChecker {
 
-int compareVersions(const QString &a, const QString &b)
+int compareVersions(QStringView a, QStringView b)
 {
-    const QStringList aParts = a.split(QLatin1Char('.'), Qt::SkipEmptyParts);
-    const QStringList bParts = b.split(QLatin1Char('.'), Qt::SkipEmptyParts);
+    const auto aParts = a.split(QLatin1Char('.'), Qt::SkipEmptyParts);
+    const auto bParts = b.split(QLatin1Char('.'), Qt::SkipEmptyParts);
 
     const int count = qMax(aParts.size(), bParts.size());
     for (int i = 0; i < count; ++i) {
@@ -22,7 +22,7 @@ int compareVersions(const QString &a, const QString &b)
     return 0;
 }
 
-Decision check(const QString &currentVersion,
+Decision check(QStringView currentVersion,
                const UpdateManifest::ManifestComponent &component)
 {
     if (!component.minLauncher.isEmpty()

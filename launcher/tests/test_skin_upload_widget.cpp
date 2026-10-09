@@ -1,45 +1,47 @@
 // SPDX-License-Identifier: GPL-3.0-only
-#include <QApplication>
-#include <QTimer>
+#include <QTest>
+#include <QFileDialog>
+#include <QStandardPaths>
 
 #include "gui/SkinUploadWidget.h"
 
-#include <cstdio>
-
-static int failures = 0;
-static void check(bool cond, const char *msg)
+class TestSkinUploadWidget : public QObject
 {
-    if (!cond) {
-        std::fprintf(stderr, "FAIL: %s\n", msg);
-        ++failures;
+    Q_OBJECT
+private slots:
+    void initTestCase()
+    {
+        QStandardPaths::setTestMode(true);
     }
-}
 
-int main(int argc, char **argv)
-{
-    QApplication app(argc, argv);
-    SkinUploadWidget w;
-    w.setAccessToken(QStringLiteral("tok"));
-    check(w.accessToken() == QStringLiteral("tok"), "access token not stored");
+    void testAccessToken()
+    {
+        SkinUploadWidget w;
+        w.setAccessToken(QStringLiteral("tok"));
+        QCOMPARE(w.accessToken(), QStringLiteral("tok"));
+    }
 
-    bool emitted = false;
-    QString lastVariant;
-    QObject::connect(&w, &SkinUploadWidget::uploadRequested, [&](const QString &path, const QString &variant) {
-        Q_UNUSED(path);
-        emitted = true;
-        lastVariant = variant;
-    });
+    void testUploadSignalEmission()
+    {
+        SkinUploadWidget w;
+        w.setVariant(QStringLiteral("default"));
 
-    // With no file selected, clicking Upload emits uploadRequested with an
-    // empty path and the configured variant.
-    w.setVariant(QStringLiteral("default"));
-    // Emit through the public signal is not allowed; instead we assert the
-    // connect works by using a direct invoke of the signal (Qt allows emit
-    // only inside the class). So we verify the accessor + connect are valid by
-    // checking the token and that the widget is a QWidget.
-    check(w.isWidgetType(), "widget is a QWidget");
+        bool emitted = false;
+        QString lastPath;
+        QString lastVariant;
+        QObject::connect(&w, &SkinUploadWidget::uploadRequested, [&](const QString &path, const QString &variant) {
+            emitted = true;
+            lastPath = path;
+            lastVariant = variant;
+        });
 
-    if (failures == 0)
-        std::printf("skin_upload_widget: all checks passed\n");
-    return failures == 0 ? 0 : 1;
-}
+        QMetaObject::invokeMethod(&w, "uploadRequested", Q_ARG(QString, QString()),
+                                  Q_ARG(QString, QStringLiteral("default")));
+        QVERIFY(emitted);
+        QCOMPARE(lastVariant, QStringLiteral("default"));
+        QVERIFY(lastPath.isEmpty());
+    }
+};
+
+QTEST_MAIN(TestSkinUploadWidget)
+#include "test_skin_upload_widget.moc"

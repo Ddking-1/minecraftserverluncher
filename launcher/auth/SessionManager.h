@@ -5,6 +5,7 @@
 
 #include <QObject>
 #include <QString>
+#include <memory>
 #include <functional>
 
 #include "core/InstanceTypes.h"
@@ -37,9 +38,11 @@ public:
     void logout(Callback cb);
 
     // The current valid session, or nullptr if none.
+    [[nodiscard]]
     AuthSessionPtr currentSession() const;
 
     // True if the access token is missing or expired.
+    [[nodiscard]]
     static bool isExpired(const AuthSession &session);
 
 private:

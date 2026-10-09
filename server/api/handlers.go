@@ -5,6 +5,7 @@ package api
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"log"
@@ -19,6 +20,7 @@ import (
 	"minecraftserverluncher/server/devices"
 	"minecraftserverluncher/server/sessions"
 	"minecraftserverluncher/server/web"
+	"sync"
 )
 
 // Server holds the dependencies for the HTTP handlers.
@@ -29,10 +31,16 @@ type Server struct {
 	cfg      *config.Config
 	limiter  *rateLimiter
 	queue    *skinQueue
+	bg       []func()
+	mu       sync.Mutex
+
+	// Skin/v1 tooling wired directly to the server/skins package.
+	SkinHandler        *SkinHandler
+	PterodactylWebhook *PterodactylWebhook
 }
 
 // NewServer constructs the API server.
-func NewServer(db *database.DB, cfg *config.Config) *Server {
+func NewServer(db *database.DB, cfg *config.Config, skinHandler *SkinHandler) *Server {
 	return &Server{
 		db:       db,
 		sessions: sessions.NewService(db, cfg.AccessTokenTTL, cfg.RefreshTokenTTL),
@@ -40,7 +48,40 @@ func NewServer(db *database.DB, cfg *config.Config) *Server {
 		cfg:      cfg,
 		limiter:  newRateLimiter(10, time.Minute),
 		queue:    newSkinQueue(),
+		SkinHandler: skinHandler,
 	}
+}
+
+// Close shuts down background workers and connections held by the server so the
+// process can exit cleanly and tests do not leak goroutines or DB connections.
+// It is safe to call Close more than once.
+func (s *Server) Close() {
+	if s.queue != nil {
+		s.queue.Close()
+	}
+	if s.db != nil {
+		s.db.Close()
+	}
+	if s.bg != nil {
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		for _, fn := range s.bg {
+			fn()
+		}
+		s.bg = nil
+	}
+}
+
+// enhanceSecurityHeaders wraps the handler and applies a consistent set of
+// security-focused HTTP response headers on every response.
+func enhanceSecurityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("Referrer-Policy", "no-referrer")
+		next.ServeHTTP(w, r)
+	})
 }
 
 // Handler returns the root HTTP handler with all routes registered.
@@ -77,7 +118,39 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /readyz", s.handleReadyz)
 	mux.HandleFunc("GET /api/v1/updates/manifest", s.limit(s.handleUpdatesManifest))
 	mux.Handle("/", web.Handler())
+
+	if s.SkinHandler != nil {
+		mux.HandleFunc("POST /api/v1/skins/upload", s.SkinHandler.handleUpload)
+		mux.HandleFunc("GET /api/v1/skins/{id}", s.SkinHandler.handleGetSkin)
+		mux.HandleFunc("GET /api/v1/skins/{id}/avatar", s.SkinHandler.handleGetAvatar)
+		mux.HandleFunc("DELETE /api/v1/skins/{id}", s.SkinHandler.handleDeleteSkin)
+		mux.HandleFunc("POST /api/v1/skins/{id}/active", s.SkinHandler.handleSetActiveSkin)
+	}
+	if s.PterodactylWebhook != nil {
+		mux.HandleFunc("POST /api/v1/webhooks/pterodactyl", s.PterodactylWebhook.Handle())
+	}
+
 	return s.withSecurityHeaders(s.withRecovery(withRequestID(s.withRequestLog(mux))))
+}
+
+// setConnPoolSettings adjusts database connection pool limits so a production
+// backend does not exhaust SQLite/WAL connections under concurrent load.
+func setConnPoolSettings(db *database.DB) {
+	if db != nil {
+		db.SQL().SetMaxOpenConns(20)
+		db.SQL().SetMaxIdleConns(5)
+		db.SQL().SetConnMaxLifetime(time.Hour)
+	}
+}
+
+// Context-aware database helpers: all query paths used by handlers go through
+// these so they are always bound to the request context with a timeout.
+func (s *Server) dbQueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
+	return s.db.QueryContext(ctx, query, args...)
+}
+
+func (s *Server) dbExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
+	return s.db.ExecContext(ctx, query, args...)
 }
 
 // ---- request/response types ----
@@ -265,8 +338,8 @@ func (s *Server) handleStartServer(w http.ResponseWriter, r *http.Request) {
 	cmd := exec.CommandContext(ctx, "python", s.cfg.PteroScript)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		// Log details server-side only; never return raw output to the client.
-		log.Printf("server start failed: %v: %s", err, strings.TrimSpace(string(output)))
+		// Structured operational log entry for startup failures (machine-readable).
+		log.Printf("event=srv_start_failed err=%v output=%s", err, strings.TrimSpace(string(output)))
 		writeError(w, http.StatusInternalServerError, "failed to start server")
 		return
 	}

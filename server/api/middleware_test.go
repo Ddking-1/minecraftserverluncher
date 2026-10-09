@@ -8,6 +8,7 @@ import (
 
 func TestSecurityHeadersPresent(t *testing.T) {
 	srv := newTestServer(t)
+	defer srv.Close()
 	h := srv.Handler()
 
 	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
@@ -32,6 +33,7 @@ func TestSecurityHeadersPresent(t *testing.T) {
 
 func TestRecoveryMiddleware(t *testing.T) {
 	srv := newTestServer(t)
+	defer srv.Close()
 
 	panicking := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		panic("boom")
@@ -49,6 +51,7 @@ func TestRecoveryMiddleware(t *testing.T) {
 
 func TestRequestLogPreservesStatus(t *testing.T) {
 	srv := newTestServer(t)
+	defer srv.Close()
 
 	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusTeapot)

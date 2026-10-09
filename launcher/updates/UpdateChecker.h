@@ -8,8 +8,7 @@
 namespace UpdateChecker {
 
 // Result of comparing the running launcher against a manifest component.
-enum class Decision
-{
+enum class Decision {
     UpToDate,
     UpdateAvailable,
     Incompatible,
@@ -17,10 +16,12 @@ enum class Decision
 
 // Compare two dotted numeric versions ("1.2.10" vs "1.2.9"). Missing
 // components count as 0. Returns -1, 0 or 1.
-int compareVersions(const QString &a, const QString &b);
+[[nodiscard]]
+int compareVersions(QStringView a, QStringView b);
 
 // Decide whether the manifest component can be applied to currentVersion.
-Decision check(const QString &currentVersion,
+[[nodiscard]]
+Decision check(QStringView currentVersion,
                const UpdateManifest::ManifestComponent &component);
 
 } // namespace UpdateChecker

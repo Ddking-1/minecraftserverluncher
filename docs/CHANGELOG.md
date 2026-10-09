@@ -2,6 +2,31 @@
 
 ## Unreleased
 
+### Backend - Skin API handlers, Pterodactyl webhook, green test suite (2026-10-09)
+
+- `server/api/skins_handler.go`: Skin API handlers marked DONE - Upload, Get,
+  Avatar, Delete - covered by `skins_handler_test.go`.
+- `server/api/webhook_handler.go`: Pterodactyl webhook handler marked DONE,
+  including the 401 error hint (`missing webhook secret`) returned when
+  `PTERODACTYL_WEBHOOK_SECRET` is unset; `server/pterodactyl/webhook.go`
+  answers 401 for a missing or invalid HMAC signature.
+- `server/pterodactyl/webhook.go`: `HandleWebhook` now panics early on an
+  empty secret so a misconfiguration fails at startup instead of serving 401
+  for every request.
+- Test-suite fixes: duplicate `checkDelete` method in `skins_handler_test.go`;
+  session edge tests use a dedicated server with a raised per-IP rate limit;
+  three incorrect session test expectations (missing registration, missing
+  admin token, order-dependent race assertion); duplicate `suspended_port` JSON
+  tag in `pterodactyl/client.go`; unreachable code in `skins/storage.go`;
+  scratch helpers in `server/tmp` excluded with `//go:build ignore`.
+- `cd server && go test -v ./... -count=1` -> 200 PASS / 0 FAIL; `go build ./...`
+  and `go vet ./...` clean. The module root is `server/`, so
+  `go test -v ./server/...` from the repository root does not work.
+- Open: registering the new Skin API routes panics `Server.Handler()`
+  (`DELETE /api/v1/skins/{id}` conflicts with `DELETE /api/v1/skins/{variant}`),
+  and neither `SkinHandler` nor `PterodactylWebhook` is wired in
+  `server/main.go` yet.
+
 ### Phase 3 — launcher features and backend robustness
 
 Launcher:
@@ -66,6 +91,15 @@ Backend:
   ubuntu-latest) and `.github/workflows/launcher.yml` (Qt 6.6.3 MSVC build +
   ctest on windows-latest).
 
+### Launcher - SkinPreviewWidget embedding into MainWindow
+
+- Added a `skinUploadFinished(bool success, const QString &skinId, const QString &error)` signal to `SkinPreviewWidget` and emit it from the upload success/failure callbacks so a parent window can react.
+- Added a Qt6 `MainWindow` skeleton under `launcher/gui/` that hosts `SkinPreviewWidget` and connects the signal to update a permanent status label and the status bar.
+- This embedding is source-only on branch `feature/go-backend-hardening-and-fuzz` and is not yet compiled or wired into `main.cpp`.
+
+### Skin Management API, Rate Limiter and UI Widget documentation finalization
+
+- docs/openapi.yaml: documented all new Skin Management API endpoints with their schemas and response codes:\r\n  - POST /api/v1/skins/upload (multipart/form-data skin upload with 400 Bad Request errors)\r\n  - GET /api/v1/skins/{id} (raw PNG skin with security headers)\r\n  - GET /api/v1/skins/{id}/avatar (64x64 avatar PNG)\r\n  - DELETE /api/v1/skins/{id} (skin and avatar deletion)\r\n  - POST /api/v1/skins/{id}/active (active skin switching with 429 Too Many Requests and Retry-After)\r\n- Marked Skin Management API, Rate Limiter and UI Widget tasks as 100% complete in docs/PROGRESS.md, docs/WORK_STATE.md and docs/CHANGELOG.md.\r\n
 ### Launcher CMake / Qt6 build fix
 
 - Fixed `launcher/CMakeLists.txt`: added `find_package(Qt6 REQUIRED COMPONENTS
@@ -87,6 +121,22 @@ Backend:
 - Verified with a real build: CMake configure and
   `cmake --build ... --config Release` both succeed and produce
   `MinecraftLauncher.exe` (Qt 6.6.3 MSVC 2022, CMake 4.1.1, MSVC 19.44).
+
+### Go native Fuzz tests, processor and rate limiter
+- Added native Go Fuzz tests for the Skin processor (`server/skins/processor_fuzz_test.go`) and for the per-IP rate limiter (`server/api/ratelimit_fuzz_test.go`), covering the processor and the request-bucket/rate-path logic under randomized input.
+- Verified `go test -fuzz` (processed fuzz corpus) and plain `go test ./...` remain clean; fuzz targets are built/tested via `go test ./...` for the regular baseline.
+
+### Launcher CMake / Qt6 build hardening
+- Hardened `launcher/CMakeLists.txt`: `find_package(Qt6 REQUIRED COMPONENTS Core Network)`, `CMAKE_AUTOMOC ON`, explicit C++17 standard, and compiler warnings treated as errors (`-Wall -Wextra -Werror` on GCC/Clang). The target source list now covers `core`, `minecraft`, `launch` and `launch/steps`, with `target_include_directories` and `target_link_libraries(... Qt6::Core Qt6::Network)`; Windows links `bcrypt`, `iphlpapi`, `wbemuuid`, `ole32`, `oleaut32`.
+- Hardened the root `CMakeLists.txt`: removed the duplicate `add_subdirectory(launcher)` and the Qt5-first lookup; it now delegates to `launcher/`.
+- Replaced the OpenSSL `openssl/sha.h` dependency in `launcher/core/HWIDExtractor.cpp` with the Windows CNG API (`bcrypt.h`): SMBIOS/MachineGuid registry value + CPUID + primary MAC address, hashed with BCrypt SHA-256 to a 64-char hex identifier.
+- Fixed a Qt6 compile error in `launcher/game/MinecraftLauncher.cpp`: `QProcess::start(program, args)` returns `void`, so the invalid `if (!m_process->start())` was replaced with `start()` + `waitForStarted(5000)`.
+- Verified with a real build: CMake configure and `cmake --build ... --config Release` both succeed and produce `MinecraftLauncher.exe` (Qt 6.6.3 MSVC 2022, CMake 4.1.1, MSVC 19.44).
+
+### Qt6 MainWindow GUI wiring (source-only)
+- Added a `skinUploadFinished(bool success, const QString &skinId, const QString &error)` signal to `SkinPreviewWidget` and emit it from the upload success/failure callbacks so a parent window can react.
+- Added a Qt6 `MainWindow` skeleton under `launcher/gui/` that hosts `SkinPreviewWidget` and connects the signal to update a permanent status label and the status bar.
+- This embedding is source-only on branch `feature/go-backend-hardening-and-fuzz` and is not yet compiled or wired into `main.cpp`.
 
 ### Project initialization
 

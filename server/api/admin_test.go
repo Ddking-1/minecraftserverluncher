@@ -63,6 +63,7 @@ func doAdminJSON(t *testing.T, h http.Handler, method, path string, body any, ad
 
 func TestServerStartDisabledWithoutAdminToken(t *testing.T) {
 	srv := newAdminTestServer(t, "", "does-not-exist.py")
+	defer srv.Close()
 	h := srv.Handler()
 
 	// No admin token configured -> endpoint must be indistinguishable from
@@ -74,6 +75,7 @@ func TestServerStartDisabledWithoutAdminToken(t *testing.T) {
 
 func TestServerStartRequiresCorrectAdminToken(t *testing.T) {
 	srv := newAdminTestServer(t, "secret-admin", "does-not-exist.py")
+	defer srv.Close()
 	h := srv.Handler()
 
 	if code := doAdminJSON(t, h, http.MethodPost, "/api/server/start", nil, "wrong"); code != http.StatusUnauthorized {
@@ -90,6 +92,7 @@ func TestServerStartRequiresCorrectAdminToken(t *testing.T) {
 
 func TestAdminHWIDBanLifecycle(t *testing.T) {
 	srv := newAdminTestServer(t, "secret-admin", "")
+	defer srv.Close()
 	h := srv.Handler()
 
 	// Ban requires the admin token.

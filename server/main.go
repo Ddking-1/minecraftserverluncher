@@ -17,6 +17,7 @@ import (
 	"minecraftserverluncher/server/api"
 	"minecraftserverluncher/server/config"
 	"minecraftserverluncher/server/database"
+	"minecraftserverluncher/server/skins"
 )
 
 func main() {
@@ -31,9 +32,18 @@ func main() {
 	}
 	defer db.Close()
 
+	// Skin handling wire-up.
+	skinStorage := skins.NewThreadSafeSkinHistory()
+	rateLimiter := api.NewRateLimiter()
+	skinHandler := &api.SkinHandler{
+		SkinStorageDir: "./storage/skins",
+		History:        skinStorage,
+		RateLimiter:    rateLimiter,
+	}
+
 	srv := &http.Server{
 		Addr:              cfg.ListenAddr,
-		Handler:           api.NewServer(db, cfg).Handler(),
+		Handler:           api.NewServer(db, cfg, skinHandler).Handler(),
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      30 * time.Second,

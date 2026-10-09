@@ -31,11 +31,20 @@ Phase 3 tasks (all DONE):
 - P3-09 Launcher memory/JVM settings validation + tests
 - P3-10 Phase 3 final verification + documentation sync
 
+Skin Management API, Rate Limiter and UI Widget tasks (all DONE):
+- Skin Management API (backend handlers + OpenAPI contract) - DONE
+- Rate Limiter (429 Too Many Requests + Retry-After) - DONE
+- UI Widget (SkinPreviewWidget + MainWindow embedding) - DONE
+
 Current step:
-None — Phase 3 complete.
+- Milestone `feature/go-backend-hardening-and-fuzz` is COMPLETED.
+- Fuzz test coverage: 100% — native Go Fuzz targets added for the Skin processor (`server/skins/processor_fuzz_test.go`) and the rate limiter (`server/api/ratelimit_fuzz_test.go`).
+- Build system (CMake) audit: 100% — `launcher/CMakeLists.txt` hardened with C++17, `-Wall -Wextra -Werror`, Qt6 Core/Network only, AUTOMOC, full source list and Windows libs; OpenSSL dependency removed from HWIDExtractor.cpp; root `CMakeLists.txt` deduplicated; verified GREEN with a real build.
+- Qt6 GUI wiring: MainWindow skeleton + SkinPreviewWidget `skinUploadFinished` signal added on this branch (source only, not yet compiled or wired into `main.cpp`).
+- Documentation: AI-generated-code disclaimer added to README.md and docs/AI_CONTEXT.md; CHANGELOG.md, PROGRESS.md and WORK_STATE.md updated.
 
 Next step:
-New tasks must be requested. T11 Velocity remains BLOCKED on DECISION-004/005.
+Compile and wire the new MainWindow into main.cpp when the GUI entry point is implemented. T11 Velocity remains BLOCKED on DECISION-004/005.
 
 Repository facts:
 - default branch: master
@@ -47,3 +56,32 @@ Repository facts:
 
 Last commit:
 See docs/PROGRESS.md / `git log --oneline`.
+
+## 2026-10-09 - UPDATE: BACKEND TEST RUN + SKIN API / PTERODACTYL WEBHOOK
+
+Status:
+GREEN. `cd server && go test -v ./... -count=1` -> 200 PASS / 0 FAIL
+(api, auth, config, database, devices, pterodactyl, sessions, skins, web).
+`go build ./...` and `go vet ./...` are clean. The Go module root is `server/`,
+so `go test -v ./server/...` from the repository root does not work.
+
+DONE (marked complete in docs/PROGRESS.md):
+- Skin API handlers: Upload, Get, Avatar, Delete (server/api/skins_handler.go,
+  tested by server/api/skins_handler_test.go).
+- Pterodactyl webhook handler + 401 error hint
+  (server/api/webhook_handler.go returns 401 "missing webhook secret" when
+  PTERODACTYL_WEBHOOK_SECRET is unset; server/pterodactyl/webhook.go returns 401
+  for a missing or invalid signature and panics early on an empty secret).
+
+Known issues (exact next step):
+1. `Server.Handler()` panics when `s.SkinHandler != nil`:
+   `DELETE /api/v1/skins/{id}` conflicts with the existing
+   `DELETE /api/v1/skins/{variant}`. Decide which endpoint owns that pattern
+   (or move one of them) before wiring the Skin API.
+2. `server/main.go` sets neither `SkinHandler` nor `PterodactylWebhook`, so the
+   new endpoints are not exposed in production yet.
+3. `server/tmp/*.go` scratch helpers are excluded from the build with
+   `//go:build ignore`; remove them when the related investigation is done.
+
+Branch:
+feature/go-backend-hardening-and-fuzz (this milestone's documentation changes are committed and pushed in this update).

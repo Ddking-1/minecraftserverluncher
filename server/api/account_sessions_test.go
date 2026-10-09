@@ -7,6 +7,7 @@ import (
 
 func TestLogoutOtherDevices(t *testing.T) {
 	srv := newTestServer(t)
+	defer srv.Close()
 	h := srv.Handler()
 
 	_, out := register(t, h, "multi", "supersecret")
@@ -45,6 +46,7 @@ func TestLogoutOtherDevices(t *testing.T) {
 
 func TestLogoutOtherDevicesRequiresAuth(t *testing.T) {
 	srv := newTestServer(t)
+	defer srv.Close()
 	h := srv.Handler()
 
 	code, _ := doJSON(t, h, http.MethodPost, "/api/v1/account/sessions/logout-others", nil, "")
@@ -52,3 +54,4 @@ func TestLogoutOtherDevicesRequiresAuth(t *testing.T) {
 		t.Fatalf("logout-others without token status = %d, want 401", code)
 	}
 }
+

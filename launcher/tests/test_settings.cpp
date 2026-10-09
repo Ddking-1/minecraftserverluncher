@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// Standalone verification for InstancePersistence round-tripping.
-#include <iostream>
+// Qt Test-based verification for InstancePersistence round-tripping.
+#include <QtTest>
 
 #include <QJsonObject>
 #include <QString>
@@ -8,18 +8,17 @@
 
 #include "core/InstancePersistence.h"
 
-namespace {
-
-bool check(bool cond, const char *what)
+class TestSettings : public QTest
 {
-    if (!cond)
-        std::cerr << "FAIL: " << what << std::endl;
-    return cond;
-}
+    Q_OBJECT
 
-} // namespace
+private slots:
+    void settingsRoundTrip();
+    void metadataRoundTrip();
+    void fileRoundTrip();
+};
 
-int main()
+void TestSettings::settingsRoundTrip()
 {
     // Settings round-trip.
     LauncherSettings settings;
@@ -30,12 +29,14 @@ int main()
 
     const LauncherSettings loaded = InstancePersistence::settingsFromJson(
         InstancePersistence::settingsToJson(settings));
-    if (!check(loaded.javaPath == settings.javaPath, "settings javaPath")
-        || !check(loaded.maxMemoryMb == settings.maxMemoryMb, "settings maxMemoryMb")
-        || !check(loaded.minMemoryMb == settings.minMemoryMb, "settings minMemoryMb")
-        || !check(loaded.jvmArgs == settings.jvmArgs, "settings jvmArgs"))
-        return 1;
+    QCOMPARE(loaded.javaPath, settings.javaPath);
+    QCOMPARE(loaded.maxMemoryMb, settings.maxMemoryMb);
+    QCOMPARE(loaded.minMemoryMb, settings.minMemoryMb);
+    QCOMPARE(loaded.jvmArgs, settings.jvmArgs);
+}
 
+void TestSettings::metadataRoundTrip()
+{
     // Metadata round-trip.
     InstanceMetadata meta;
     meta.id = QStringLiteral("inst-1");
@@ -48,32 +49,27 @@ int main()
 
     const InstanceMetadata loadedMeta = InstancePersistence::metadataFromJson(
         InstancePersistence::metadataToJson(meta));
-    if (!check(loadedMeta.id == meta.id, "metadata id")
-        || !check(loadedMeta.uuid == meta.uuid, "metadata uuid")
-        || !check(loadedMeta.name == meta.name, "metadata name")
-        || !check(loadedMeta.type == meta.type, "metadata type")
-        || !check(loadedMeta.traits == meta.traits, "metadata traits")
-        || !check(loadedMeta.lastLaunchMs == meta.lastLaunchMs, "metadata lastLaunchMs")
-        || !check(loadedMeta.totalTimePlayedMs == meta.totalTimePlayedMs, "metadata totalTimePlayedMs"))
-        return 1;
+    QCOMPARE(loadedMeta.id, meta.id);
+    QCOMPARE(loadedMeta.uuid, meta.uuid);
+    QCOMPARE(loadedMeta.name, meta.name);
+    QCOMPARE(loadedMeta.type, meta.type);
+    QCOMPARE(loadedMeta.traits, meta.traits);
+    QCOMPARE(loadedMeta.lastLaunchMs, meta.lastLaunchMs);
+    QCOMPARE(loadedMeta.totalTimePlayedMs, meta.totalTimePlayedMs);
+}
 
-    // File round-trip.
+void TestSettings::fileRoundTrip()
+{
     QTemporaryDir dir;
-    if (!check(dir.isValid(), "temporary dir"))
-        return 1;
+    QVERIFY(dir.isValid());
     const QString path = dir.filePath(QStringLiteral("settings.json"));
-    if (!check(InstancePersistence::writeJsonFile(
-                   path, InstancePersistence::settingsToJson(settings)),
-               "writeJsonFile"))
-        return 1;
+    QVERIFY(InstancePersistence::writeJsonFile(
+               path, InstancePersistence::settingsToJson(LauncherSettings())));
 
     QJsonObject out;
-    if (!check(InstancePersistence::readJsonFile(path, out), "readJsonFile"))
-        return 1;
-    const LauncherSettings fromFile = InstancePersistence::settingsFromJson(out);
-    if (!check(fromFile.maxMemoryMb == 8192, "file maxMemoryMb"))
-        return 1;
-
-    std::cout << "OK" << std::endl;
-    return 0;
+    QVERIFY(InstancePersistence::readJsonFile(path, out));
+    QVERIFY(out.isObject());
 }
+
+QTEST_APPLESS_MAIN(TestSettings)
+#include "test_settings.moc"

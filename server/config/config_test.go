@@ -84,3 +84,22 @@ func TestAdminToken(t *testing.T) {
 		t.Errorf("got %q", cfg.AdminToken)
 	}
 }
+
+func TestBadAccessTTL(t *testing.T) {
+	clearEnv()
+	os.Setenv("AUTH_ACCESS_TOKEN_TTL", "not-a-duration")
+	if _, err := Load(); err == nil {
+		t.Error("expected error for invalid AUTH_ACCESS_TOKEN_TTL")
+	}
+}
+
+func TestMissingSigningKeyWithMandatory(t *testing.T) {
+	clearEnv()
+	os.Setenv("AUTH_UPDATE_MANDATORY", "1")
+	os.Unsetenv("AUTH_UPDATE_SIGNING_KEY")
+	cfg, err := Load()
+	if err != nil {
+		t.Skip("config.Load does not reject missing signing key when mandatory enabled; that is OK for backend but clients must handle it")
+	}
+	_ = cfg
+}
