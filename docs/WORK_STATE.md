@@ -32,7 +32,10 @@ Phase 3 tasks (all DONE):
 - P3-10 Phase 3 final verification + documentation sync
 
 Current step:
-None — Phase 3 complete.
+- Embedding SkinPreviewWidget into a MainWindow skeleton on branch
+  feature/go-backend-hardening-and-fuzz (commit 449bc08). The SkinPreviewWidget
+  now emits skinUploadFinished; MainWindow hosts it and updates a permanent
+  status label and status bar. Not yet compiled or wired into main.cpp.
 
 Next step:
 New tasks must be requested. T11 Velocity remains BLOCKED on DECISION-004/005.

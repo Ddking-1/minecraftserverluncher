@@ -398,3 +398,30 @@ Manual user action:
 None for the test run. The changes from this task are uncommitted on
 `feature/go-backend-hardening-and-fuzz`; committing/pushing was not requested
 for this task.
+
+## 2026-10-09 — SkinPreviewWidget embedding into MainWindow
+
+Agent/model: Buffy (Freebuff) - code agent
+Branch: feature/go-backend-hardening-and-fuzz
+Task: Embed the existing SkinPreviewWidget Qt6 panel into a MainWindow UI skeleton; add a skinUploadFinished signal and wire it to MainWindow status updates.
+Started: 2026-10-09
+Completed: 2026-10-09
+
+Files:
+- launcher/ui/SkinPreviewWidget.h (add skinUploadFinished signal)
+- launcher/ui/SkinPreviewWidget.cpp (emit signal on upload success/failure)
+- launcher/gui/MainWindow.h (new: QMainWindow embedding SkinPreviewWidget)
+- launcher/gui/MainWindow.cpp (new: host widget, status bar/ permanent label updates)
+- docs/AI_CONTEXT.md, docs/WORK_STATE.md, docs/PROGRESS.md, docs/CHANGELOG.md
+
+Tests:
+No build or tests executed; build/tests are forbidden in this environment. The change is source and documentation only.
+
+Current status:
+Source committed and pushed as 449bc08. Not compiled, not wired into main.cpp.
+
+Next:
+Compile the launcher with the new MainWindow and wire it into main.cpp when the GUI entry point is implemented.
+
+Manual user action:
+None required for the source embedding. Compilation and integration are future steps.

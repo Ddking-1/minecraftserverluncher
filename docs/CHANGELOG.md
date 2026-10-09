@@ -91,6 +91,12 @@ Backend:
   ubuntu-latest) and `.github/workflows/launcher.yml` (Qt 6.6.3 MSVC build +
   ctest on windows-latest).
 
+### Launcher - SkinPreviewWidget embedding into MainWindow
+
+- Added a `skinUploadFinished(bool success, const QString &skinId, const QString &error)` signal to `SkinPreviewWidget` and emit it from the upload success/failure callbacks so a parent window can react.
+- Added a Qt6 `MainWindow` skeleton under `launcher/gui/` that hosts `SkinPreviewWidget` and connects the signal to update a permanent status label and the status bar.
+- This embedding is source-only on branch `feature/go-backend-hardening-and-fuzz` and is not yet compiled or wired into `main.cpp`.
+
 ### Launcher CMake / Qt6 build fix
 
 - Fixed `launcher/CMakeLists.txt`: added `find_package(Qt6 REQUIRED COMPONENTS

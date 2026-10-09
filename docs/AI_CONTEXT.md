@@ -37,6 +37,13 @@ update_manifest, skin_model, backend_contract), all passing. Newer launcher
 work includes the update manifest parser, skin model, backend status-code error
 mapping, a request timeout, and CLI filter/version options.
 
+On branch `feature/go-backend-hardening-and-fuzz`, a Qt6 `MainWindow` skeleton
+was added that embeds `SkinPreviewWidget` and reacts to its new
+`skinUploadFinished` signal to update the status bar/permanent label on skin
+upload or switch events. The `SkinPreviewWidget` now emits that signal on
+upload success or failure. This GUI wiring is not yet compiled or wired into
+`main.cpp`; the branch work is source only.
+
 Velocity work remains blocked until the owner signs off DECISION-004 (GPLv3
 distribution model) and DECISION-005 (metadata source) is resolved.
 
