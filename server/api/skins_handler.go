@@ -1,8 +1,10 @@
 package api
 
 import (
+	"fmt"
 	"io"
 	"net/http"
+	"path/filepath"
 	"strings"
 
 	"github.com/google/uuid"
@@ -10,14 +12,19 @@ import (
 )
 
 // SkinHandler serves the /api/v1/skins/{id} family of endpoints using the
-// server/skins package directly (validation, storage, avatar extraction).
+// server/skins package directly (processing, validation, storage, avatar extraction).
 //
-// Endpoints:// GET /api/v1/skins/{id}          - raw PNG from storage (image/png)
-//   GET /api/v1/skins/{id}/avatar  - 64x64 avatar PNG (image/png)
-//   DELETE /api/v1/skins/{id}      - delete skin + avatar
-//   POST /api/v1/skins/upload      - multipart skin upload
+// Endpoints:
+//   POST   /api/v1/skins/upload                - multipart skin upload (ProcessSkin + recent-skin rotation)
+//   GET    /api/v1/skins/{id}                  - raw processed PNG from storage (image/png)
+//   GET    /api/v1/skins/{id}/avatar           - 64x64 avatar PNG (image/png)
+//   DELETE /api/v1/skins/{id}                  - delete skin + avatar
+//   POST   /api/v1/skins/{id}/active           - quick-switch active skin (rate-limited)
 type SkinHandler struct {
-	Storage skins.SkinStorage
+	Storage        skins.SkinStorage
+	History        *skins.ThreadSafeSkinHistory
+	SkinStorageDir string
+	RateLimiter    *RateLimiter
 }
 
 func (h *SkinHandler) handleUpload(w http.ResponseWriter, r *http.Request) {
@@ -39,24 +46,19 @@ func (h *SkinHandler) handleUpload(w http.ResponseWriter, r *http.Request) {
 	}
 	defer f.Close()
 
-	data, err := io.ReadAll(f)
+	processed, err := skins.ProcessSkin(f, file[0].Size)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "could not read skin data")
-		return
-	}
-
-	if _, err := skins.ValidateSkinPNG(data, skins.MaxSkinBytes, ""); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid skin: "+err.Error())
 		return
 	}
 
 	id := uuid.New().String()
-	if err := h.Storage.SaveSkin(id, data); err != nil {
+	if err := h.Storage.SaveSkin(id, processed); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to store skin")
 		return
 	}
 
-	avatar, err := skins.ExtractAvatarHead(data)
+	avatar, err := skins.ExtractAvatarHead(processed)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to extract avatar")
 		return
@@ -66,6 +68,20 @@ func (h *SkinHandler) handleUpload(w http.ResponseWriter, r *http.Request) {
 	if err := h.Storage.SaveSkin(avatarID, avatar); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to store avatar")
 		return
+	}
+
+	if h.History != nil {
+		evicted, err := h.History.AddSkin(id, true)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to record skin history")
+			return
+		}
+		if evicted != "" && h.SkinStorageDir != "" {
+			if removeErr := os.Remove(filepath.Join(h.SkinStorageDir, evicted)); removeErr != nil && !os.IsNotExist(removeErr) {
+				writeError(w, http.StatusInternalServerError, "failed to delete oldest skin")
+				return
+			}
+		}
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{
@@ -91,6 +107,8 @@ func (h *SkinHandler) handleGetSkin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("Content-Security-Policy", "default-src 'none'")
 	w.Header().Set("Content-Type", "image/png")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(data)
@@ -113,6 +131,8 @@ func (h *SkinHandler) handleGetAvatar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("Content-Security-Policy", "default-src 'none'")
 	w.Header().Set("Content-Type", "image/png")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(data)
@@ -135,5 +155,44 @@ func (h *SkinHandler) handleDeleteSkin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if h.History != nil {
+		h.History.RemoveSkin(id)
+	}
+
 	writeJSON(w, http.StatusOK, map[string]any{"success": true})
+}
+
+func (h *SkinHandler) handleSetActiveSkin(w http.ResponseWriter, r *http.Request) {
+	if h.RateLimiter != nil {
+		h.RateLimiter.HandlerMiddleware(http.HandlerFunc(h.rateLimitedSetActiveSkin)).ServeHTTP(w, r)
+		return
+	}
+	h.rateLimitedSetActiveSkin(w, r)
+}
+
+func (h *SkinHandler) rateLimitedSetActiveSkin(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if id == "" {
+		writeError(w, http.StatusNotFound, "skin not found")
+		return
+	}
+
+	if h.History == nil {
+		writeError(w, http.StatusInternalServerError, "skin history unavailable")
+		return
+	}
+
+	if err := h.History.SetActive(id); err != nil {
+		if strings.Contains(err.Error(), "is not in history") {
+			writeError(w, http.StatusNotFound, "skin not found")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "failed to set active skin")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"success": true,
+		"active_skin_id": id,
+	})
 }
