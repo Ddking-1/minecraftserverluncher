@@ -47,3 +47,5 @@ working/
 *.vcxproj.filters
 *.vcxproj.user
 *.dir/
+build-new/
+build-vs/
