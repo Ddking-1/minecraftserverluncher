@@ -1,5 +1,7 @@
 ﻿# AI CONTEXT
 
+> ⚠️ **Disclaimer:** The code in this repository is heavily generated and maintained by AI assistants. As such, there is no guarantee of continuous updates, bug fixes, or long-term maintenance. Use at your own risk.
+
 ## Project identity
 
 This is a private Minecraft network launcher/client ecosystem.

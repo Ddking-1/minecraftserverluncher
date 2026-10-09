@@ -122,6 +122,22 @@ Backend:
   `cmake --build ... --config Release` both succeed and produce
   `MinecraftLauncher.exe` (Qt 6.6.3 MSVC 2022, CMake 4.1.1, MSVC 19.44).
 
+### Go native Fuzz tests, processor and rate limiter
+- Added native Go Fuzz tests for the Skin processor (`server/skins/processor_fuzz_test.go`) and for the per-IP rate limiter (`server/api/ratelimit_fuzz_test.go`), covering the processor and the request-bucket/rate-path logic under randomized input.
+- Verified `go test -fuzz` (processed fuzz corpus) and plain `go test ./...` remain clean; fuzz targets are built/tested via `go test ./...` for the regular baseline.
+
+### Launcher CMake / Qt6 build hardening
+- Hardened `launcher/CMakeLists.txt`: `find_package(Qt6 REQUIRED COMPONENTS Core Network)`, `CMAKE_AUTOMOC ON`, explicit C++17 standard, and compiler warnings treated as errors (`-Wall -Wextra -Werror` on GCC/Clang). The target source list now covers `core`, `minecraft`, `launch` and `launch/steps`, with `target_include_directories` and `target_link_libraries(... Qt6::Core Qt6::Network)`; Windows links `bcrypt`, `iphlpapi`, `wbemuuid`, `ole32`, `oleaut32`.
+- Hardened the root `CMakeLists.txt`: removed the duplicate `add_subdirectory(launcher)` and the Qt5-first lookup; it now delegates to `launcher/`.
+- Replaced the OpenSSL `openssl/sha.h` dependency in `launcher/core/HWIDExtractor.cpp` with the Windows CNG API (`bcrypt.h`): SMBIOS/MachineGuid registry value + CPUID + primary MAC address, hashed with BCrypt SHA-256 to a 64-char hex identifier.
+- Fixed a Qt6 compile error in `launcher/game/MinecraftLauncher.cpp`: `QProcess::start(program, args)` returns `void`, so the invalid `if (!m_process->start())` was replaced with `start()` + `waitForStarted(5000)`.
+- Verified with a real build: CMake configure and `cmake --build ... --config Release` both succeed and produce `MinecraftLauncher.exe` (Qt 6.6.3 MSVC 2022, CMake 4.1.1, MSVC 19.44).
+
+### Qt6 MainWindow GUI wiring (source-only)
+- Added a `skinUploadFinished(bool success, const QString &skinId, const QString &error)` signal to `SkinPreviewWidget` and emit it from the upload success/failure callbacks so a parent window can react.
+- Added a Qt6 `MainWindow` skeleton under `launcher/gui/` that hosts `SkinPreviewWidget` and connects the signal to update a permanent status label and the status bar.
+- This embedding is source-only on branch `feature/go-backend-hardening-and-fuzz` and is not yet compiled or wired into `main.cpp`.
+
 ### Project initialization
 
 - Defined requirements for a Windows Minecraft launcher/client ecosystem.

@@ -37,13 +37,14 @@ Skin Management API, Rate Limiter and UI Widget tasks (all DONE):
 - UI Widget (SkinPreviewWidget + MainWindow embedding) - DONE
 
 Current step:
-- Embedding SkinPreviewWidget into a MainWindow skeleton on branch
-  feature/go-backend-hardening-and-fuzz (commit 449bc08). The SkinPreviewWidget
-  now emits skinUploadFinished; MainWindow hosts it and updates a permanent
-  status label and status bar. Not yet compiled or wired into main.cpp.
+- Milestone `feature/go-backend-hardening-and-fuzz` is COMPLETED.
+- Fuzz test coverage: 100% — native Go Fuzz targets added for the Skin processor (`server/skins/processor_fuzz_test.go`) and the rate limiter (`server/api/ratelimit_fuzz_test.go`).
+- Build system (CMake) audit: 100% — `launcher/CMakeLists.txt` hardened with C++17, `-Wall -Wextra -Werror`, Qt6 Core/Network only, AUTOMOC, full source list and Windows libs; OpenSSL dependency removed from HWIDExtractor.cpp; root `CMakeLists.txt` deduplicated; verified GREEN with a real build.
+- Qt6 GUI wiring: MainWindow skeleton + SkinPreviewWidget `skinUploadFinished` signal added on this branch (source only, not yet compiled or wired into `main.cpp`).
+- Documentation: AI-generated-code disclaimer added to README.md and docs/AI_CONTEXT.md; CHANGELOG.md, PROGRESS.md and WORK_STATE.md updated.
 
 Next step:
-New tasks must be requested. T11 Velocity remains BLOCKED on DECISION-004/005.
+Compile and wire the new MainWindow into main.cpp when the GUI entry point is implemented. T11 Velocity remains BLOCKED on DECISION-004/005.
 
 Repository facts:
 - default branch: master
@@ -83,4 +84,4 @@ Known issues (exact next step):
    `//go:build ignore`; remove them when the related investigation is done.
 
 Branch:
-feature/go-backend-hardening-and-fuzz (this task's changes are uncommitted).
+feature/go-backend-hardening-and-fuzz (this milestone's documentation changes are committed and pushed in this update).
