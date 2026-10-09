@@ -40,7 +40,7 @@ type Server struct {
 }
 
 // NewServer constructs the API server.
-func NewServer(db *database.DB, cfg *config.Config) *Server {
+func NewServer(db *database.DB, cfg *config.Config, skinHandler *SkinHandler) *Server {
 	return &Server{
 		db:       db,
 		sessions: sessions.NewService(db, cfg.AccessTokenTTL, cfg.RefreshTokenTTL),
@@ -48,6 +48,7 @@ func NewServer(db *database.DB, cfg *config.Config) *Server {
 		cfg:      cfg,
 		limiter:  newRateLimiter(10, time.Minute),
 		queue:    newSkinQueue(),
+		SkinHandler: skinHandler,
 	}
 }
 
@@ -123,6 +124,7 @@ func (s *Server) Handler() http.Handler {
 		mux.HandleFunc("GET /api/v1/skins/{id}", s.SkinHandler.handleGetSkin)
 		mux.HandleFunc("GET /api/v1/skins/{id}/avatar", s.SkinHandler.handleGetAvatar)
 		mux.HandleFunc("DELETE /api/v1/skins/{id}", s.SkinHandler.handleDeleteSkin)
+		mux.HandleFunc("POST /api/v1/skins/{id}/active", s.SkinHandler.handleSetActiveSkin)
 	}
 	if s.PterodactylWebhook != nil {
 		mux.HandleFunc("POST /api/v1/webhooks/pterodactyl", s.PterodactylWebhook.Handle())
