@@ -135,9 +135,8 @@ func ExtractAvatarHead(data []byte) ([]byte, error) {
 			srcX := x * width / avatarW
 			srcY := y * height / avatarH
 						srcY0 := srcY + bounds.Min.Y
-			srcX0 := srcX + bounds.Min.X
-		srcIdx := srcY0*bounds.Stride + srcX0*4
-		dstIdx := y*avatar.(*image.RGBA).Stride + x*4
+			srcX0 := srcX + bounds.Min.XsrcIdx := srcY0*bounds.Stride + srcX0*4
+			 dstIdx := y*avatar.Stride + x*4
 			if rgba, ok := img.(*image.RGBA); ok {
 				avatar.Pix[dstIdx] = rgba.Pix[srcIdx]
 				avatar.Pix[dstIdx+1] = rgba.Pix[srcIdx+1]
