@@ -26,9 +26,11 @@ jobs:
         run: go mod tidy && git diff --exit-code go.mod go.sum || true
 
       - name: go vet
+        working-directory: server
         run: go vet ./... || true
 
       - name: go test -race
+        working-directory: server
         run: go test ./... -count=1 -timeout 120s -v -race
 
       - name: staticcheck
@@ -48,11 +50,13 @@ jobs:
         uses: ilammy/msvc-dev-cmd@v1
 
       - name: Setup Qt
-        uses: jurplel/setup-qt-action@v3
+        uses: jurplel/install-qt-action@v4
         with:
           version: "6.7.2"
-          arch: "x64"
-          msvc: true
+          host: windows
+          target: desktop
+          arch: win64_msvc2019_64
+          cache: true
 
       - name: Configure launcher (MSVC)
         run: cmake -B build-ci -S launcher -G "Visual Studio 17 2022" -A x64
