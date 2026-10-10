@@ -49,7 +49,7 @@ func newAdminTestServer(t *testing.T, adminToken, script string) *Server {
 		AdminToken:      adminToken,
 		PteroScript:     script,
 	}
-	return NewServer(db, cfg)
+	return NewServer(db, cfg, nil)
 }
 
 func doAdminJSON(t *testing.T, h http.Handler, method, path string, body any, adminToken string) int {

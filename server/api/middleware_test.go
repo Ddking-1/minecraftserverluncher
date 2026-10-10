@@ -44,6 +44,8 @@ func TestRecoveryMiddleware(t *testing.T) {
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 
+	// The withRecovery middleware recovers from panics and writes a 500 response.
+	// We verify the handler did not crash and returned 500.
 	if rec.Code != http.StatusInternalServerError {
 		t.Fatalf("panic status = %d, want 500", rec.Code)
 	}

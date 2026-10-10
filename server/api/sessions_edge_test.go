@@ -23,7 +23,7 @@ import (
 func newSessionTestServer(t *testing.T) *Server {
 	t.Helper()
 	srv := newTestServer(t)
-	srv.limiter = newRateLimiter(1_000_000, time.Hour)
+	srv.limiter = NewRateLimiter(Config{RequestsPerMinute: 1_000_000})
 	return srv
 }
 
@@ -558,7 +558,7 @@ func TestExpiredAccessTokenRejected(t *testing.T) {
 		RefreshTokenTTL: 30 * 24 * time.Hour,
 		BcryptCost:     10,
 	}
-	srv := NewServer(db, cfg)
+	srv := NewServer(db, cfg, nil)
 	defer srv.Close()
 	h := srv.Handler()
 

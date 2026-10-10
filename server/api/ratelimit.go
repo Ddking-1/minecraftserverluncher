@@ -55,6 +55,12 @@ func NewRateLimiter(cfg ...Config) *RateLimiter {
 	if len(cfg) > 0 {
 		c = cfg[0]
 	}
+	if c.CleanupInterval <= 0 {
+		c.CleanupInterval = 3 * time.Minute
+	}
+	if c.CleanupTolerance <= 0 {
+		c.CleanupTolerance = 5 * time.Minute
+	}
 
 	rl := &RateLimiter{
 		visitors:    make(map[string]*visitor),

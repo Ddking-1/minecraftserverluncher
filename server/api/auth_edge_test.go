@@ -69,7 +69,7 @@ func TestRefreshRejectsExpiredRefreshToken(t *testing.T) {
 		RefreshTokenTTL: -100 * time.Hour, // already expired
 		BcryptCost:      10,
 	}
-	srv := NewServer(db, cfg)
+	srv := NewServer(db, cfg, nil)
 	defer srv.Close()
 	h := srv.Handler()
 	var buf bytes.Buffer

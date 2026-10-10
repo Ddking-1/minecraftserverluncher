@@ -29,7 +29,7 @@ type Server struct {
 	sessions *sessions.Service
 	devices  *devices.Service
 	cfg      *config.Config
-	limiter  *rateLimiter
+	limiter  *RateLimiter
 	queue    *skinQueue
 	bg       []func()
 	mu       sync.Mutex
@@ -46,7 +46,7 @@ func NewServer(db *database.DB, cfg *config.Config, skinHandler *SkinHandler) *S
 		sessions: sessions.NewService(db, cfg.AccessTokenTTL, cfg.RefreshTokenTTL),
 		devices:  devices.NewService(db),
 		cfg:      cfg,
-		limiter:  newRateLimiter(10, time.Minute),
+		limiter:  NewRateLimiter(Config{RequestsPerMinute: 10}),
 		queue:    newSkinQueue(),
 		SkinHandler: skinHandler,
 	}
@@ -87,36 +87,36 @@ func enhanceSecurityHeaders(next http.Handler) http.Handler {
 // Handler returns the root HTTP handler with all routes registered.
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
-	mux.HandleFunc("POST /api/v1/auth/register", s.limit(s.handleRegister))
-	mux.HandleFunc("POST /api/v1/auth/login", s.limit(s.handleLogin))
-	mux.HandleFunc("POST /api/v1/auth/refresh", s.limit(s.handleRefresh))
-	mux.HandleFunc("POST /api/v1/auth/logout", s.limit(s.handleLogout))
-	mux.HandleFunc("POST /api/v1/auth/logout-all", s.limit(s.handleLogoutAll))
-	mux.HandleFunc("POST /api/v1/auth/forgot", s.limit(s.handleForgotPassword))
-	mux.HandleFunc("POST /api/v1/auth/reset", s.limit(s.handleResetPassword))
-	mux.HandleFunc("GET /api/v1/account/me", s.limit(s.handleAccountMe))
-	mux.HandleFunc("POST /api/v1/account/password", s.limit(s.handleChangePassword))
-	mux.HandleFunc("GET /api/v1/account/sessions", s.limit(s.handleListSessions))
-	mux.HandleFunc("POST /api/v1/account/sessions/revoke", s.limit(s.handleRevokeSession))
-	mux.HandleFunc("POST /api/v1/account/sessions/logout-others", s.limit(s.handleLogoutOtherDevices))
-	mux.HandleFunc("POST /api/server/start", s.limit(s.handleStartServer))
-	mux.HandleFunc("PUT /api/v1/skins/{variant}", s.limit(s.handleUploadSkin))
-	mux.HandleFunc("GET /api/v1/skins", s.limit(s.handleListSkins))
-	mux.HandleFunc("GET /api/v1/skins/{account}/{variant}", s.limit(s.handleGetSkin))
-	mux.HandleFunc("DELETE /api/v1/skins/{variant}", s.limit(s.handleDeleteSkin))
-	mux.HandleFunc("POST /api/v1/skins/upload/{variant}", s.limit(s.handleAsyncSkinUpload))
-	mux.HandleFunc("GET /api/v1/tasks/{id}", s.limit(s.handleTaskStatus))
-	mux.HandleFunc("POST /api/v1/proxy/auth", s.limit(s.handleProxyAuth))
-	mux.HandleFunc("POST /api/admin/hwid/ban", s.limit(s.handleBanHWID))
-	mux.HandleFunc("POST /api/admin/hwid/unban", s.limit(s.handleUnbanHWID))
-	mux.HandleFunc("GET /api/admin/hwid/bans", s.limit(s.handleListHWIDBans))
-	mux.HandleFunc("GET /api/admin/users", s.limit(s.handleAdminListUsers))
-	mux.HandleFunc("DELETE /api/admin/users/{id}", s.limit(s.handleAdminDeleteUser))
+	mux.HandleFunc("POST /api/v1/auth/register", s.limitHandler(s.handleRegister))
+	mux.HandleFunc("POST /api/v1/auth/login", s.limitHandler(s.handleLogin))
+	mux.HandleFunc("POST /api/v1/auth/refresh", s.limitHandler(s.handleRefresh))
+	mux.HandleFunc("POST /api/v1/auth/logout", s.limitHandler(s.handleLogout))
+	mux.HandleFunc("POST /api/v1/auth/logout-all", s.limitHandler(s.handleLogoutAll))
+	mux.HandleFunc("POST /api/v1/auth/forgot", s.limitHandler(s.handleForgotPassword))
+	mux.HandleFunc("POST /api/v1/auth/reset", s.limitHandler(s.handleResetPassword))
+	mux.HandleFunc("GET /api/v1/account/me", s.limitHandler(s.handleAccountMe))
+	mux.HandleFunc("POST /api/v1/account/password", s.limitHandler(s.handleChangePassword))
+	mux.HandleFunc("GET /api/v1/account/sessions", s.limitHandler(s.handleListSessions))
+	mux.HandleFunc("POST /api/v1/account/sessions/revoke", s.limitHandler(s.handleRevokeSession))
+	mux.HandleFunc("POST /api/v1/account/sessions/logout-others", s.limitHandler(s.handleLogoutOtherDevices))
+	mux.HandleFunc("POST /api/server/start", s.limitHandler(s.handleStartServer))
+	mux.HandleFunc("PUT /api/v1/skins/{variant}", s.limitHandler(s.handleUploadSkin))
+	mux.HandleFunc("GET /api/v1/skins", s.limitHandler(s.handleListSkins))
+	mux.HandleFunc("GET /api/v1/skins/{account}/{variant}", s.limitHandler(s.handleGetSkin))
+	mux.HandleFunc("DELETE /api/v1/skins/{variant}", s.limitHandler(s.handleDeleteSkin))
+	mux.HandleFunc("POST /api/v1/skins/upload/{variant}", s.limitHandler(s.handleAsyncSkinUpload))
+	mux.HandleFunc("GET /api/v1/tasks/{id}", s.limitHandler(s.handleTaskStatus))
+	mux.HandleFunc("POST /api/v1/proxy/auth", s.limitHandler(s.handleProxyAuth))
+	mux.HandleFunc("POST /api/admin/hwid/ban", s.limitHandler(s.handleBanHWID))
+	mux.HandleFunc("POST /api/admin/hwid/unban", s.limitHandler(s.handleUnbanHWID))
+	mux.HandleFunc("GET /api/admin/hwid/bans", s.limitHandler(s.handleListHWIDBans))
+	mux.HandleFunc("GET /api/admin/users", s.limitHandler(s.handleAdminListUsers))
+	mux.HandleFunc("DELETE /api/admin/users/{id}", s.limitHandler(s.handleAdminDeleteUser))
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
-	mux.HandleFunc("GET /readyz", s.handleReadyz)
-	mux.HandleFunc("GET /api/v1/updates/manifest", s.limit(s.handleUpdatesManifest))
+	mux.HandleFunc("GET /readyz", s.limitHandler(s.handleReadyz))
+	mux.HandleFunc("GET /api/v1/updates/manifest", s.limitHandler(s.handleUpdatesManifest))
 	mux.Handle("/", web.Handler())
 
 	if s.SkinHandler != nil {
@@ -131,6 +131,19 @@ func (s *Server) Handler() http.Handler {
 	}
 
 	return s.withSecurityHeaders(s.withRecovery(withRequestID(s.withRequestLog(mux))))
+}
+
+// limitMiddleware returns an http.Handler that applies rate limiting to the
+// given handler.
+func (s *Server) limitMiddleware(next http.Handler) http.Handler {
+	return s.limiter.HandlerMiddleware(next)
+}
+
+// limitHandler adapts a http.Handler (produced by limitMiddleware) into a
+// func(http.ResponseWriter, *http.Request) callback compatible with the router.
+func (s *Server) limitHandler(fn func(http.ResponseWriter, *http.Request)) func(http.ResponseWriter, *http.Request) {
+	h := s.limitMiddleware(http.HandlerFunc(fn))
+	return func(w http.ResponseWriter, r *http.Request) { h.ServeHTTP(w, r) }
 }
 
 // setConnPoolSettings adjusts database connection pool limits so a production

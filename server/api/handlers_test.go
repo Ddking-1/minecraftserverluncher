@@ -28,7 +28,7 @@ func newTestServer(t *testing.T) *Server {
 		RefreshTokenTTL: 30 * 24 * time.Hour,
 		BcryptCost:      10,
 	}
-	return NewServer(db, cfg)
+	return NewServer(db, cfg, nil)
 }
 
 func doJSON(t *testing.T, h http.Handler, method, path string, body any, token string) (int, map[string]any) {
