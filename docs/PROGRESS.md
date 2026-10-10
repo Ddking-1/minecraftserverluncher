@@ -492,3 +492,36 @@ None required for this milestone.
 
 Manual user action:
 None required.
+
+---
+
+Task: Fix the merged-line compile error in server/skins/processor.go (ExtractAvatarHead).
+Started: 2026-10-10
+Completed: 2026-10-10
+
+Branch: fix/skins-processor-linebreak (created from `master`; working directly on
+`master` is forbidden by AGENTS.md rule 1).
+
+Files:
+- server/skins/processor.go (split the collapsed statements around line 138
+  back into `srcX0`, `srcY0`, `srcIdx`, `dstIdx`; `srcIdx` now uses
+  `avatar.Stride` instead of the non-existent `bounds.Stride`)
+- docs/PROGRESS.md, docs/WORK_STATE.md, docs/CHANGELOG.md, docs/AI_CONTEXT.md
+  (this update)
+
+Tests:
+- `cd server && go build ./skins/... && go vet ./skins/... && go test ./skins/...`
+  -> PASS (`server/skins` has no test files yet).
+- `go build ./...` still fails in `server/api` for a pre-existing, unrelated
+  reason: `handlers.go` references `rateLimiter`, `newRateLimiter` and
+  `Server.limit`, which are defined nowhere in the repository.
+
+Next:
+Reconcile `server/api/handlers.go` with `server/api/ratelimit.go` (adapter or
+rename to `RateLimiter`/`NewRateLimiter`/`HandlerMiddleware`) so
+`go build ./...` is green again, then run `cd server && go test -v ./... -count=1`.
+
+Manual user action:
+None. Git management (task branch, commit, push, and merging
+`fix/skins-processor-linebreak` into `master`) is performed by the agent per
+AGENTS.md rule 26.

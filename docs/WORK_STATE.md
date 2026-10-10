@@ -85,3 +85,29 @@ Known issues (exact next step):
 
 Branch:
 feature/go-backend-hardening-and-fuzz (this milestone's documentation changes are committed and pushed in this update).
+
+## 2026-10-10 - UPDATE: SKINS PROCESSOR COMPILE FIX
+
+Status:
+PARTIAL GREEN. `cd server && go build ./skins/... && go vet ./skins/... &&
+go test ./skins/...` pass. `go build ./...` still fails in `server/api` for a
+pre-existing reason unrelated to this fix (see known issue 4). The Go module
+root is `server/`.
+
+DONE:
+- server/skins/processor.go: `ExtractAvatarHead` statements around line 138
+  restored as four separate lines (`srcX0`, `srcY0`, `srcIdx`, `dstIdx`);
+  `srcIdx := srcY0*avatar.Stride + srcX0*4` replaces the broken
+  `bounds.Stride` reference (`image.Rectangle` has no `Stride` field).
+
+Known issues (exact next step):
+4. `server/api` does not compile: `server/api/handlers.go` references
+   `rateLimiter`, `newRateLimiter` and `Server.limit`, while
+   `server/api/ratelimit.go` defines `RateLimiter`, `NewRateLimiter` and
+   `HandlerMiddleware`. Bridge or rename these so `go build ./...` is green,
+   then run `cd server && go test -v ./... -count=1`.
+
+Branch:
+fix/skins-processor-linebreak (task branch created from `master` per AGENTS.md
+rule 1); the agent merges it into `master` and pushes as the final git step of
+this task (rule 26).

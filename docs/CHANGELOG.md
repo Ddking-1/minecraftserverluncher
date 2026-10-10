@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+### Backend - skins processor compile fix (2026-10-10)
+
+- `server/skins/processor.go` (`ExtractAvatarHead`): the four statements around
+  line 138 had collapsed into a single line (missing operators and newline) and
+  referenced `bounds.Stride`, which does not exist on `image.Rectangle`;
+  restored them as separate statements (`srcX0`, `srcY0`, `srcIdx`, `dstIdx`)
+  with `srcIdx := srcY0*avatar.Stride + srcX0*4`.
+- Branch `fix/skins-processor-linebreak`; verified with
+  `cd server && go build ./skins/... && go vet ./skins/... && go test ./skins/...`
+  (green; `server/skins` currently has no test files).
+- Pre-existing and unchanged by this fix: `server/api` does not compile -
+  `server/api/handlers.go` references `rateLimiter`, `newRateLimiter` and
+  `Server.limit`, while `server/api/ratelimit.go` defines
+  `RateLimiter`/`NewRateLimiter`/`HandlerMiddleware` (see `docs/WORK_STATE.md`
+  known issue 4).
+
 ### Backend - Skin API handlers, Pterodactyl webhook, green test suite (2026-10-09)
 
 - `server/api/skins_handler.go`: Skin API handlers marked DONE - Upload, Get,

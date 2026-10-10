@@ -124,8 +124,13 @@ with expiry and revocation, device identity mapping, registration/login/
 refresh/logout/logout-all, account profile/password/session management,
 HWID ban administration, rate limiting, middleware (request logging, panic
 recovery, security headers), `/healthz` + `/readyz`, and hardened HTTP server
-timeouts with graceful shutdown. `go build`, `go vet` and `go test ./...` pass.
-See `docs/API.md`, `docs/SECURITY_REVIEW.md` and `server/README.md`.
+timeouts with graceful shutdown. As of 2026-10-10, `server/skins` builds,
+vets and tests clean (`ExtractAvatarHead` merged-line compile error fixed on
+branch `fix/skins-processor-linebreak`), but `go build ./...` still fails in
+`server/api`: `handlers.go` references `rateLimiter`, `newRateLimiter` and
+`Server.limit`, which are defined nowhere (`ratelimit.go` exports
+`RateLimiter`/`NewRateLimiter`/`HandlerMiddleware`). See `docs/WORK_STATE.md`.
+Further reading: `docs/API.md`, `docs/SECURITY_REVIEW.md` and `server/README.md`.
 
 Launcher core (`launcher/`, C++/Qt6) is on `master`: `launcher/core`
 (BaseInstance, InstanceList, InstancePersistence, SkinModel, SkinCache,
