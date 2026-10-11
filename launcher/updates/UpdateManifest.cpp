@@ -18,11 +18,11 @@ bool isSafePath(QStringView path)
 {
     if (path.isEmpty())
         return false;
-    if (path.startsWith(QLatin1Char('/')) || path.startsWith(QLatin1Char('\')))
+    if (path.startsWith(QLatin1Char('/')) || path.startsWith(QLatin1Char('\\')))
         return false;
-    if (path.contains(QLatin1Char(':'))) // drive letter or URI scheme
+    if (path.contains(QLatin1Char(':')))
         return false;
-    const auto parts = path.split(QRegularExpression(QStringLiteral("[/\\]")), Qt::SkipEmptyParts);
+    const auto parts = path.split(QRegularExpression(QStringLiteral("[/\\\\]")), Qt::SkipEmptyParts);
     for (const auto &part : parts) {
         if (part.compare(QLatin1String(".."), Qt::CaseInsensitive) == 0)
             return false;
@@ -86,13 +86,13 @@ ParseResult parse(const QJsonObject &obj)
         file.url = fileObj.value(QStringLiteral("url")).toString();
 
         if (!isSafePath(file.path))
-            return fail(u"manifest: unsafe file path '%1'").arg(file.path);
+            return fail(QString::fromUtf16(u"manifest: unsafe file path '%1'").arg(file.path));
         if (file.sha256.isEmpty())
-            return fail(u"manifest: missing sha256 for '%1'").arg(file.path);
+            return fail(QString::fromUtf16(u"manifest: missing sha256 for '%1'").arg(file.path));
         if (file.sha256.size() != 64)
-            return fail(u"manifest: sha256 must be 64 hex chars for '%1'").arg(file.path);
+            return fail(QString::fromUtf16(u"manifest: sha256 must be 64 hex chars for '%1'").arg(file.path));
         if (file.url.isEmpty())
-            return fail(u"manifest: missing url for '%1'").arg(file.path);
+            return fail(QString::fromUtf16(u"manifest: missing url for '%1'").arg(file.path));
 
         component.files.append(file);
     }
@@ -105,7 +105,7 @@ ParseResult parse(const QJsonObject &obj)
 
 ParseResult parseFile(QStringView path)
 {
-    QFile file(QString(path));
+    QFile file(path.toString());
     if (!file.open(QIODevice::ReadOnly))
         return fail(QStringLiteral("manifest: cannot open '%1'").arg(path));
 

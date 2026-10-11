@@ -118,7 +118,7 @@ void SkinClient::uploadSkin(
     skinPart.setBody(data);
     multiPart.append(skinPart);
 
-    QNetworkReply *reply = m_client->net()->post(request, &multiPart);
+    QNetworkReply *reply = m_client->m_network->post(request, &multiPart);
 
     QTimer *timeoutTimer = new QTimer(this);
     timeoutTimer->setSingleShot(true);
@@ -169,7 +169,7 @@ void SkinClient::downloadAvatar(
     request.setHeader(QNetworkRequest::ContentTypeHeader,
                       QStringLiteral("application/json"));
 
-    QNetworkReply *reply = m_client->net()->get(request);
+    QNetworkReply *reply = m_client->m_network->get(request);
 
     QTimer *timeoutTimer = new QTimer(this);
     timeoutTimer->setSingleShot(true);

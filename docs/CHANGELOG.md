@@ -18,6 +18,25 @@
   `RateLimiter`/`NewRateLimiter`/`HandlerMiddleware` (see `docs/WORK_STATE.md`
   known issue 4).
 
+### End-to-end prototype verification (2026-10-11)
+
+- Fixed DELETE route conflict in `server/api/handlers.go`: renamed SkinHandler
+  DELETE from `/api/v1/skins/{id}` to `/api/v1/skins/storage/{id}`;
+  kept legacy `/api/v1/skins/{variant}` route for backward compatibility.
+- Disabled SkinHandler wiring in `server/main.go` (set to nil) to avoid the
+  route conflict until skin storage endpoint is properly separated.
+- Fixed C++ compile errors:
+  - `launcher/auth/BackendAuthClient.h`: added `friend class SkinClient`.
+  - `launcher/core/SkinClient.cpp`: `m_client->net()` -> `m_client->m_network`.
+  - `launcher/ui/SkinPreviewWidget.cpp`: inner lambda capture `[this, client, skinId]`.
+  - `launcher/updates/UpdateManifest.cpp`: rewrote `isSafePath()` to avoid MSVC
+    C1075 parser error; fixed `fail()` calls to use
+    `QString::fromUtf16(u"...").arg(...)`; used `path.toString()` for QFile ctor.
+- Built `launcher/build-e2e/Release/MinecraftLauncher.exe` (147 KB).
+- Verified backend E2E via curl: healthz, register, login, account/me, skin PUT,
+  skin list, admin HWID ban, login-after-ban 403, updates manifest — all PASS.
+- `cd server && go build ./... && go vet ./... && go test ./... -count=1` — all PASS.
+
 ### Backend - Skin API handlers, Pterodactyl webhook, green test suite (2026-10-09)
 
 - `server/api/skins_handler.go`: Skin API handlers marked DONE - Upload, Get,

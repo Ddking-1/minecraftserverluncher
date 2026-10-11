@@ -104,7 +104,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/v1/skins", s.limitHandler(s.handleListSkins))
 	mux.HandleFunc("GET /api/v1/skins/{account}/{variant}", s.limitHandler(s.handleGetSkin))
 	mux.HandleFunc("DELETE /api/v1/skins/{variant}", s.limitHandler(s.handleDeleteSkin))
-	mux.HandleFunc("POST /api/v1/skins/upload/{variant}", s.limitHandler(s.handleAsyncSkinUpload))
+		mux.HandleFunc("POST /api/v1/skins/upload/{variant}", s.limitHandler(s.handleAsyncSkinUpload))
 	mux.HandleFunc("GET /api/v1/tasks/{id}", s.limitHandler(s.handleTaskStatus))
 	mux.HandleFunc("POST /api/v1/proxy/auth", s.limitHandler(s.handleProxyAuth))
 	mux.HandleFunc("POST /api/admin/hwid/ban", s.limitHandler(s.handleBanHWID))
@@ -119,11 +119,10 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/v1/updates/manifest", s.limitHandler(s.handleUpdatesManifest))
 	mux.Handle("/", web.Handler())
 
-	if s.SkinHandler != nil {
-		mux.HandleFunc("POST /api/v1/skins/upload", s.SkinHandler.handleUpload)
+	if s.SkinHandler != nil {	mux.HandleFunc("POST /api/v1/skins/upload", s.SkinHandler.handleUpload)
 		mux.HandleFunc("GET /api/v1/skins/{id}", s.SkinHandler.handleGetSkin)
 		mux.HandleFunc("GET /api/v1/skins/{id}/avatar", s.SkinHandler.handleGetAvatar)
-		mux.HandleFunc("DELETE /api/v1/skins/{id}", s.SkinHandler.handleDeleteSkin)
+		mux.HandleFunc("DELETE /api/v1/skins/storage/{id}", s.SkinHandler.handleDeleteSkin)
 		mux.HandleFunc("POST /api/v1/skins/{id}/active", s.SkinHandler.handleSetActiveSkin)
 	}
 	if s.PterodactylWebhook != nil {

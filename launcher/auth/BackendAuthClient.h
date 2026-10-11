@@ -56,4 +56,6 @@ private:
 
     QString m_backendUrl;
     QNetworkAccessManager *m_network;
+
+    friend class SkinClient;
 };

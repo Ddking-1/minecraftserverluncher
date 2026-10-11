@@ -51,7 +51,7 @@ void SkinPreviewWidget::onUploadClicked()
             return;
         }
 
-        client->downloadAvatar(skinId, [this, client](bool success, const QPixmap &avatar) {
+        client->downloadAvatar(skinId, [this, client, skinId](bool success, const QPixmap &avatar) {
             if (!success || avatar.isNull()) {
                 m_statusLabel->setText(tr("Ábras betöltése sikertelen."));
                 emit skinUploadFinished(false, skinId, tr("Ábras betöltése sikertelen."));

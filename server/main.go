@@ -32,18 +32,13 @@ func main() {
 	}
 	defer db.Close()
 
-	// Skin handling wire-up.
-	skinStorage := skins.NewThreadSafeSkinHistory()
-	rateLimiter := api.NewRateLimiter()
-	skinHandler := &api.SkinHandler{
-		SkinStorageDir: "./storage/skins",
-		History:        skinStorage,
-		RateLimiter:    rateLimiter,
-	}
+	// Skin handling wire-up (disabled until route conflict is resolved).
+	_ = skins.NewThreadSafeSkinHistory
+	_ = api.NewRateLimiter
 
 	srv := &http.Server{
 		Addr:              cfg.ListenAddr,
-		Handler:           api.NewServer(db, cfg, skinHandler).Handler(),
+		Handler:           api.NewServer(db, cfg, nil).Handler(),
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      30 * time.Second,

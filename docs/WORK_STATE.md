@@ -44,7 +44,7 @@ Current step:
 - Documentation: AI-generated-code disclaimer added to README.md and docs/AI_CONTEXT.md; CHANGELOG.md, PROGRESS.md and WORK_STATE.md updated.
 
 Next step:
-Compile and wire the new MainWindow into main.cpp when the GUI entry point is implemented. T11 Velocity remains BLOCKED on DECISION-004/005.
+Merge feature/e2e-prototype-verify into master, push, and verify CI.
 
 Repository facts:
 - default branch: master

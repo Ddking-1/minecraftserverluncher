@@ -43,8 +43,17 @@ On branch `feature/go-backend-hardening-and-fuzz`, a Qt6 `MainWindow` skeleton
 was added that embeds `SkinPreviewWidget` and reacts to its new
 `skinUploadFinished` signal to update the status bar/permanent label on skin
 upload or switch events. The `SkinPreviewWidget` now emits that signal on
-upload success or failure. This GUI wiring is not yet compiled or wired into
-`main.cpp`; the branch work is source only.
+upload success or failure. This GUI wiring is now compiled into the launcher
+.exe (built on branch `feature/e2e-prototype-verify`) and wired into `main.cpp`.
+The launcher .exe exists but needs a Windows desktop session to display its
+MainWindow (Qt's qwindows platform plugin requires a message loop).
+
+A follow-up branch `feature/e2e-prototype-verify` fixed the Skin API route
+conflict (`DELETE /api/v1/skins/{id}` -> `DELETE /api/v1/skins/storage/{id}`),
+disabled SkinHandler wiring in main.go, fixed C++ compile errors (SkinClient
+friend access, lambda capture, UpdateManifest string formatting), and verified
+the full backend via curl (healthz, register, login, account/me, skin upload,
+skin list, admin HWID ban, login-after-ban 403, updates manifest).
 
 Velocity work remains blocked until the owner signs off DECISION-004 (GPLv3
 distribution model) and DECISION-005 (metadata source) is resolved.

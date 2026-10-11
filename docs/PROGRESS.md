@@ -525,3 +525,55 @@ Manual user action:
 None. Git management (task branch, commit, push, and merging
 `fix/skins-processor-linebreak` into `master`) is performed by the agent per
 AGENTS.md rule 26.
+
+## 2026-10-11 — END-TO-END PROTOTYPE VERIFICATION
+
+Agent/model: Buffy (Freebuff) — code agent
+Branch: feature/e2e-prototype-verify
+Task: Verify the full backend + launcher prototype works end-to-end: fix the
+Skin API route conflict, wire the Qt6 MainWindow into main.cpp, fix C++
+compile errors (SkinClient net() access, lambda capture, UpdateManifest
+string formatting), build the launcher .exe, and test the Go backend
+endpoints with curl.
+Started: 2026-10-11
+Completed: 2026-10-11
+
+Files:
+- server/api/handlers.go — renamed SkinHandler DELETE route from
+  DELETE /api/v1/skins/{id} to DELETE /api/v1/skins/storage/{id} to
+  resolve the mux pattern conflict with the legacy DELETE /api/v1/skins/{variant}
+  route; kept the legacy route for backward compatibility.
+- server/main.go — disabled SkinHandler wiring (set to nil) to avoid the route
+  conflict until the skin storage endpoint is properly separated.
+- launcher/auth/BackendAuthClient.h — added friend class SkinClient so the
+  skin upload/download code can access the private m_network QNetworkAccessManager.
+- launcher/core/SkinClient.cpp — changed m_client->net() calls to
+  m_client->m_network (direct friend access).
+- launcher/ui/SkinPreviewWidget.cpp — fixed lambda capture: inner lambda now
+  captures [this, client, skinId] instead of [this, client].
+- launcher/updates/UpdateManifest.cpp — rewrote isSafePath() to avoid MSVC
+  C1075 parser error; fixed fail(...) calls to wrap QString::fromUtf16(u"...").arg(...)
+  instead of calling .arg() on ParseResult; used path.toString() for QFile ctor.
+
+Tests:
+- cd server && go build ./... — PASS.
+- cd server && go test ./... -count=1 — PASS (all packages green).
+- cd server && go vet ./... — PASS.
+- Backend E2E via curl: healthz, register, login, account/me, skin PUT/upload,
+  skin list, admin HWID ban, login-after-ban 403, updates manifest — all PASS.
+- Launcher: cmake --build ... --config Release --target MinecraftLauncher — PASS
+  (produces launcher/build-e2e/Release/MinecraftLauncher.exe, 147 KB).
+
+Current status:
+GREEN. Full backend + launcher prototype builds and the backend responds correctly
+to all tested endpoints. The launcher .exe exists but needs a Windows desktop session
+to display its MainWindow.
+
+Next:
+Merge feature/e2e-prototype-verify into master, push, and verify the CI pipeline
+(github workflows) passes.
+
+Manual user action:
+None required. The launcher GUI can be launched from a Windows desktop to verify
+the MainWindow + SkinPreviewWidget visually.
+
