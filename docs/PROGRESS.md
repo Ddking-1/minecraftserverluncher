@@ -1,4 +1,4 @@
-﻿# PROGRESS
+# PROGRESS
 
 ## Initial state
 
