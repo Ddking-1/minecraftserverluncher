@@ -525,3 +525,39 @@ Manual user action:
 None. Git management (task branch, commit, push, and merging
 `fix/skins-processor-linebreak` into `master`) is performed by the agent per
 AGENTS.md rule 26.
+
+## 2026-10-11 — COMPREHENSIVE CODE WIKI DOCUMENTATION
+
+Agent/model: project analysis / documentation agent
+Branch: docs/code-wiki
+Task: Analyze the full repository (C++/Qt6 launcher, Go backend, Java Velocity
+  plugin) and produce a structured, comprehensive Code Wiki in Markdown
+  covering overall architecture, module responsibilities, key classes and
+  functions, dependency relationships, data flow and trust boundaries, build
+  and run instructions, testing strategy, security model, configuration
+  reference, and open issues.
+Started: 2026-10-11
+Completed: 2026-10-11
+
+Files:
+- docs/CODE_WIKI.md (new — comprehensive Code Wiki, 11 sections)
+- docs/AI_CONTEXT.md (repository-state line references the Code Wiki)
+- docs/WORK_STATE.md (new dated update entry)
+- docs/PROGRESS.md (this entry)
+- docs/CHANGELOG.md (new Unreleased entry)
+
+Tests:
+No build or tests executed; this is a documentation-only change. No check
+exists for documentation-only changes (AGENTS.md rule 23). Checks performed:
+git status and full git diff review before committing; the Code Wiki content
+was cross-checked against the actual source files it describes.
+
+Current status:
+Code Wiki documentation complete and pushed on branch docs/code-wiki. No
+production code was modified.
+
+Next:
+Review and merge branch docs/code-wiki into master.
+
+Manual user action:
+1. Review and merge branch docs/code-wiki into master.

@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### Documentation - comprehensive Code Wiki (2026-10-11)
+
+- Added `docs/CODE_WIKI.md`: a structured, comprehensive Code Wiki covering all
+  three subsystems. Sections: Project Overview, Architecture Overview, Module
+  Breakdown, Key Classes & Functions, Dependency Relationships, Data Flow &
+  Trust Boundaries, Build & Run Instructions, Testing Strategy, Security Model,
+  Configuration Reference, and Open Issues & Known Limitations.
+- Updated `docs/AI_CONTEXT.md` to reference the new Code Wiki.
+- Documentation-only change on branch `docs/code-wiki`; no production code was
+  modified.
+
 ### Backend - skins processor compile fix (2026-10-10)
 
 - `server/skins/processor.go` (`ExtractAvatarHead`): the four statements around
