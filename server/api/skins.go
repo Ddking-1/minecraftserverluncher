@@ -7,6 +7,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"strconv"
 	"time"
 
 	"minecraftserverluncher/server/auth"
@@ -78,6 +79,11 @@ func (s *Server) handleListSkins(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	cacheKey := "skins:list:" + strconv.FormatInt(accountID, 10)
+	if skins, ok := s.statsCache.Get(cacheKey); ok {
+		writeJSON(w, http.StatusOK, map[string]any{"skins": skins})
+		return
+	}
 	skins, err := s.db.ListSkins(accountID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "internal error")
@@ -92,6 +98,7 @@ func (s *Server) handleListSkins(w http.ResponseWriter, r *http.Request) {
 			"updated_at":   sk.UpdatedAt.UTC().Format(time.RFC3339),
 		})
 	}
+	s.statsCache.Set(cacheKey, list)
 	writeJSON(w, http.StatusOK, map[string]any{"skins": list})
 }
 
@@ -146,6 +153,8 @@ func (s *Server) handleDeleteSkin(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "internal error")
 		return
 	}
+	// Invalidate the skin list cache for this account.
+	s.statsCache.Delete("skins:list:" + strconv.FormatInt(accountID, 10))
 	writeJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
 }
 

@@ -3,18 +3,24 @@ package api
 import (
 	"errors"
 	"net/http"
+	"strconv"
 	"time"
 
 	"minecraftserverluncher/server/auth"
 	"minecraftserverluncher/server/database"
 )
 
+// cacheKeyForSessions returns the cache key for a session list.
+func cacheKeyForSessions(accountID int64) string {
+	return "sessions:" + strconv.FormatInt(accountID, 10)
+}
+
 func (s *Server) handleAccountMe(w http.ResponseWriter, r *http.Request) {
 	accountID, ok := s.authenticate(w, r)
 	if !ok {
 		return
 	}
-	acc, err := s.db.AccountByID(accountID)
+	acc, err := s.CachedAccount(accountID)
 	if err != nil {
 		if errors.Is(err, database.ErrNotFound) {
 			writeError(w, http.StatusNotFound, "account not found")
@@ -62,16 +68,25 @@ func (s *Server) handleChangePassword(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "internal error")
 		return
 	}
+	// Invalidate the account cache since the account data may have changed.
+	s.accountCache.Delete(accountID)
 	if err := s.sessions.LogoutAll(accountID); err != nil {
 		writeError(w, http.StatusInternalServerError, "internal error")
 		return
 	}
+	// Invalidate the session list cache since all sessions have been logged out.
+	s.statsCache.Delete(cacheKeyForSessions(accountID))
 	writeJSON(w, http.StatusOK, map[string]string{"status": "password changed"})
 }
 
 func (s *Server) handleListSessions(w http.ResponseWriter, r *http.Request) {
 	accountID, ok := s.authenticate(w, r)
 	if !ok {
+		return
+	}
+	cacheKey := "sessions:" + strconv.FormatInt(accountID, 10)
+	if sessions, ok := s.statsCache.Get(cacheKey); ok {
+		writeJSON(w, http.StatusOK, map[string]any{"sessions": sessions})
 		return
 	}
 	sess, err := s.db.SessionsByAccount(accountID)
@@ -90,6 +105,7 @@ func (s *Server) handleListSessions(w http.ResponseWriter, r *http.Request) {
 			"refresh_expires_at": srow.RefreshExpiresAt.UTC().Format(time.RFC3339),
 		})
 	}
+	s.statsCache.Set(cacheKey, list)
 	writeJSON(w, http.StatusOK, map[string]any{"sessions": list})
 }
 
@@ -125,6 +141,8 @@ func (s *Server) handleRevokeSession(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "internal error")
 		return
 	}
+	// Invalidate the session list cache since the session list may have changed.
+	s.statsCache.Delete(cacheKeyForSessions(accountID))
 	writeJSON(w, http.StatusOK, map[string]string{"status": "revoked"})
 }
 
@@ -146,5 +164,7 @@ func (s *Server) handleLogoutOtherDevices(w http.ResponseWriter, r *http.Request
 		writeError(w, http.StatusInternalServerError, "internal error")
 		return
 	}
+	// Invalidate the session list cache since the session list may have changed.
+	s.statsCache.Delete(cacheKeyForSessions(accountID))
 	writeJSON(w, http.StatusOK, map[string]string{"status": "revoked other devices"})
 }

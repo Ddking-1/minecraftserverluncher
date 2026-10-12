@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"time"
 
 	"minecraftserverluncher/server/auth"
 )
@@ -68,14 +69,24 @@ func (s *Server) handleTaskStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := r.PathValue("id")
+	cacheKey := "task:" + id + ":status"
+	if cached, ok := s.statsCache.Get(cacheKey); ok {
+		result, ok := cached.(map[string]any)
+		if ok {
+			writeJSON(w, http.StatusOK, result)
+			return
+		}
+	}
 	res, ok := s.queue.result(id)
 	if !ok {
 		writeError(w, http.StatusNotFound, "task not found")
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{
+	result := map[string]any{
 		"task_id": res.ID,
 		"status":  res.Status,
 		"error":   res.Err,
-	})
+	}
+	s.statsCache.SetWithTTL(cacheKey, result, 60*time.Second)
+	writeJSON(w, http.StatusOK, result)
 }
