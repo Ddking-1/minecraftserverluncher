@@ -1,99 +1,53 @@
-﻿ ```html
 <!DOCTYPE html>
-<html lang="en">
+<html lang="hu">
 <head>
     <meta charset="UTF-8">
-    <title>Account Dashboard</title>
-    <style>
-        body { background-color: #121212; color: white; font-family: Arial, sans-serif; }
-        section { margin: 20px auto; padding: 20px; max-width: 300px; border: 1px solid #444; background-color: #1E1E1E; box-shadow: 0 4px 8px rgba(0,0,0,0.5); }
-        input { display: block; margin-bottom: 10px; padding: 8px; width: calc(100% - 16px); background-color: #333; border: none; color: white; box-shadow: inset 0 2px 4px rgba(0,0,0,0.5); }
-        button { padding: 8px 12px; cursor: pointer; background-color: #3FB950; border: none; color: black; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.5); }
-        button:hover { opacity: 0.8; }
-    </style>
-</head>
-<body>
-    <section id="register">
-        <h2>Register</h2>
-        <input type="text" placeholder="Username" required>
-        <input type="password" placeholder="Password" required>
-        <button onclick="registerUser()">Register</button>
-    </section>
-    <section id="forgot">
-        <h2>Forgot Password</h2>
-        <input type="text" placeholder="Email or Username" required>
-        <button onclick="forgotPassword()">Send</button>
-    </section>
-    <section id="admin">
-        <h2>Admin Panel</h2>
-        <textarea rows="4"></textarea>
-        <!-- TODO: wire to admin API -->
-        <ul id="userList"></ul>
-    </section>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vezérlőpult - Minecraft Launcher</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
     <script>
-        const adminUsers = []; // Global array for storing user data
+        (function() {
+            const theme = localStorage.getItem('theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
 
-        async function registerUser() {
-            let username = document.querySelector('#register input[placeholder=Username]').value;
-            let password = document.querySelector('#register input[placeholder=Password]').value;
-            const resp = await fetch('/api/v1/auth/register', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password, device_id: 'web-dashboard', device_name: 'web' })
-            });
-            if (resp.ok) { alert('Registered'); } else { alert('Registration failed'); }
-        }
-
-        async function forgotPassword() {
-            let identifier = document.querySelector('#forgot input[placeholder="Email or Username"]').value;
-            alert('Password reset for ' + identifier + ' (not yet implemented server-side)');
-        }
-
-        function updateUserList(users) {
-            const userListElement = document.getElementById('userList');
-            userListElement.innerHTML = ''; // Clear previous list items
-            users.forEach((username, index) => {
-                let li = document.createElement('li');
-                li.textContent = username;
-                if (users[index].banned === true) {
-                    buttonUnban(li);
-                } else {
-                    buttonBan(li);
-                }
-                userListElement.appendChild(li);
-            });
-        }
-
-        function buttonBan(element) {
-            let btn = document.createElement('button');
-            btn.textContent = 'Ban';
-            btn.onclick = () => banUser(element.innerHTML, true); // TODO: real API call for banning user
-        }
-
-        function buttonUnban(element) {
-            let btn = document.createElement('button');
-            btn.textContent = 'Unban';
-            btn.onclick = () => unBanUser(element.innerHTML, false); // TODO: real API call for un-banning user
-        }
-
-        function banUser(username, banned) {
-            adminUsers.forEach((user, index) => {
-                if (user === username) {
-                    console.log(`${username} is now ${banned ? 'BANNED' : 'UNBANNED'}`); // TODO: real API call for banning user
-                    return;
-                }
-            });
-        }
-
-        function unBanUser(username, banned) {
-            adminUsers.forEach((user, index) => {
-                if (user === username) {
-                    console.log(`${username} is now ${banned ? 'BANNED' : 'UNBANNED'}`); // TODO: real API call for un-banning user
-                    return;
-                }
-            });
-        }
+        (function() {
+            const lang = localStorage.getItem('lang') || 'hu';
+            document.documentElement.setAttribute('lang', lang);
+            document.documentElement.setAttribute('data-lang', lang);
+        })();
     </script>
+    <script src="i18n.js" defer></script>
+    <script src="theme.js" defer></script>
+</head>
+<body class="min-h-screen bg-gray-900 text-white">
+    <nav class="bg-gray-800 border-b border-gray-700">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <div class="flex items-center">
+                    <a href="/" class="text-xl font-bold text-green-400">Minecraft Launcher</a>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button id="themeToggle" class="p-2 rounded-lg hover:bg-gray-700 transition" aria-label="Váltás sötét/fényes mód">
+                        <svg id="themeIcon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                        </svg>
+                    </button>
+                    <select id="langSwitcher" class="bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+                        <option value="hu">Magyar</option>
+                        <option value="en">English</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </nav>
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="max-w-4xl">
+            <h1 class="text-2xl font-bold mb-6" data-i18n="dashboard.title">Vezérlőpult</h1>
+            <div id="dashboardContent"></div>
+        </div>
+    </main>
+    <script src="app.js" defer></script>
 </body>
 </html>
-```

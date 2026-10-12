@@ -28,7 +28,10 @@ func newTestServer(t *testing.T) *Server {
 		RefreshTokenTTL: 30 * 24 * time.Hour,
 		BcryptCost:      10,
 	}
-	return NewServer(db, cfg, nil)
+	srv := NewServer(db, cfg, nil)
+	// Override the rate limiter with a very permissive one for tests.
+	srv.limiter = NewRateLimiter(Config{RequestsPerMinute: 10000})
+	return srv
 }
 
 func doJSON(t *testing.T, h http.Handler, method, path string, body any, token string) (int, map[string]any) {

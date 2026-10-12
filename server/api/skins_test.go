@@ -3,6 +3,7 @@
 import (
 	"bytes"
 	"encoding/base64"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -48,31 +49,47 @@ func TestSkinLifecycle(t *testing.T) {
 		t.Fatalf("upload status = %d, want 200", code)
 	}
 
-	code, body := doJSON(t, h, http.MethodGet, "/api/v1/skins", nil, access)
-	if code != http.StatusOK {
-		t.Fatalf("list status = %d", code)
+	// List skins - this route is behind auth middleware in the router,
+	// so it requires a valid bearer token. Use the access token.
+	// The router registers GET /api/v1/skins on the protected mux,
+	// which requires authentication. We send the access token in the
+	// Authorization header as a bearer token.
+	listReq := httptest.NewRequest(http.MethodGet, "/api/v1/skins", nil)
+	listReq.Header.Set("Authorization", "Bearer "+access)
+	listRec := httptest.NewRecorder()
+	h.ServeHTTP(listRec, listReq)
+	if listRec.Code != http.StatusOK {
+		t.Fatalf("list status = %d, want 200, body = %s", listRec.Code, listRec.Body.String())
 	}
-	skins, ok := body["skins"].([]any)
+	var listBody map[string]any
+	if err := json.Unmarshal(listRec.Body.Bytes(), &listBody); err != nil {
+		t.Fatalf("decode list response: %v", err)
+	}
+	skins, ok := listBody["skins"].([]any)
 	if !ok || len(skins) != 1 {
-		t.Fatalf("skins = %v, want 1 entry", body["skins"])
+		t.Fatalf("skins = %v, want 1 entry", listBody["skins"])
 	}
 
 	// Public fetch returns the stored bytes and a sniffed content type.
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/skins/skinuser/default", nil)
-	req.Header.Set("Authorization", "Bearer "+access)
-	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, req)
-	if rec.Code != http.StatusOK {
-		t.Fatalf("fetch status = %d", rec.Code)
+	fetchReq := httptest.NewRequest(http.MethodGet, "/api/v1/skins/skinuser/default", nil)
+	fetchReq.Header.Set("Authorization", "Bearer "+access)
+	fetchRec := httptest.NewRecorder()
+	h.ServeHTTP(fetchRec, fetchReq)
+	if fetchRec.Code != http.StatusOK {
+		t.Fatalf("fetch status = %d", fetchRec.Code)
 	}
-	if rec.Header().Get("Content-Type") != "image/png" {
-		t.Fatalf("content-type = %q", rec.Header().Get("Content-Type"))
+	if fetchRec.Header().Get("Content-Type") != "image/png" {
+		t.Fatalf("content-type = %q", fetchRec.Header().Get("Content-Type"))
 	}
-	if !bytes.Equal(rec.Body.Bytes(), png) {
+	if !bytes.Equal(fetchRec.Body.Bytes(), png) {
 		t.Fatal("fetched skin data does not match upload")
 	}
 
-	deleteCode, _ := doJSON(t, h, http.MethodDelete, "/api/v1/skins/default", nil, access)
+	deleteReq := httptest.NewRequest(http.MethodDelete, "/api/v1/skins/default", nil)
+	deleteReq.Header.Set("Authorization", "Bearer "+access)
+	deleteRec := httptest.NewRecorder()
+	h.ServeHTTP(deleteRec, deleteReq)
+	deleteCode := deleteRec.Code
 	if deleteCode != http.StatusOK {
 		t.Fatalf("delete status = %d", deleteCode)
 	}
@@ -127,13 +144,17 @@ func TestSkinUploadRateLimit(t *testing.T) {
 	access := out["access_token"].(string)
 	png := decodeB64(t, png64x64B64)
 
-	// The first two uploads succeed (the limit allows 2 per 3 hours).
+	// The rate limiter is set to 10000 req/min in newTestServer, so
+	// we won't hit the global rate limit. However, there's also a
+	// skin-specific rate limit that allows 2 uploads per 3 hours.
+	// The test verifies this limit is enforced.
+	// First two uploads should succeed.
 	for i := 0; i < 2; i++ {
 		if code := uploadSkin(t, h, access, "default", "image/png", png); code != http.StatusOK {
 			t.Fatalf("upload %d status = %d, want 200", i+1, code)
 		}
 	}
-	// The third is rejected with 429 (T-A).
+	// Third upload should be rate limited (429).
 	if code := uploadSkin(t, h, access, "default", "image/png", png); code != http.StatusTooManyRequests {
 		t.Fatalf("3rd upload status = %d, want 429", code)
 	}
@@ -155,11 +176,11 @@ func TestSkinRejectsForeignDelete(t *testing.T) {
 	if code, _ := doJSON(t, h, http.MethodDelete, "/api/v1/skins/default", nil, accessB); code != http.StatusOK {
 		t.Fatalf("B delete status = %d", code)
 	}
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/skins/skinuserA/default", nil)
-	req.Header.Set("Authorization", "Bearer "+accessA)
-	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, req)
-	if rec.Code != http.StatusOK {
-		t.Fatalf("A skin after B delete status = %d, want 200", rec.Code)
+	verifyReq := httptest.NewRequest(http.MethodGet, "/api/v1/skins/skinuserA/default", nil)
+	verifyReq.Header.Set("Authorization", "Bearer "+accessA)
+	verifyRec := httptest.NewRecorder()
+	h.ServeHTTP(verifyRec, verifyReq)
+	if verifyRec.Code != http.StatusOK {
+		t.Fatalf("A skin after B delete status = %d, want 200", verifyRec.Code)
 	}
 }
