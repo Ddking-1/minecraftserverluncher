@@ -111,3 +111,36 @@ Branch:
 fix/skins-processor-linebreak (task branch created from `master` per AGENTS.md
 rule 1); the agent merges it into `master` and pushes as the final git step of
 this task (rule 26).
+
+## 2026-10-11 - UPDATE: COMPREHENSIVE CODE WIKI DOCUMENTATION
+
+Status:
+DOCUMENTATION-ONLY. No production code changed. A comprehensive Code Wiki was
+added at `docs/CODE_WIKI.md` covering all three subsystems (launcher, backend,
+Velocity plugin): project overview, architecture overview, module breakdown,
+key classes and functions, dependency relationships, data flow and trust
+boundaries, build and run instructions, testing strategy, security model,
+configuration reference, and open issues / known limitations.
+
+DONE:
+- `docs/CODE_WIKI.md` (new): full structured code wiki generated from a
+  read-only analysis of the repository (no code modifications).
+- `docs/AI_CONTEXT.md`: repository-state line updated to reference the Code
+  Wiki.
+- `docs/WORK_STATE.md`, `docs/PROGRESS.md`, `docs/CHANGELOG.md`: this update.
+
+Known issues (unchanged from previous state, surfaced in the Code Wiki):
+1. `server/api` compile issue: `handlers.go` references `rateLimiter`,
+   `newRateLimiter`, `Server.limit` while `ratelimit.go` defines
+   `RateLimiter`, `NewRateLimiter`, `HandlerMiddleware`.
+2. Skin API route conflict: `DELETE /api/v1/skins/{id}` vs
+   `DELETE /api/v1/skins/{variant}`.
+3. `SkinHandler` and `PterodactylWebhook` are not wired in `server/main.go`.
+4. Velocity plugin (T11) is a skeleton pending DECISION-004/005.
+5. Launcher `ResolveLibraries` / `ResolveAssets` launch steps remain stubs
+   pending DECISION-005 (metadata source).
+6. `MainWindow` is not wired into `launcher/main.cpp`.
+
+Branch:
+docs/code-wiki (task branch created from `master` per AGENTS.md rule 1);
+committed and pushed as the final git step of this task (rule 26).

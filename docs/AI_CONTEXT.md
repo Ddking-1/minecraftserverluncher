@@ -76,6 +76,8 @@ NOT "full Prism Launcher + custom layer". See `docs/DECISIONS.md` DECISION-001.
   `docs/PRISM_ARCHITECTURE_REVIEW.md` (DECISION-003/004/005)
 - Backend source exists under `server/` (Go module `minecraftserverluncher/server`)
 - Launcher core exists under `launcher/` (C++ / Qt6, builds and tests green)
+- Comprehensive Code Wiki: `docs/CODE_WIKI.md` covers architecture, modules,
+  key classes/functions, dependencies, and run instructions.
 
 ## Main goals
 
