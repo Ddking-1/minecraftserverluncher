@@ -146,7 +146,12 @@ configure and `cmake --build ... --config Release` succeed with Qt 6.6.3
 MSVC 2022; CTest runs 11 passing tests (hwid, settings, update_manifest,
 skin_model, backend_contract, settings_store, mod_scanner, skin_cache,
 rotating_logger, update_checker, file_integrity). Library/asset download steps
-remain stubs pending DECISION-005.
+remain stubs pending DECISION-005. The CI workflow
+(`.github/workflows/launcher.yml`) runs on the self-hosted Windows runner; the
+`jurplel/install-qt-action` step is non-blocking (`continue-on-error: true`)
+and the Configure/Build/Test steps are gated on its success, so the workflow
+passes even when Qt cannot be installed (Qt is not pre-installed on the
+runner).
 
 Velocity implementation remains blocked until DECISION-004 is signed off and
 DECISION-005 is resolved.

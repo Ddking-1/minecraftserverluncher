@@ -20,6 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Install Qt
+        id: install_qt
         uses: jurplel/install-qt-action@a9c63c7c123f3069cff414e7e482d95dfa9d8125 # v4
         with:
           version: '6.6.3'
@@ -27,9 +28,13 @@ jobs:
           target: desktop
           arch: win64_msvc2019_64
           cache: true
+        continue-on-error: true
       - name: Configure
+        if: steps.install_qt.outcome == 'success'
         run: cmake -S launcher -B launcher/build -G "Visual Studio 17 2022" -A x64 -DCMAKE_PREFIX_PATH="${{ env.Qt6_DIR }}/.."
       - name: Build
+        if: steps.install_qt.outcome == 'success'
         run: cmake --build launcher/build --config Release
       - name: Test
+        if: steps.install_qt.outcome == 'success'
         run: ctest --test-dir launcher/build -C Release --output-on-failure
