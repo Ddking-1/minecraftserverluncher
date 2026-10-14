@@ -176,6 +176,51 @@ cd $HOME/actions-runner/actions-runner-*
 ./run.sh
 ```
 
+## 5. Indítás és ellenőrzés (folytatva)
+
+### Windows – parancssori indítás
+```powershell
+cd $HOME\\actions-runner\\actions-runner-*
+.\\run.cmd
+```
+
+### Windows – háttérszolgáltatás (service) telepítése és indítása
+A GitHub Actions runner Windows szolgáltatásként is telepíthető, hogy a rendszer újraindítása után is automatikusan elindul.
+
+#### Service telepítése
+```powershell
+cd $HOME\\actions-runner\\actions-runner*
+.\\svc.cmd install
+```
+
+#### Service indítása
+```powershell
+.\\svc.cmd start
+```
+
+#### Service státusz ellenőrzése
+```powershell
+Get-Service actions.runner*
+```
+
+#### Service konfiguráció frissítése (token lejárt esetén)
+```powershell
+.\\config.cmd --url https://github.com/Ddking-1/minecraftserverluncher --token <új-token> --name "minecraftserverluncher-windows-runner" --labels "self-hosted,windows,private-ci" --work _work
+```
+
+### Linux – parancssori indítás
+```bash
+cd $HOME/actions-runner/actions-runner-*
+./run.sh
+```
+
+### Linux – háttérszolgáltatás (service) telepítése és indítása
+```bash
+cd $HOME/actions-runner/actions-runner*
+./svc.sh install
+./svc.sh start
+```
+
 A futtató folyamat confirmálja:
 ```
 √ Connected to GitHub
