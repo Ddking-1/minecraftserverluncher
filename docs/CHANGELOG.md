@@ -2,6 +2,37 @@
 
 ## Unreleased
 
+### Backend/Launcher - skin API wiring, authorization and hardening (2026-11-15)
+
+- Skin file API moved to `/api/v1/skin-files` and mounted on the authenticated
+  route group. This resolves the Go 1.22 `{id}` vs `{variant}` DELETE conflict
+  and makes the launcher's upload/avatar calls reachable (they returned 404).
+  Account-scoped named skins stay under `/api/v1/skins`. See DECISION-006.
+- Skin-file ids carry the owning account (`<accountID>-<uuid>`); delete and
+  activate are owner-only (404 otherwise), and task status is creator-scoped.
+- Production wiring: disk-backed, concurrency-safe skin storage and the
+  Pterodactyl webhook are set in `main.go`; `/api/server/start` is mounted on the
+  admin group (it was unreachable).
+- Skin storage is thread-safe (previously a bare map written by concurrent
+  handlers) and persists to `AUTH_SKIN_STORAGE_DIR`.
+- `ExtractAvatarHead` now crops/composites the real head face + hat overlay and
+  scales it to 64x64, instead of stretching the whole skin.
+- Rate limiter: `X-Forwarded-For` is only trusted with `AUTH_TRUST_PROXY`;
+  limiting is applied once per route group; `Stop` is idempotent and called on
+  shutdown; `AUTH_RATE_LIMIT_PER_MINUTE` configures the budget.
+- Async skin queue: the worker persists uploads, `Close` is idempotent, results
+  are TTL/cap bounded, and in-flight task status is no longer cached (stale
+  "queued" polls).
+- Launcher: `SkinClient` uses the `skin` multipart field, heap-owned
+  `QHttpMultiPart`, bearer auth, parses `skin_id` and decodes the avatar PNG;
+  `SkinPreviewWidget` no longer dereferences a null client or emits success
+  twice; `SessionManager` syncs the access token into `BackendAuthClient`;
+  `test_skin_client.cpp` now uses the real callback API (it did not compile).
+- Velocity: JSON-escape the access token in the proxy-auth request; document
+  that Velocity API 4.2.0 requires JDK 25.
+- CI: Go version comes from `server/go.mod`, `go vet` failures are no longer
+  swallowed, `go mod tidy` runs in `server/`, and a Velocity build job was added.
+
 ### CI - launcher.yml Qt action failure fix (2026-10-14)
 
 - `.github/workflows/launcher.yml`: the `jurplel/install-qt-action` step was

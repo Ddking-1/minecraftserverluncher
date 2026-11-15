@@ -40,6 +40,12 @@ public:
     QString backendUrl() const;
     void setBackendUrl(const QString &url);
 
+    // Latest access token from a successful login/refresh. Used by API clients
+    // (e.g. SkinClient) that authenticate their own requests.
+    [[nodiscard]]
+    QString accessToken() const;
+    void setAccessToken(const QString &token);
+
     void registerAccount(const QString &username, const QString &password,
                          const QString &deviceId, const QString &deviceName, Callback cb);
     void login(const QString &username, const QString &password,
@@ -55,5 +61,6 @@ private:
     void handleReply(QNetworkReply *reply, Callback cb);
 
     QString m_backendUrl;
+    QString m_accessToken;
     QNetworkAccessManager *m_network;
 };

@@ -6,7 +6,6 @@ import (
 	"errors"
 	"io"
 	"net/http"
-	"time"
 
 	"minecraftserverluncher/server/auth"
 )
@@ -64,29 +63,25 @@ func (s *Server) handleAsyncSkinUpload(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleTaskStatus handles GET /api/v1/tasks/{id}.
+//
+// The status is deliberately not cached: a task can move from "queued" to
+// "done" between two polls, and a cached intermediate state would make the
+// client poll a stale answer. Results are only visible to the account that
+// created the task; any other id is reported as not found.
 func (s *Server) handleTaskStatus(w http.ResponseWriter, r *http.Request) {
-	if _, ok := s.authenticate(w, r); !ok {
+	accountID, ok := s.authenticate(w, r)
+	if !ok {
 		return
 	}
 	id := r.PathValue("id")
-	cacheKey := "task:" + id + ":status"
-	if cached, ok := s.statsCache.Get(cacheKey); ok {
-		result, ok := cached.(map[string]any)
-		if ok {
-			writeJSON(w, http.StatusOK, result)
-			return
-		}
-	}
 	res, ok := s.queue.result(id)
-	if !ok {
+	if !ok || res.AccountID != accountID {
 		writeError(w, http.StatusNotFound, "task not found")
 		return
 	}
-	result := map[string]any{
+	writeJSON(w, http.StatusOK, map[string]any{
 		"task_id": res.ID,
 		"status":  res.Status,
 		"error":   res.Err,
-	}
-	s.statsCache.SetWithTTL(cacheKey, result, 60*time.Second)
-	writeJSON(w, http.StatusOK, result)
+	})
 }

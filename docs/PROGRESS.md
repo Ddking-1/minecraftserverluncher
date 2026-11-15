@@ -602,3 +602,60 @@ actual C++ build in CI.
 Manual user action:
 Review and merge branch `fix/launcher-yml-qt-action` into `master` (agents
 must not work directly on the default branch per AGENTS.md rule 1).
+
+## 2026-11-15 — SKIN API WIRING, AUTHORIZATION, LAUNCHER INTEGRATION
+
+Agent/model: Buffy (Freebuff) - code agent
+Branch: fix/skin-api-routing-launcher-integration
+Task: Fix the unreachable skin-file API and its route conflict, wire the skin
+  storage/webhook in production, harden rate limiting and the async queue, fix
+  the launcher skin client and its stale test, and verify the Velocity build.
+Started: 2026-11-15
+Completed: 2026-11-15
+
+Files:
+- server/api/router.go (clean route table; skin-files, webhook and /api/server/
+  mounts; single rate-limit layer; async worker persistence)
+- server/api/skins_handler.go (disk/thread-safe storage, owner-prefixed ids,
+  owner-only delete/activate, avatar_url, eviction cleanup)
+- server/api/ratelimit.go (trusted-proxy handling, idempotent Stop)
+- server/api/queue.go, server/api/queue_handlers.go (real persistence,
+  idempotent Close, bounded/TTL results, no stale status cache, owner scoping)
+- server/api/skins.go (list-cache invalidation on upload)
+- server/api/skin_files_route_test.go, server/api/ratelimit_test.go,
+  server/api/admin_test.go, server/api/skins_handler_test.go
+- server/skins/processor.go, server/skins/processor_test.go (thread-safe/disk
+  storage, correct head avatar extraction)
+- server/config/config.go, server/config/config_test.go, server/main.go
+- launcher/core/SkinClient.cpp/.h, launcher/auth/BackendAuthClient.cpp/.h,
+  launcher/auth/SessionManager.cpp, launcher/ui/SkinPreviewWidget.cpp/.h,
+  launcher/gui/MainWindow.cpp/.h, launcher/tests/test_skin_client.cpp
+- velocity/build.gradle.kts, velocity/README.md,
+  velocity/.../auth/BackendAuthClient.java
+- .github/workflows/ci.yml
+- docs/DECISIONS.md (DECISION-006), docs/openapi.yaml, docs/API.md,
+  docs/SECURITY_AND_DEPLOYMENT.md, docs/CODE_WIKI.md, docs/AI_CONTEXT.md,
+  docs/WORK_STATE.md, docs/CHANGELOG.md, server/README.md, TASKS.md
+
+Tests:
+- `cd server && go build ./...` -> pass
+- `go vet ./...` -> pass
+- `go test ./... -count=1 -race` -> all packages pass (api, auth, cache,
+  config, database, devices, pterodactyl, sessions, skins, web)
+- Velocity: `JAVA_HOME=<JDK 25> ./gradlew --no-daemon build` -> BUILD SUCCESSFUL,
+  jar produced
+- C++/Qt launcher: NOT compiled in this environment (Qt 6 is not installed and
+  cannot be installed without root); the change is source-reviewed only.
+
+Current status:
+Backend and Velocity green on the task branch. Launcher source fixed but
+unverified by compilation.
+
+Next:
+Wire the login/backend configuration flow into MainWindow and resolve the
+Velocity token transport.
+
+Manual user action:
+None for Git: the agent creates the branch, commits, pushes and merges it into
+`master`. A Qt 6 (6.6.3+, MSVC 2022) machine is required to compile/CTest the
+launcher changes.

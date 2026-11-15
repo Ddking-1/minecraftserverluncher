@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
@@ -14,6 +15,15 @@ import (
 
 	"minecraftserverluncher/server/skins"
 )
+
+// testSkinAccountID is the account the direct skin-handler tests act as.
+const testSkinAccountID int64 = 42
+
+// withTestAccount attaches the authenticated account id normally injected by
+// authenticateMiddleware, so the handlers see an owner.
+func withTestAccount(req *http.Request) *http.Request {
+	return req.WithContext(context.WithValue(req.Context(), accountIDCtxKey, testSkinAccountID))
+}
 
 func newSkinUploadRequest(t testing.TB, png []byte) *http.Request {
 	t.Helper()
@@ -29,9 +39,9 @@ func newSkinUploadRequest(t testing.TB, png []byte) *http.Request {
 	if err := writer.Close(); err != nil {
 		t.Fatalf("writer.Close: %v", err)
 	}
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/skins/upload", body)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/skin-files", body)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
-	return req
+	return withTestAccount(req)
 }
 
 func validPNG64x64() []byte {
@@ -75,10 +85,10 @@ func TestSkinHandlerLifecycle(t *testing.T) {
 			t.Fatalf("storage has no raw skin after upload: %v", err)
 		}
 		// The stored raw skin may be the processed version, not the original upload.
-	// Accept either the original PNG or the processed version.
-	if !bytes.Equal(raw, png) {
-		t.Logf("stored raw skin differs from upload (processed version may be stored): got %d bytes, want %d bytes", len(raw), len(png))
-	}
+		// Accept either the original PNG or the processed version.
+		if !bytes.Equal(raw, png) {
+			t.Logf("stored raw skin differs from upload (processed version may be stored): got %d bytes, want %d bytes", len(raw), len(png))
+		}
 		avatar, err := h.Storage.GetSkin(skinID + "-avatar")
 		if err != nil {
 			t.Fatalf("storage has no avatar after upload: %v", err)
@@ -92,16 +102,16 @@ func TestSkinHandlerLifecycle(t *testing.T) {
 	h.checkGetSkin(t, skinID, png)
 	h.checkGetAvatar(t, skinID)
 	h.checkDelete(t, skinID)
-	// After delete, GET /api/v1/skins/{id} must return 404.
+	// After delete, GET /api/v1/skin-files/{id} must return 404.
 	h.checkDeletedSkin(t, skinID)
 
-	// After delete, GET /api/v1/skins/{id}/avatar must return 404.
+	// After delete, GET /api/v1/skin-files/{id}/avatar must return 404.
 	h.checkDeletedAvatar(t, skinID)
 }
 
 // The handlers read the resource id from the router path value, so requests
 // built by hand must carry it explicitly (production sets it through
-// http.ServeMux's "GET /api/v1/skins/{id}" pattern).
+// http.ServeMux's "GET /api/v1/skin-files/{id}" pattern).
 func (h *SkinHandler) checkGetSkin(t *testing.T, skinID string, want []byte) {
 	t.Helper()
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/skins/"+skinID, nil)
@@ -138,8 +148,9 @@ func (h *SkinHandler) checkGetAvatar(t *testing.T, skinID string) {
 
 func (h *SkinHandler) checkDelete(t *testing.T, skinID string) {
 	t.Helper()
-	req, rec := httptest.NewRequest(http.MethodDelete, "/api/v1/skins/"+skinID, nil), httptest.NewRecorder()
+	req, rec := httptest.NewRequest(http.MethodDelete, "/api/v1/skin-files/"+skinID, nil), httptest.NewRecorder()
 	req.SetPathValue("id", skinID)
+	req = withTestAccount(req)
 	h.handleDeleteSkin(rec, req)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("delete status = %d, want 200; body=%q", rec.Code, rec.Body.String())
@@ -180,8 +191,8 @@ func TestSkinHandlerDeleteNotFound(t *testing.T) {
 	}
 
 	var resp struct {
-		Success  bool   `json:"success"`
-		SkinID   string `json:"skin_id"`
+		Success   bool   `json:"success"`
+		SkinID    string `json:"skin_id"`
 		AvatarURL string `json:"avatar_url"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
@@ -195,8 +206,9 @@ func TestSkinHandlerDeleteNotFound(t *testing.T) {
 
 	// No independent delete helper; run the delete inline.
 	{
-		req, rec := httptest.NewRequest(http.MethodDelete, "/api/v1/skins/"+skinID, nil), httptest.NewRecorder()
+		req, rec := httptest.NewRequest(http.MethodDelete, "/api/v1/skin-files/"+skinID, nil), httptest.NewRecorder()
 		req.SetPathValue("id", skinID)
+		req = withTestAccount(req)
 		h.handleDeleteSkin(rec, req)
 		if rec.Code != http.StatusOK {
 			t.Fatalf("delete status = %d, want 200; body=%q", rec.Code, rec.Body.String())
@@ -204,13 +216,12 @@ func TestSkinHandlerDeleteNotFound(t *testing.T) {
 		t.Log("delete ok")
 	}
 
-	// After delete, GET /api/v1/skins/{id} must return 404.
+	// After delete, GET /api/v1/skin-files/{id} must return 404.
 	h.checkDeletedSkin(t, skinID)
 
-	// After delete, GET /api/v1/skins/{id}/avatar must return 404.
+	// After delete, GET /api/v1/skin-files/{id}/avatar must return 404.
 	h.checkDeletedAvatar(t, skinID)
 }
-
 
 func TestSkinHandlerRejectsBadUploads(t *testing.T) {
 	h := &SkinHandler{Storage: skins.NewMemoryStorage()}
@@ -228,8 +239,9 @@ func TestSkinHandlerRejectsBadUploads(t *testing.T) {
 	if err := writer.Close(); err != nil {
 		t.Fatalf("writer.Close: %v", err)
 	}
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/skins/upload", body)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/skin-files", body)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req = withTestAccount(req)
 	rec := httptest.NewRecorder()
 	h.handleUpload(rec, req)
 	if rec.Code != http.StatusBadRequest {
@@ -250,8 +262,9 @@ func TestSkinHandlerRejectsBadUploads(t *testing.T) {
 	if err := writer.Close(); err != nil {
 		t.Fatalf("writer.Close: %v", err)
 	}
-	req = httptest.NewRequest(http.MethodPost, "/api/v1/skins/upload", body)
+	req = httptest.NewRequest(http.MethodPost, "/api/v1/skin-files", body)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req = withTestAccount(req)
 	rec = httptest.NewRecorder()
 	h.handleUpload(rec, req)
 	if rec.Code != http.StatusBadRequest {
@@ -272,15 +285,15 @@ func TestSkinHandlerRejectsBadUploads(t *testing.T) {
 	if err := writer.Close(); err != nil {
 		t.Fatalf("writer.Close: %v", err)
 	}
-	req = httptest.NewRequest(http.MethodPost, "/api/v1/skins/upload", body)
+	req = httptest.NewRequest(http.MethodPost, "/api/v1/skin-files", body)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req = withTestAccount(req)
 	rec = httptest.NewRecorder()
 	h.handleUpload(rec, req)
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("bad dimension upload status = %d, want 400; body=%q", rec.Code, rec.Body.String())
 	}
 }
-
 
 func TestPterodactylWebhookHandler(t *testing.T) {
 	t.Setenv("PTERODACTYL_WEBHOOK_SECRET", "test-secret")

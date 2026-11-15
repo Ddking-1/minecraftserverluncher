@@ -23,7 +23,7 @@ public:
 
     explicit SkinClient(BackendAuthClient *client, QObject *parent = nullptr);
 
-    // Upload a local PNG skin file to /api/v1/skins/upload.
+    // Upload a local PNG skin file to /api/v1/skin-files.
     // `filePath` is the absolute path to the PNG on disk.
     // The callback receives (success, skinId, error). On success the skinId is
     // the backend-assigned identifier; on failure it is empty and error contains
@@ -32,8 +32,9 @@ public:
                     std::function<void(bool success, QString skinId,
                                        QString error)> callback);
 
-    // Download a 64x64 avatar PNG for the given skinId from the backend and
-    // convert it to a QPixmap. The callback receives (success, avatar).
+    // Download a 64x64 avatar PNG for the given skinId from
+    // /api/v1/skin-files/{id}/avatar and convert it to a QPixmap. The callback
+    // receives (success, avatar).
     void downloadAvatar(const QString &skinId,
                         std::function<void(bool success, QPixmap avatar)> callback);
 

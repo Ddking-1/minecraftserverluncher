@@ -93,6 +93,16 @@ void BackendAuthClient::setBackendUrl(const QString &url)
         m_backendUrl.chop(1);
 }
 
+QString BackendAuthClient::accessToken() const
+{
+    return m_accessToken;
+}
+
+void BackendAuthClient::setAccessToken(const QString &token)
+{
+    m_accessToken = token;
+}
+
 void BackendAuthClient::registerAccount(const QString &username, const QString &password,
                                         const QString &deviceId, const QString &deviceName,
                                         Callback cb)
@@ -195,6 +205,8 @@ void BackendAuthClient::handleReply(QNetworkReply *reply, Callback cb)
         result.accessToken = obj.value(QStringLiteral("access_token")).toString();
         result.refreshToken = obj.value(QStringLiteral("refresh_token")).toString();
         result.expiresIn = obj.value(QStringLiteral("expires_in")).toInt();
+        if (!result.accessToken.isEmpty())
+            m_accessToken = result.accessToken;
     } else if (status == 0) {
         // Transport-level failure: no HTTP status was received.
         result.error = reply->errorString();

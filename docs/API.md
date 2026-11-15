@@ -20,9 +20,11 @@ digests are stored server-side.
 
 ## Rate limiting
 
-All mutating auth endpoints and the account endpoints are rate limited per
-client IP (token bucket, default 10 requests/minute). Exceeding the limit
-returns `429 Too Many Requests`.
+All route groups are rate limited per client IP (token bucket, default 60
+requests/minute, configurable with `AUTH_RATE_LIMIT_PER_MINUTE`). The limiter
+keys on the TCP peer address unless `AUTH_TRUST_PROXY` is enabled; only then
+are `X-Forwarded-For` / `X-Real-IP` honoured. Exceeding the limit returns
+`429 Too Many Requests` with `Retry-After`.
 
 ## Auth endpoints
 
@@ -164,6 +166,35 @@ Response `200 OK`: `{ "bans": ["<hwid>", ...] }`.
 Administrative server-start hook. Disabled unless `AUTH_ADMIN_TOKEN` is set.
 Runs the configured Pterodactyl control script with a 30s timeout and never
 returns command output to the client.
+
+## Skin endpoints
+
+All skin endpoints require a bearer access token.
+
+Account-scoped named skins (variant is a user-chosen name, e.g. `default`):
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| PUT | `/api/v1/skins/{variant}` | Upload/replace a named skin (PNG or JPEG, 64x64 or 64x32, max 1 MiB, max 2 uploads / 3h). |
+| GET | `/api/v1/skins` | List the authenticated account's skins. |
+| GET | `/api/v1/skins/{account}/{variant}` | Fetch another account's named skin. |
+| DELETE | `/api/v1/skins/{variant}` | Delete own named skin. |
+| POST | `/api/v1/skins/upload/{variant}` | Async upload: `202 Accepted` + `task_id`. |
+
+Processed skin files (immutable PNG plus derived 64x64 head avatar). Ids are
+`<accountID>-<uuid>`; delete and activate are owner-only and answer 404 for
+other accounts:
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| POST | `/api/v1/skin-files` | Multipart upload; field name `skin`. Returns `skin_id` and `avatar_url`. |
+| GET | `/api/v1/skin-files/{id}` | Raw processed PNG. |
+| GET | `/api/v1/skin-files/{id}/avatar` | 64x64 avatar PNG (face + hat overlay composited). |
+| DELETE | `/api/v1/skin-files/{id}` | Delete the file and avatar (owner only). |
+| POST | `/api/v1/skin-files/{id}/active` | Mark a recent skin as active (owner only, rate limited). |
+
+Async task status: `GET /api/v1/tasks/{id}` (only the account that created the
+task can read it).
 
 ## Operational endpoints
 

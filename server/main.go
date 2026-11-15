@@ -17,6 +17,7 @@ import (
 	"minecraftserverluncher/server/api"
 	"minecraftserverluncher/server/config"
 	"minecraftserverluncher/server/database"
+	"minecraftserverluncher/server/pterodactyl"
 	"minecraftserverluncher/server/skins"
 )
 
@@ -30,20 +31,40 @@ func main() {
 	if err != nil {
 		log.Fatalf("database: %v", err)
 	}
-	defer db.Close()
 
-	// Skin handling wire-up.
-	skinStorage := skins.NewThreadSafeSkinHistory()
-	rateLimiter := api.NewRateLimiter()
+	// Processed skins (and their avatars) are persisted so /api/v1/skin-files
+	// URLs stay valid across restarts.
+	skinStorage, err := skins.NewDiskStorage(cfg.SkinStorageDir)
+	if err != nil {
+		log.Fatalf("skin storage: %v", err)
+	}
+	skinRateLimiter := api.NewRateLimiter()
+	defer skinRateLimiter.Stop()
 	skinHandler := &api.SkinHandler{
-		SkinStorageDir: "./storage/skins",
-		History:        skinStorage,
-		RateLimiter:    rateLimiter,
+		Storage:     skinStorage,
+		History:     skins.NewThreadSafeSkinHistory(),
+		RateLimiter: skinRateLimiter,
+	}
+
+	apiServer := api.NewServer(db, cfg, skinHandler)
+	defer apiServer.Close()
+
+	// The webhook is signature-verified by the handler; a missing
+	// PTERODACTYL_WEBHOOK_SECRET makes it answer 401 instead of failing open.
+	apiServer.PterodactylWebhook = &api.PterodactylWebhook{
+		Handler: func(payload []byte) {
+			event, err := pterodactyl.ParseServerEvent(payload)
+			if err != nil {
+				log.Printf("event=pterodactyl_webhook_invalid_payload err=%v", err)
+				return
+			}
+			log.Printf("event=%s source=pterodactyl", event.Event)
+		},
 	}
 
 	srv := &http.Server{
 		Addr:              cfg.ListenAddr,
-		Handler:           api.NewServer(db, cfg, skinHandler).Handler(),
+		Handler:           apiServer.Handler(),
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      30 * time.Second,

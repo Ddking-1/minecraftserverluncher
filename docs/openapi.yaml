@@ -1047,20 +1047,20 @@ paths:
   # Skin Management API (multipart/form-data upload, avatar, rate-limited activation)
   # =========================================================================
 
-  /api/v1/skins/upload:
+  /api/v1/skin-files:
     post:
       tags: [Skins]
       summary: Upload a skin via multipart/form-data
       description: |
         Uploads a Minecraft skin for the authenticated account as a multipart
-        form submission. The request must include a `file` field containing the
+        form submission. The request must include a `skin` field containing the
         raw PNG image bytes.
 
         Validation:
         - Content-Type is NOT trusted; the image is sniffed via magic bytes.
         - Pixel dimensions are validated against the Minecraft skin standard.
         - Size is capped at 1 MiB.
-        - The authenticated account can upload at most 2 skins per 3-hour window.
+        - The endpoint is rate limited per client IP.
 
         Requires a valid Bearer access token.
       operationId: uploadSkinMultipart
@@ -1072,9 +1072,9 @@ paths:
           multipart/form-data:
             schema:
               type: object
-              required: [file]
+              required: [skin]
               properties:
-                file:
+                skin:
                   type: string
                   format: binary
                   description: Raw PNG skin image (64x64 or 64x32).
@@ -1082,7 +1082,7 @@ paths:
               skin64x64:
                 summary: 64x64 PNG skin
                 value:
-                  file:
+                  skin:
                     $binary: "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAnSURBVHhe7cEBDQAAAMKg909tDjegAAAAAAAAAAAAAAAAAAAAgHcDQEAAAVkKewwAAAAASUVORK5CYII="
       responses:
         '200':
@@ -1150,13 +1150,13 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /api/v1/skins/{id}/avatar:
+  /api/v1/skin-files/{id}/avatar:
     get:
       tags: [Skins]
       summary: Retrieve the 64x64 avatar PNG for a skin
       description: |
-        Returns the 64x64 avatar PNG for the authenticated account's skin
-        identified by `{id}`. The response includes security headers:
+        Returns the 64x64 avatar PNG for the skin file identified by `{id}`.
+        The response includes security headers:
         `X-Content-Type-Options: nosniff` and `Cache-Control: no-store`.
         Requires a valid Bearer access token.
       operationId: getSkinAvatar
@@ -1208,12 +1208,12 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /api/v1/skins/{id}/active:
+  /api/v1/skin-files/{id}/active:
     post:
       tags: [Skins]
       summary: Set a skin as the active skin
       description: |
-        Marks the authenticated account's skin identified by `{id}` as the
+        Marks the skin file identified by `{id}` as the
         active skin. Requires a valid Bearer access token. Rate-limited to
         prevent abuse; excess requests receive `429 Too Many Requests` with a
         `Retry-After` header.
@@ -1274,15 +1274,15 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /api/v1/skins/{id}:
+  /api/v1/skin-files/{id}:
     delete:
       tags: [Skins]
-      summary: Delete a skin and its avatar
+      summary: Delete a skin file and its avatar
       description: |
-        Deletes the authenticated account's skin identified by `{id}` and its
-        associated avatar. Requires a valid Bearer access token. Deleting a
-        skin that does not exist for the account is not an error (idempotent
-        success).
+        Deletes the skin file identified by `{id}` and its associated avatar.
+        Requires a valid Bearer access token, and the caller must own the file
+        (its id starts with the owning account id). Files owned by another
+        account are reported as not found.
       operationId: deleteSkinById
       parameters:
         - name: id

@@ -1,6 +1,8 @@
 package api
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 )
@@ -49,6 +51,49 @@ func TestRateLimiterWindowResets(t *testing.T) {
 	// still denying (because the internal rate.Limiter may have a longer window).
 	if !l.Allow("k") {
 		t.Log("request still denied after window reset (internal rate.Limiter may have a longer window)")
+	}
+}
+
+func newLimitedRecorder(t *testing.T, l *RateLimiter, remoteAddr, forwardedFor string) int {
+	t.Helper()
+	h := l.HandlerMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	req := httptest.NewRequest(http.MethodGet, "/x", nil)
+	req.RemoteAddr = remoteAddr
+	if forwardedFor != "" {
+		req.Header.Set("X-Forwarded-For", forwardedFor)
+	}
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	return rec.Code
+}
+
+func TestRateLimiterIgnoresForwardedForByDefault(t *testing.T) {
+	l := NewRateLimiter(Config{RequestsPerMinute: 1})
+	t.Cleanup(l.Stop)
+
+	if code := newLimitedRecorder(t, l, "10.0.0.1:1234", "1.1.1.1"); code != http.StatusOK {
+		t.Fatalf("first request = %d, want 200", code)
+	}
+	// A spoofed header must not create a fresh bucket for the same peer.
+	if code := newLimitedRecorder(t, l, "10.0.0.1:1234", "2.2.2.2"); code != http.StatusTooManyRequests {
+		t.Fatalf("spoofed X-Forwarded-For bypassed the limiter: got %d, want 429", code)
+	}
+}
+
+func TestRateLimiterHonoursForwardedForForTrustedProxy(t *testing.T) {
+	l := NewRateLimiter(Config{RequestsPerMinute: 1, TrustProxy: true})
+	t.Cleanup(l.Stop)
+
+	if code := newLimitedRecorder(t, l, "10.0.0.1:1234", "1.1.1.1"); code != http.StatusOK {
+		t.Fatalf("first client = %d, want 200", code)
+	}
+	if code := newLimitedRecorder(t, l, "10.0.0.1:1234", "2.2.2.2"); code != http.StatusOK {
+		t.Fatalf("second proxy client = %d, want 200", code)
+	}
+	if code := newLimitedRecorder(t, l, "10.0.0.1:1234", "1.1.1.1"); code != http.StatusTooManyRequests {
+		t.Fatalf("repeat client = %d, want 429", code)
 	}
 }
 

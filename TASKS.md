@@ -49,9 +49,27 @@ after 5 attempts, the Architect fixes the specific piece (Smart Fallback).
 - [x] B9.3 C++ UpdateManager (manifest fetch) + CTest (`7e06826`)
 - [x] B9.4 Go backend `GET /api/v1/updates/manifest` + tests (`18ca45c`)
 
-## BATCH 10 — Release Security
-- [ ] Update manifest checksum/signature verification
-- [ ] Rate-limit protection on `GET /api/v1/updates/manifest`
+## BATCH 10 — Release Security (DONE)
+- [x] Update manifest checksum/signature verification (HMAC-SHA256; verified by
+      `launcher/core/UpdateManager.cpp` and `server/api/updates.go`)
+- [x] Rate-limit protection on `GET /api/v1/updates/manifest` (public group limiter)
+
+## BATCH 13 — Skin API wiring, authorization & launcher integration (DONE 2026-11-15)
+- [x] Move processed skin files to `/api/v1/skin-files/*` and mount them on the
+      authenticated route group (fixes the unreachable endpoints and the
+      `{id}` / `{variant}` DELETE conflict)
+- [x] Owner-prefixed skin-file ids, owner-only delete/activate, owner-scoped task
+      status; wire disk-backed, concurrency-safe skin storage in `main.go`
+- [x] Wire the Pterodactyl webhook and mount `/api/server/start` on the admin group
+- [x] Fix the launcher skin client: multipart `skin` field, heap-owned
+      `QHttpMultiPart`, bearer token, `skin_id` parsing, real avatar decoding;
+      fix the null-client crash and duplicate signal in `SkinPreviewWidget`
+- [x] Rate limiter: ignore `X-Forwarded-For` unless `AUTH_TRUST_PROXY` is set,
+      apply the limiter once per group, stop the cleanup goroutine on shutdown
+- [x] Async queue: real persistence, idempotent `Close`, bounded result retention,
+      no stale task-status caching
+- [x] Velocity plugin builds against API 4.2.0 with JDK 25; JSON-escape the
+      access token in the proxy auth request
 
 ## BATCH 11 — Auto-Update Wire-In
 - [ ] Wire `UpdateManager` into launcher startup (compare local vs manifest)

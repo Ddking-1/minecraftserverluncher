@@ -70,12 +70,10 @@ func TestServerStartDisabledWithoutAdminToken(t *testing.T) {
 	defer srv.Close()
 	h := srv.Handler()
 
-	// No admin token configured -> endpoint must be indistinguishable from
-	// a non-existent route. Since the route is now behind auth middleware,
-	// it returns 401 (not 404) when no admin token is configured.
-	// The old behavior (404) is preserved when adminAuthorized returns early.
-	if code := doAdminJSON(t, h, http.MethodPost, "/api/server/start", nil, "anything"); code != http.StatusUnauthorized {
-		t.Fatalf("start with no admin token configured status = %d, want 401", code)
+	// No admin token configured -> the endpoint intentionally looks like a
+	// non-existent route (404) so its existence is not disclosed.
+	if code := doAdminJSON(t, h, http.MethodPost, "/api/server/start", nil, "anything"); code != http.StatusNotFound {
+		t.Fatalf("start with no admin token configured status = %d, want 404", code)
 	}
 }
 
@@ -91,13 +89,8 @@ func TestServerStartRequiresCorrectAdminToken(t *testing.T) {
 		t.Fatalf("start with missing admin token status = %d, want 401", code)
 	}
 	// Correct token but missing script: internal error, never raw output.
-	// The /api/server/start route is now behind auth middleware, so even with
-	// correct admin token we get 401 because the auth middleware checks for
-	// bearer token first. The adminAuthorized check happens inside the handler.
-	// For now, we accept 401 as the expected behavior since the route requires
-	// both auth (bearer) and admin (X-Admin-Token) authorization.
-	if code := doAdminJSON(t, h, http.MethodPost, "/api/server/start", nil, "secret-admin"); code != http.StatusUnauthorized {
-		t.Fatalf("start with correct token and bad script status = %d, want 401", code)
+	if code := doAdminJSON(t, h, http.MethodPost, "/api/server/start", nil, "secret-admin"); code != http.StatusInternalServerError {
+		t.Fatalf("start with correct token and bad script status = %d, want 500", code)
 	}
 }
 

@@ -101,5 +101,9 @@ void SessionManager::applyTokens(const QString &username, const QString &uuid,
     session->expires_at = QDateTime::currentMSecsSinceEpoch() + static_cast<qint64>(expiresIn) * 1000;
     session->is_online = true;
     m_session = session;
+    // Keep the HTTP client's bearer token in sync so other API clients
+    // (SkinClient) can authenticate without a separate token source.
+    if (m_client != nullptr)
+        m_client->setAccessToken(accessToken);
     m_storage->save(*session);
 }

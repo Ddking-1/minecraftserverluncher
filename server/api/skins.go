@@ -70,6 +70,8 @@ func (s *Server) handleUploadSkin(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "internal error")
 		return
 	}
+	// Invalidate the per-account list cache so the next GET sees the new skin.
+	s.statsCache.Delete("skins:list:" + strconv.FormatInt(accountID, 10))
 	writeJSON(w, http.StatusOK, map[string]string{"status": "saved"})
 }
 
