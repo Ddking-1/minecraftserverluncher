@@ -40,6 +40,18 @@ rate limited per client IP.
 | POST | `/api/v1/account/password` | Change password (revokes sessions) |
 | GET | `/api/v1/account/sessions` | List the account's sessions |
 | POST | `/api/v1/account/sessions/revoke` | Revoke one session |
+| PUT | `/api/v1/skins/{variant}` | Upload a named skin (bearer token) |
+| GET | `/api/v1/skins` | List the account's named skins |
+| GET | `/api/v1/skins/{account}/{variant}` | Fetch a named skin |
+| DELETE | `/api/v1/skins/{variant}` | Delete a named skin |
+| POST | `/api/v1/skins/upload/{variant}` | Async named-skin upload (`202` + `task_id`) |
+| POST | `/api/v1/skin-files` | Upload a processed skin file (multipart field `skin`) |
+| GET | `/api/v1/skin-files/{id}` | Processed PNG |
+| GET | `/api/v1/skin-files/{id}/avatar` | 64x64 head avatar |
+| DELETE | `/api/v1/skin-files/{id}` | Delete own skin file and avatar |
+| POST | `/api/v1/skin-files/{id}/active` | Activate a recent skin (owner only) |
+| GET | `/api/v1/tasks/{id}` | Async task status (creator only) |
+| POST | `/api/v1/webhooks/pterodactyl` | Pterodactyl webhook (HMAC signature) |
 | POST | `/api/server/start` | Start the game server (admin token) |
 | POST | `/api/admin/hwid/ban` | Ban a device ID (admin token) |
 | POST | `/api/admin/hwid/unban` | Unban a device ID (admin token) |
@@ -56,6 +68,9 @@ rate limited per client IP.
 - `BcryptCost` — bcrypt cost (default `12`).
 - `AdminToken` — admin token for privileged endpoints (`""` disables them).
 - `PteroScript` — path to the server-start script.
+- `RateLimitPerMinute` — per-client request budget (default `60`, env `AUTH_RATE_LIMIT_PER_MINUTE`).
+- `TrustProxy` — trust `X-Forwarded-For` / `X-Real-IP` for rate-limit keys (default off, env `AUTH_TRUST_PROXY=1`).
+- `SkinStorageDir` — persistent skin/avatar directory (default `./storage/skins`, env `AUTH_SKIN_STORAGE_DIR`).
 
 ## Build & test
 

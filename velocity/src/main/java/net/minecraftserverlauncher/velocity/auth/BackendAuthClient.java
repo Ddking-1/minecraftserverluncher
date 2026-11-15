@@ -37,7 +37,7 @@ public class BackendAuthClient {
         if (accessToken == null || accessToken.isEmpty()) {
             return CompletableFuture.completedFuture(false);
         }
-        String json = "{\"access_token\":\"" + accessToken + "\"}";
+        String json = "{\"access_token\":\"" + jsonEscape(accessToken) + "\"}";
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(baseUrl + "/api/v1/proxy/auth"))
                 .timeout(Duration.ofSeconds(5))
@@ -48,6 +48,35 @@ public class BackendAuthClient {
         return http.sendAsync(request, HttpResponse.BodyHandlers.ofString())
                 .thenApply(resp -> resp.statusCode() == 200 && resp.body().contains("\"status\":\"ok\""))
                 .completeOnTimeout(false, 5, TimeUnit.SECONDS);
+    }
+
+    /**
+     * Escapes a value for embedding in a JSON string literal. The access token
+     * originates from client-controlled profile data, so it must never be
+     * concatenated into JSON verbatim.
+     */
+    private static String jsonEscape(String value) {
+        StringBuilder out = new StringBuilder(value.length() + 8);
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            switch (c) {
+                case '"' -> out.append("\\\"");
+                case '\\' -> out.append("\\\\");
+                case '\b' -> out.append("\\b");
+                case '\f' -> out.append("\\f");
+                case '\n' -> out.append("\\n");
+                case '\r' -> out.append("\\r");
+                case '\t' -> out.append("\\t");
+                default -> {
+                    if (c < 0x20) {
+                        out.append(String.format("\\u%04x", (int) c));
+                    } else {
+                        out.append(c);
+                    }
+                }
+            }
+        }
+        return out.toString();
     }
 
     private static String stripTrailingSlash(String url) {

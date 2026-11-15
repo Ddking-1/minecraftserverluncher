@@ -302,8 +302,9 @@ Holds all handler dependencies: `db`, `sessions`, `devices`, `cfg`, `limiter`, `
 - `sessionCache` (2 min)
 
 `Handler()` returns the root `http.Handler` with three route groups:
-- **Public**: `/api/v1/auth/*`, `/api/v1/updates/manifest`, `/healthz`, `/readyz`, `/api/v1/proxy/auth`, skin upload/get/avatar/delete (if `SkinHandler` set), Pterodactyl webhook
-- **Protected** (bearer token): `/api/v1/account/*`, `/api/v1/skins/*` (user-scoped), `/api/v1/tasks/*`
+- **Public**: `/api/v1/auth/*`, `/api/v1/updates/manifest`, `/healthz`, `/readyz`, `/api/v1/proxy/auth`, `POST /api/v1/webhooks/pterodactyl` (HMAC-verified)
+- **Protected** (bearer token): `/api/v1/account/*`, `/api/v1/skins/*` (account-scoped named skins), `/api/v1/skin-files/*` (processed files), `/api/v1/tasks/*`
+- **Admin** (`X-Admin-Token`): `/api/admin/*`, `/api/server/*`
 - **Admin** (`X-Admin-Token`): `/api/admin/hwid/*`, `/api/admin/users`, `/api/server/start`
 
 Middleware chain (outermost first): security headers → panic recovery → request ID → request log → (auth middleware if protected) → rate limiting → handler.
@@ -720,9 +721,9 @@ The backend implements a role-based access control system: `roles`, `permissions
 
 1. **`server/api` compilation issue (pre-existing):** `handlers.go` references `rateLimiter`, `newRateLimiter`, and `Server.limit`, while `ratelimit.go` defines `RateLimiter`, `NewRateLimiter`, and `HandlerMiddleware`. These need bridging/renaming for `go build ./...` to be fully green.
 
-2. **Skin API route conflict:** `DELETE /api/v1/skins/{id}` (SkinHandler) conflicts with the legacy `DELETE /api/v1/skins/{variant}` pattern. One must be relocated before the Skin API is wired in production.
+2. ~~**Skin API route conflict:** `DELETE /api/v1/skins/{id}` conflicted with `DELETE /api/v1/skins/{variant}`.~~ **RESOLVED 2026-11-15:** processed files moved to `/api/v1/skin-files/*`, mounted on the authenticated group; named skins stay under `/api/v1/skins`. See DECISION-006.
 
-3. **`SkinHandler` / `PterodactylWebhook` not wired in `main.go`:** Both are unit-tested but `server/main.go` does not set them on the `Server`, so the endpoints are not exposed in production yet.
+3. ~~**`SkinHandler` / `PterodactylWebhook` not wired in `main.go`.**~~ **RESOLVED 2026-11-15:** `main.go` wires disk-backed skin storage and both handlers, so the endpoints are exposed in production.
 
 4. **Velocity T11 skeleton:** The Velocity plugin is scaffolded but full integration remains blocked pending DECISION-004 legal sign-off and DECISION-005 (metadata source) — both now approved.
 

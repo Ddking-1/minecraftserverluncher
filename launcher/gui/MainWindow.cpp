@@ -1,5 +1,7 @@
 #include "MainWindow.h"
 
+#include "auth/BackendAuthClient.h"
+
 #include <QStatusBar>
 #include <QVBoxLayout>
 
@@ -20,6 +22,11 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(m_skinPreview, &SkinPreviewWidget::skinUploadFinished,
             this, &MainWindow::onSkinUploadFinished);
+}
+
+void MainWindow::setAuthClient(BackendAuthClient *client)
+{
+    m_skinPreview->setAuthClient(client);
 }
 
 void MainWindow::onSkinUploadFinished(bool success, const QString &skinId, const QString &error)

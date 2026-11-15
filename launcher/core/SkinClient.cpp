@@ -4,22 +4,25 @@
 #include "auth/BackendAuthClient.h"
 
 #include <QDebug>
-#include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QHttpMultiPart>
 #include <QHttpPart>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QTimer>
 
-#if defined(QT_GUI_LIB) || defined(QTWidgets)
+#if defined(QT_GUI_LIB)
 #include <QPixmap>
 #endif
 
 #include <functional>
+#include <memory>
 
-#if !defined(QT_GUI_LIB) && !defined(QTWidgets)
+#if !defined(QT_GUI_LIB)
 class QPixmap {
 public:
     QPixmap() = default;
@@ -80,9 +83,15 @@ void SkinClient::uploadSkin(
     const QString &filePath,
     std::function<void(bool, QString, QString)> callback)
 {
-    if (m_client->backendUrl().isEmpty()) {
+    if (m_client == nullptr || m_client->backendUrl().isEmpty()) {
         invokeCallback(std::move(callback), false, QString(),
                        QStringLiteral("no backend configured"));
+        return;
+    }
+    const QString token = m_client->accessToken();
+    if (token.isEmpty()) {
+        invokeCallback(std::move(callback), false, QString(),
+                       QStringLiteral("not logged in"));
         return;
     }
 
@@ -102,28 +111,42 @@ void SkinClient::uploadSkin(
         return;
     }
 
-    QNetworkRequest request(QUrl(m_client->backendUrl() + "/api/v1/skins/upload"));
-    request.setHeader(QNetworkRequest::ContentTypeHeader,
-                      QStringLiteral("multipart/form-data"));
+    QNetworkRequest request(QUrl(m_client->backendUrl() +
+                                 QStringLiteral("/api/v1/skin-files")));
+    request.setRawHeader("Authorization", "Bearer " + token.toUtf8());
 
-    QHttpMultiPart multiPart(QHttpMultiPart::FormDataType);
+    // QNetworkAccessManager takes ownership of the QHttpMultiPart together with
+    // the reply, so it must live on the heap: a stack object would be destroyed
+    // while the request body is still being read.
+    auto *multiPart = new QHttpMultiPart(QHttpMultiPart::FormDataType);
     QHttpPart skinPart;
-    skinPart.setHeader(QNetworkRequest::ContentDispositionHeader,
-                       QVariant("form-data; name=\"file\"; filename=\""
-                                + filePath.split(QDir::separator()).last()
-                                      .toUtf8()
-                                      + "\""));
+    const QString fileName = QFileInfo(filePath).fileName();
     skinPart.setHeader(
-        QNetworkRequest::ContentTypeHeader, QStringLiteral("image/png"));
+        QNetworkRequest::ContentDispositionHeader,
+        QVariant(QStringLiteral("form-data; name=\"skin\"; filename=\"%1\"").arg(fileName)));
+    skinPart.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("image/png"));
     skinPart.setBody(data);
-    multiPart.append(skinPart);
+    multiPart->append(skinPart);
 
-    QNetworkReply *reply = m_client->net()->post(request, &multiPart);
+    QNetworkReply *reply = m_client->net()->post(request, multiPart);
+    if (reply == nullptr) {
+        delete multiPart;
+        invokeCallback(std::move(callback), false, QString(),
+                       QStringLiteral("could not start upload"));
+        return;
+    }
+
+    // Guards against delivering both the timeout and the finished callback for
+    // the same request (abort() also emits finished()).
+    auto settled = std::make_shared<bool>(false);
 
     QTimer *timeoutTimer = new QTimer(this);
     timeoutTimer->setSingleShot(true);
     timeoutTimer->connect(timeoutTimer, &QTimer::timeout, this,
-                          [this, reply, timeoutTimer, callback]() {
+                          [this, reply, timeoutTimer, callback, settled]() {
+                              if (*settled)
+                                  return;
+                              *settled = true;
                               reply->abort();
                               timeoutTimer->deleteLater();
                               logNetworkError(reply);
@@ -133,21 +156,30 @@ void SkinClient::uploadSkin(
     timeoutTimer->start(5000);
 
     reply->connect(reply, &QNetworkReply::finished, this,
-                   [this, reply, timeoutTimer, callback]() {
+                   [this, reply, timeoutTimer, callback, settled]() {
                        timeoutTimer->stop();
                        timeoutTimer->deleteLater();
+                       if (*settled) {
+                           reply->deleteLater();
+                           return;
+                       }
+                       *settled = true;
                        logNetworkError(reply);
 
                        const int status =
                            reply->attribute(QNetworkRequest::HttpStatusCodeAttribute)
                                .toInt();
+                       const QByteArray body = reply->readAll();
                        if (reply->error() == QNetworkReply::NoError &&
                            status >= 200 && status < 300) {
-                           invokeCallback(std::move(callback), true, QString(),
-                                         QString());
+                           QString skinId;
+                           const QJsonDocument doc = QJsonDocument::fromJson(body);
+                           if (doc.isObject())
+                               skinId = doc.object().value(QStringLiteral("skin_id")).toString();
+                           invokeCallback(std::move(callback), true, skinId, QString());
                        } else {
                            invokeCallback(std::move(callback), false, QString(),
-                                         QString("upload failed (HTTP %1)").arg(status));
+                                          QStringLiteral("upload failed (HTTP %1)").arg(status));
                        }
 
                        reply->deleteLater();
@@ -158,23 +190,40 @@ void SkinClient::downloadAvatar(
     const QString &skinId,
     std::function<void(bool, QPixmap)> callback)
 {
-    if (m_client->backendUrl().isEmpty()) {
+    if (m_client == nullptr || m_client->backendUrl().isEmpty()) {
+        invokeCallback(std::move(callback), false, QPixmap());
+        return;
+    }
+    const QString token = m_client->accessToken();
+    if (token.isEmpty()) {
+        invokeCallback(std::move(callback), false, QPixmap());
+        return;
+    }
+    if (skinId.isEmpty()) {
         invokeCallback(std::move(callback), false, QPixmap());
         return;
     }
 
     QNetworkRequest request(QUrl(m_client->backendUrl() +
-                                 QStringLiteral("/api/v1/skins/") + skinId +
+                                 QStringLiteral("/api/v1/skin-files/") + skinId +
                                  QStringLiteral("/avatar")));
-    request.setHeader(QNetworkRequest::ContentTypeHeader,
-                      QStringLiteral("application/json"));
+    request.setRawHeader("Authorization", "Bearer " + token.toUtf8());
 
     QNetworkReply *reply = m_client->net()->get(request);
+    if (reply == nullptr) {
+        invokeCallback(std::move(callback), false, QPixmap());
+        return;
+    }
+
+    auto settled = std::make_shared<bool>(false);
 
     QTimer *timeoutTimer = new QTimer(this);
     timeoutTimer->setSingleShot(true);
     timeoutTimer->connect(timeoutTimer, &QTimer::timeout, this,
-                          [this, reply, timeoutTimer, callback]() {
+                          [this, reply, timeoutTimer, callback, settled]() {
+                              if (*settled)
+                                  return;
+                              *settled = true;
                               reply->abort();
                               timeoutTimer->deleteLater();
                               logNetworkError(reply);
@@ -183,24 +232,39 @@ void SkinClient::downloadAvatar(
     timeoutTimer->start(5000);
 
     reply->connect(reply, &QNetworkReply::finished, this,
-                   [this, reply, timeoutTimer, callback]() {
+                   [this, reply, timeoutTimer, callback, settled]() {
                        timeoutTimer->stop();
                        timeoutTimer->deleteLater();
+                       if (*settled) {
+                           reply->deleteLater();
+                           return;
+                       }
+                       *settled = true;
                        logNetworkError(reply);
 
                        const int status =
                            reply->attribute(QNetworkRequest::HttpStatusCodeAttribute)
                                .toInt();
+                       const bool networkOk = reply->error() == QNetworkReply::NoError;
+                       const QByteArray body = reply->readAll();
+                       reply->deleteLater();
 
-                       if (reply->error() != QNetworkReply::NoError ||
-                           status < 200 || status >= 300) {
-                           reply->deleteLater();
+                       if (!networkOk || status < 200 || status >= 300) {
                            invokeCallback(std::move(callback), false, QPixmap());
                            return;
                        }
 
-                       reply->deleteLater();
+#if defined(QT_GUI_LIB)
+                       QPixmap pixmap;
+                       if (!pixmap.loadFromData(body, "PNG") || pixmap.isNull()) {
+                           invokeCallback(std::move(callback), false, QPixmap());
+                           return;
+                       }
+                       invokeCallback(std::move(callback), true, pixmap);
+#else
+                       Q_UNUSED(body);
                        invokeCallback(std::move(callback), false, QPixmap());
+#endif
                    });
 }
 

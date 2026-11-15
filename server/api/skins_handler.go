@@ -2,31 +2,38 @@ package api
 
 import (
 	"net/http"
-	"os"
-	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
 	"minecraftserverluncher/server/skins"
 )
 
-// SkinHandler serves the /api/v1/skins/{id} family of endpoints using the
+// SkinHandler serves the /api/v1/skin-files family of endpoints using the
 // server/skins package directly (processing, validation, storage, avatar extraction).
 //
+// The endpoints are mounted on the authenticated route group by router.go.
+//
 // Endpoints:
-//   POST   /api/v1/skins/upload                - multipart skin upload (ProcessSkin + recent-skin rotation)
-//   GET    /api/v1/skins/{id}                  - raw processed PNG from storage (image/png)
-//   GET    /api/v1/skins/{id}/avatar           - 64x64 avatar PNG (image/png)
-//   DELETE /api/v1/skins/{id}                  - delete skin + avatar
-//   POST   /api/v1/skins/{id}/active           - quick-switch active skin (rate-limited)
+//
+//	POST   /api/v1/skin-files              - multipart skin upload (ProcessSkin + recent-skin rotation)
+//	GET    /api/v1/skin-files/{id}         - raw processed PNG from storage (image/png)
+//	GET    /api/v1/skin-files/{id}/avatar  - 64x64 head avatar PNG (image/png)
+//	DELETE /api/v1/skin-files/{id}         - delete skin + avatar
+//	POST   /api/v1/skin-files/{id}/active  - quick-switch active skin (rate-limited)
 type SkinHandler struct {
-	Storage        skins.SkinStorage
-	History        *skins.ThreadSafeSkinHistory
-	SkinStorageDir string
-	RateLimiter    *RateLimiter
+	Storage     *skins.SkinStorage
+	History     *skins.ThreadSafeSkinHistory
+	RateLimiter *RateLimiter
 }
 
 func (h *SkinHandler) handleUpload(w http.ResponseWriter, r *http.Request) {
+	accountID := RequestedAccountID(r)
+	if accountID == 0 {
+		writeError(w, http.StatusUnauthorized, "authentication required")
+		return
+	}
+
 	if err := r.ParseMultipartForm(32 << 20); err != nil {
 		writeError(w, http.StatusBadRequest, "malformed multipart form: "+err.Error())
 		return
@@ -51,7 +58,10 @@ func (h *SkinHandler) handleUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id := uuid.New().String()
+	// The id carries the owning account so delete/activate can be authorized
+	// without a separate ownership table. Avatar ids append "-avatar" after
+	// the UUID, so the owner prefix is still the first segment.
+	id := strconv.FormatInt(accountID, 10) + "-" + uuid.New().String()
 	if err := h.Storage.SaveSkin(id, processed); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to store skin")
 		return
@@ -75,19 +85,51 @@ func (h *SkinHandler) handleUpload(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusInternalServerError, "failed to record skin history")
 			return
 		}
-		if evicted != "" && h.SkinStorageDir != "" {
-			if removeErr := os.Remove(filepath.Join(h.SkinStorageDir, evicted)); removeErr != nil && !os.IsNotExist(removeErr) {
+		if evicted != "" {
+			// Drop the evicted skin and its avatar from storage as well, so
+			// rotation does not leak files or memory entries.
+			if removeErr := h.Storage.DeleteSkin(evicted); removeErr != nil {
 				writeError(w, http.StatusInternalServerError, "failed to delete oldest skin")
+				return
+			}
+			if removeErr := h.Storage.DeleteSkin(evicted + "-avatar"); removeErr != nil {
+				writeError(w, http.StatusInternalServerError, "failed to delete oldest avatar")
 				return
 			}
 		}
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{
-		"success":   true,
-		"skin_id":   id,
-		"avatar_url": "/api/v1/skins/" + id + "/avatar",
+		"success":    true,
+		"skin_id":    id,
+		"avatar_url": "/api/v1/skin-files/" + id + "/avatar",
 	})
+}
+
+// skinFileOwner parses the owning account id from a skin-file id. Ids are
+// created as "<accountID>-<uuid>" (avatars add "-avatar"), so the first dash
+// separates the owner.
+func skinFileOwner(id string) (int64, bool) {
+	dash := strings.IndexByte(id, '-')
+	if dash <= 0 {
+		return 0, false
+	}
+	owner, err := strconv.ParseInt(id[:dash], 10, 64)
+	if err != nil || owner <= 0 {
+		return 0, false
+	}
+	return owner, true
+}
+
+// ownsSkinFile reports whether the authenticated account owns the skin file.
+// A request without an authenticated account never owns anything.
+func ownsSkinFile(r *http.Request, id string) bool {
+	accountID := RequestedAccountID(r)
+	if accountID == 0 {
+		return false
+	}
+	owner, ok := skinFileOwner(id)
+	return ok && owner == accountID
 }
 
 func (h *SkinHandler) handleGetSkin(w http.ResponseWriter, r *http.Request) {
@@ -139,17 +181,21 @@ func (h *SkinHandler) handleGetAvatar(w http.ResponseWriter, r *http.Request) {
 
 func (h *SkinHandler) handleDeleteSkin(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	if id == "" {
+	if id == "" || !ownsSkinFile(r, id) {
 		writeError(w, http.StatusNotFound, "skin not found")
 		return
 	}
-	avatarID := id + "-avatar"
+	if _, err := h.Storage.GetSkin(id); err != nil {
+		writeError(w, http.StatusNotFound, "skin not found")
+		return
+	}
 
 	if err := h.Storage.DeleteSkin(id); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to delete skin")
 		return
 	}
-	if err := h.Storage.DeleteSkin(avatarID); err != nil {
+	// The avatar is derived data; a missing avatar must not fail the delete.
+	if err := h.Storage.DeleteSkin(id + "-avatar"); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to delete avatar")
 		return
 	}
@@ -171,7 +217,7 @@ func (h *SkinHandler) handleSetActiveSkin(w http.ResponseWriter, r *http.Request
 
 func (h *SkinHandler) rateLimitedSetActiveSkin(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	if id == "" {
+	if id == "" || !ownsSkinFile(r, id) {
 		writeError(w, http.StatusNotFound, "skin not found")
 		return
 	}
@@ -191,7 +237,7 @@ func (h *SkinHandler) rateLimitedSetActiveSkin(w http.ResponseWriter, r *http.Re
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{
-		"success": true,
+		"success":        true,
 		"active_skin_id": id,
 	})
 }

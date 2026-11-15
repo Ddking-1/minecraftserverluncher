@@ -25,29 +25,42 @@ auth, account management (profile, password change, session list/revoke),
 middleware (request logging, panic recovery, security headers), readiness
 probe, rate limiting, and admin HWID bans. `go build`, `go vet` and
 `go test ./...` pass (run them from `server/`, the Go module root; the current
-baseline is 200 passing tests). The backend also contains the Skin API handlers
-(upload/get/avatar/delete over `server/skins` validation + storage) and the
-Pterodactyl webhook handler (HMAC signature verification, 401 on a missing or
-invalid signature); both are unit-tested but are not wired in `server/main.go`
-yet, and the Skin API `DELETE /api/v1/skins/{id}` route still conflicts with the
-legacy `DELETE /api/v1/skins/{variant}` pattern.
+baseline is 200+ passing tests). The backend exposes the processed skin-file
+API under `/api/v1/skin-files` (multipart upload with a `skin` field, raw PNG,
+head avatar, owner-only delete/activate) and the Pterodactyl webhook
+(`POST /api/v1/webhooks/pterodactyl`, HMAC-verified, fails closed with 401 when
+no secret is configured). Both are wired in `server/main.go`. Skin files are
+stored in a concurrency-safe store that persists to `AUTH_SKIN_STORAGE_DIR`.
+The account-scoped named-skin API stays under `/api/v1/skins`.
+See `docs/DECISIONS.md` DECISION-006 and `docs/WORK_STATE.md`.
 
 The C++/Qt6 launcher core is implemented on `master` and the build baseline is
 GREEN: CMake configure and a Release build with Qt 6.6.3 MSVC 2022 succeed and
-produce `MinecraftLauncher.exe`. CTest runs five tests (hwid, settings,
-update_manifest, skin_model, backend_contract), all passing. Newer launcher
+produce `MinecraftLauncher.exe`. The CTest suite (hwid, settings,
+update_manifest, skin_model, backend_contract, settings_store, mod_scanner,
+skin_cache, rotating_logger, update_checker, file_integrity, editor_config,
+skin_client, download_asset, download_queue, java_detector, game_paths,
+game_launcher, editor_settings_widget, login_dialog, skin_upload_widget,
+update_manager) is defined in `launcher/CMakeLists.txt`. Newer launcher
 work includes the update manifest parser, skin model, backend status-code error
 mapping, a request timeout, and CLI filter/version options.
 
-On branch `feature/go-backend-hardening-and-fuzz`, a Qt6 `MainWindow` skeleton
-was added that embeds `SkinPreviewWidget` and reacts to its new
-`skinUploadFinished` signal to update the status bar/permanent label on skin
-upload or switch events. The `SkinPreviewWidget` now emits that signal on
-upload success or failure. This GUI wiring is not yet compiled or wired into
-`main.cpp`; the branch work is source only.
+The Qt6 `MainWindow` is wired into `launcher/main.cpp` and embeds
+`SkinPreviewWidget`, whose `skinUploadFinished` signal updates the status bar.
+The widget takes a `BackendAuthClient` via `setAuthClient`; without an
+authenticated client it reports that login is required instead of issuing a
+request. `SessionManager` pushes the access token into `BackendAuthClient`, and
+`SkinClient` uses it for authenticated `/api/v1/skin-files` requests. The C++
+tree could not be compiled in the current cloud environment (no Qt 6
+toolchain); only the Go and Velocity builds are verified there.
 
-Velocity work remains blocked until the owner signs off DECISION-004 (GPLv3
-distribution model) and DECISION-005 (metadata source) is resolved.
+The Velocity plugin builds against `velocity-api:4.2.0` with JDK 25
+(`./gradlew build` produces `build/libs/minecraftserverlauncher-velocity-0.1.0.jar`).
+Its join-time authorization currently reads a `minecraftserverlauncher-token`
+GameProfile property, which the launcher does not populate yet; this transport
+gap is documented as an open issue rather than a security relaxation.
+DECISION-004 (GPLv3 distribution) and DECISION-005 (metadata source) remain
+owner decisions for the Prism-derived launcher work.
 
 ## Approved architecture direction
 
@@ -153,8 +166,13 @@ and the Configure/Build/Test steps are gated on its success, so the workflow
 passes even when Qt cannot be installed (Qt is not pre-installed on the
 runner).
 
-Velocity implementation remains blocked until DECISION-004 is signed off and
-DECISION-005 is resolved.
+The Velocity plugin builds against `velocity-api:4.2.0` with JDK 25
+(`./gradlew build` produces `build/libs/minecraftserverlauncher-velocity-0.1.0.jar`).
+Its join-time authorization currently reads a `minecraftserverlauncher-token`
+GameProfile property, which the launcher does not populate yet; this transport
+gap is documented as an open issue rather than a security relaxation.
+DECISION-004 (GPLv3 distribution) and DECISION-005 (metadata source) remain
+owner decisions for the Prism-derived launcher work.
 
 ## Handoff rule
 

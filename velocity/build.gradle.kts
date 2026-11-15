@@ -17,8 +17,8 @@ dependencies {
 }
 
 java {
-    // Use the running JVM (JDK 21 on this machine) directly; no toolchain
-    // auto-detection. Bytecode targets Java 17 via the release flag below.
+    // Use the running JVM directly; no toolchain auto-detection. Velocity API
+    // 4.2.0 is compiled for Java 25, so the plugin targets Java 25 as well.
 }
 
 tasks.withType<JavaCompile>().configureEach {

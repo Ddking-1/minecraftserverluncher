@@ -636,8 +636,14 @@ Before going live:
 | `PUT /api/v1/skins/{variant}` | Yes | No | Yes | Upload skin; rate-limited to 2/3h. |
 | `GET /api/v1/skins/{account}/{variant}` | Yes | No | Yes | Public skin fetch. |
 | `DELETE /api/v1/skins/{variant}` | Yes | No | Yes | Delete own skin. |
-| `POST /api/v1/skins/upload/{variant}` | Yes | No | Yes | Async upload (reserved). |
-| `GET /api/v1/tasks/{id}` | Yes | No | Yes | Task status. |
+| `POST /api/v1/skins/upload/{variant}` | Yes | No | Yes | Async upload (persisted by the worker). |
+| `POST /api/v1/skin-files` | Yes | No | Yes | Processed skin upload (multipart `skin` field); owner-prefixed id. |
+| `GET /api/v1/skin-files/{id}` | Yes | No | Yes | Raw processed PNG. |
+| `GET /api/v1/skin-files/{id}/avatar` | Yes | No | Yes | 64x64 head avatar. |
+| `DELETE /api/v1/skin-files/{id}` | Yes | No | Yes | Owner only; 404 for other accounts. |
+| `POST /api/v1/skin-files/{id}/active` | Yes | No | Yes | Owner only. |
+| `GET /api/v1/tasks/{id}` | Yes | No | Yes | Task status, scoped to the creating account. |
+| `POST /api/v1/webhooks/pterodactyl` | No (HMAC signature) | No | Yes | Pterodactyl event webhook; fails closed without a secret. |
 | `POST /api/v1/proxy/auth` | No (admin token) | Yes | Yes | Server-side token validation. |
 | `POST /api/admin/hwid/ban` | No (admin token) | Yes | Yes | Ban HWID. |
 | `POST /api/admin/hwid/unban` | No (admin token) | Yes | Yes | Unban HWID. |

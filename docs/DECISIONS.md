@@ -244,3 +244,49 @@ STATUS: PENDING
 Legal uncertainty must be marked:
 
 LEGAL REVIEW REQUIRED
+
+## DECISION-006 — Skin file API namespace and ownership
+
+Date: 2026-11-15
+STATUS: ACCEPTED (implemented)
+
+Context:
+Two skin APIs coexisted: account-scoped named skins
+(`/api/v1/skins/{variant}`, backed by the `skins` table) and id-addressed
+processed skin files (upload, raw PNG, avatar, delete, activate). Both were
+registered under the same `/api/v1/skins` prefix, which creates a Go 1.22+
+ServeMux pattern conflict (`{id}` vs `{variant}` for `DELETE`). The file
+endpoints had been parked on a mux that was never mounted, so every launcher
+upload/avatar request returned 404, and the destructive file endpoints had no
+authorization when they were reachable.
+
+Decision:
+- Account-scoped named skins remain under `/api/v1/skins` (bearer token).
+- Processed skin files live under `/api/v1/skin-files` (bearer token):
+  `POST /api/v1/skin-files`, `GET /api/v1/skin-files/{id}`,
+  `GET /api/v1/skin-files/{id}/avatar`, `DELETE /api/v1/skin-files/{id}`,
+  `POST /api/v1/skin-files/{id}/active`.
+- A skin-file id starts with the owning account id (`<accountID>-<uuid>`);
+  delete and activate require ownership and answer 404 otherwise. Reading the
+  image/avatar is available to any authenticated user.
+- The Pterodactyl webhook is mounted on the public group and authenticated by
+  its HMAC signature. `/api/server/start` is mounted on the admin group.
+- Rate limiting is applied exactly once per route group.
+
+Consequences:
+- The launcher must use `/api/v1/skin-files` and send the bearer token; it now
+  syncs the access token from `SessionManager` into `BackendAuthClient`.
+- The OpenAPI document, security endpoint table and endpoint READMEs are
+  updated with the new namespace.
+- The skin file store is concurrency-safe and can persist to disk
+  (`AUTH_SKIN_STORAGE_DIR`).
+
+Affected files:
+`server/api/router.go`, `server/api/skins_handler.go`, `server/api/ratelimit.go`,
+`server/api/queue.go`, `server/skins/processor.go`, `server/main.go`,
+`launcher/core/SkinClient.cpp`, `launcher/auth/BackendAuthClient.cpp`,
+`docs/openapi.yaml`
+
+Reversible: yes
+
+Legal review required: no

@@ -185,3 +185,72 @@ Known issues (unchanged from previous state):
 Branch:
 fix/launcher-yml-qt-action (task branch created from `master` per AGENTS.md
 rule 1); committed and pushed as the final git step of this task (rule 26).
+
+## 2026-11-15 - SKIN API WIRING, AUTHORIZATION, LAUNCHER INTEGRATION AND BACKEND HARDENING
+
+Status:
+GREEN for the Go backend and the Velocity plugin. `cd server && go build ./...`,
+`go vet ./...`, `go test ./... -count=1 -race` all pass. The Velocity plugin
+builds with JDK 25 (`./gradlew build` ->
+`build/libs/minecraftserverlauncher-velocity-0.1.0.jar`). The C++/Qt launcher
+could NOT be compiled in this cloud environment (no Qt 6 toolchain); its changes
+are source-reviewed only.
+
+Resolved known issues from previous updates:
+1. Skin API route conflict (`{id}` vs `{variant}`) - RESOLVED. Processed skin
+   files moved to `/api/v1/skin-files/*` (DECISION-006); named account skins stay
+   under `/api/v1/skins/*`. Both are mounted, so the launcher endpoints are no
+   longer unreachable.
+2. `SkinHandler` / `PterodactylWebhook` not wired - RESOLVED. `main.go` wires
+   disk-backed skin storage and both handlers; `/api/v1/webhooks/pterodactyl`
+   fails closed (401) without a configured secret.
+3. `MainWindow` not wired into `main.cpp` - RESOLVED (already wired; now the
+   embedded skin panel receives a `BackendAuthClient` via `setAuthClient`).
+4. Missing `Storage` in the production `SkinHandler` (every upload would have
+   panicked on a nil map) - FIXED.
+5. `/api/server/start` was unreachable because `/api/server/` was mounted on the
+   protected group while the route lived on the admin mux - FIXED (admin group).
+
+Other fixes in this update:
+- Skin storage is now a concurrency-safe struct (memory or disk) with atomic
+  writes, safe id validation and restart persistence.
+- `ExtractAvatarHead` now extracts the real head face (8,8) + hat overlay
+  (40,8) and scales it to 64x64 instead of stretching the whole skin.
+- Rate limiter: `X-Forwarded-For` is only trusted with `AUTH_TRUST_PROXY`
+  (spoofing bypass fixed), the limiter runs once per route group (double token
+  consumption fixed), `Stop` is idempotent and is called on shutdown.
+- Async skin worker really persists uploads, invalidates the list cache, closes
+  idempotently, retains results with a TTL/cap and no longer caches in-flight
+  task status (which made polls report stale "queued" states).
+- Task status is scoped to the account that created it.
+- Launcher: skin upload sends the multipart field `skin` (server expected it),
+  the multipart object is heap-owned, requests carry the bearer token, `skin_id`
+  is parsed from the response and the avatar is decoded into a `QPixmap`
+  (previously always reported failure). `SkinPreviewWidget` no longer crashes on
+  a null client and no longer emits success twice.
+- `test_skin_client.cpp` was rewritten to the actual callback API (it referenced
+  non-existent signals and did not compile).
+- CI `ci.yml` uses `server/go.mod` as the Go version source, runs `go mod tidy`
+  in `server/`, no longer swallows `go vet` failures, and gained a Velocity job.
+- Velocity proxy auth JSON-escapes the access token (JSON injection fixed).
+
+Remaining known issues:
+1. The launcher GUI needs a real login/backend configuration flow: `main.cpp`
+   does not construct a `BackendAuthClient` for `MainWindow`, so the skin panel
+   reports "login required" until one is supplied.
+2. The Velocity plugin expects a `minecraftserverlauncher-token` GameProfile
+   property that the launcher does not set yet; join authorization therefore
+   cannot succeed end-to-end.
+3. Launcher `ResolveLibraries` / `ResolveAssets` still only create directories
+   (blocked on DECISION-005 metadata source).
+4. Auto-update is implemented (`UpdateManager`, signed manifest) but not wired
+   into launcher startup (TASKS BATCH 11/12).
+
+Next step:
+Wire the login flow (backend URL + `SessionManager`) into `MainWindow`, then
+resolve the Velocity token transport (LoginPluginMessage or a signed handshake)
+with DECISION-level review.
+
+Branch:
+fix/skin-api-routing-launcher-integration (merged into `master` and pushed by the
+agent as the final git step of this task, per AGENTS.md rule 26).

@@ -7,43 +7,56 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"strconv"
 	"sync"
 	"time"
 )
 
 // SkinJob is a unit of work in the skin processing queue.
 type SkinJob struct {
-	ID       string
+	ID        string
 	AccountID int64
-	Variant  string
-	Data     []byte
-	Created  time.Time
+	Variant   string
+	Data      []byte
+	Created   time.Time
 }
 
 // JobResult records the outcome of a processed skin job, retained for polling.
 type JobResult struct {
-	ID     string
-	Status string // "queued", "processing", "done", "failed"
-	Err    string
-	DoneAt time.Time
+	ID        string
+	AccountID int64
+	Status    string // "queued", "processing", "done", "failed"
+	Err       string
+	DoneAt    time.Time
 }
 
-// workerCount bounds the pool size (1–4 threads).
-const workerCount = 4
+const (
+	// workerCount bounds the pool size.
+	workerCount = 4
+	// maxJobResults bounds retained polling results to stop unbounded growth
+	// when clients never poll (or poll after the fact).
+	maxJobResults = 512
+	// resultTTL is how long a finished job result is kept.
+	resultTTL = 15 * time.Minute
+)
 
 // skinQueue is the in-memory task queue and result store.
 type skinQueue struct {
-	jobs    chan SkinJob
-	mu      sync.Mutex
-	results map[string]*JobResult
-	nextID  uint64
+	jobs      chan SkinJob
+	mu        sync.Mutex
+	results   map[string]*JobResult
+	nextID    uint64
+	process   func(SkinJob) error
+	closeOnce sync.Once
 }
 
-// newSkinQueue creates and starts the worker pool.
-func newSkinQueue() *skinQueue {
+// newSkinQueue creates and starts the worker pool. process is the persistence
+// step executed for every job (it may be nil in tests).
+func newSkinQueue(process func(SkinJob) error) *skinQueue {
 	q := &skinQueue{
 		jobs:    make(chan SkinJob, 64),
 		results: make(map[string]*JobResult),
+		process: process,
 	}
 	for i := 0; i < workerCount; i++ {
 		go q.worker()
@@ -51,16 +64,12 @@ func newSkinQueue() *skinQueue {
 	return q
 }
 
-// Close shuts down the worker pool so the queue can be garbage-collected
-// after the HTTP server stops (prevents goroutine leaks during tests and
-// shutdown). It is safe to call Close more than once.
+// Close shuts down the worker pool. Workers finish any already-queued jobs and
+// then exit. It is safe to call Close more than once.
 func (q *skinQueue) Close() {
-	select {
-	case <-q.jobs:
-		return
-	default:
+	q.closeOnce.Do(func() {
 		close(q.jobs)
-	}
+	})
 }
 
 // worker processes jobs from the queue until it is closed.
@@ -72,15 +81,19 @@ func (q *skinQueue) worker() {
 		}
 		q.mu.Unlock()
 
-		// The actual skin persistence (image sniffing + DB store) happens
-		// through the DB layer in the handler's worker; here we simulate the
-		// pipeline step and record completion. In a full implementation this
-		// calls auth.SniffImage + db.UpsertSkin.
-		time.Sleep(10 * time.Millisecond)
+		var err error
+		if q.process != nil {
+			err = q.process(job)
+		}
 
 		q.mu.Lock()
 		if r, ok := q.results[job.ID]; ok {
-			r.Status = "done"
+			if err != nil {
+				r.Status = "failed"
+				r.Err = err.Error()
+			} else {
+				r.Status = "done"
+			}
 			r.DoneAt = time.Now().UTC()
 		}
 		q.mu.Unlock()
@@ -96,10 +109,11 @@ func (q *skinQueue) enqueue(accountID int64, variant string, data []byte) (strin
 
 	token := make([]byte, 8)
 	_, _ = rand.Read(token)
-	jobID := hex.EncodeToString(token) + "-" + uitoa(id)
+	jobID := hex.EncodeToString(token) + "-" + strconv.FormatUint(id, 10)
 
 	q.mu.Lock()
-	q.results[jobID] = &JobResult{ID: jobID, Status: "queued"}
+	q.pruneLocked()
+	q.results[jobID] = &JobResult{ID: jobID, AccountID: accountID, Status: "queued"}
 	q.mu.Unlock()
 
 	job := SkinJob{ID: jobID, AccountID: accountID, Variant: variant, Data: data, Created: time.Now().UTC()}
@@ -114,10 +128,11 @@ func (q *skinQueue) enqueue(accountID int64, variant string, data []byte) (strin
 	}
 }
 
-// result returns the current status for a job id.
+// result returns a copy of the current status for a job id.
 func (q *skinQueue) result(id string) (*JobResult, bool) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
+	q.pruneLocked()
 	r, ok := q.results[id]
 	if !ok {
 		return nil, false
@@ -126,17 +141,38 @@ func (q *skinQueue) result(id string) (*JobResult, bool) {
 	return &copyR, true
 }
 
-// uitoa formats a uint64 without strconv (kept dependency-light).
-func uitoa(v uint64) string {
-	if v == 0 {
-		return "0"
+// pruneLocked drops terminal results past their TTL and, if the map is still
+// over the cap, the oldest finished entries. The caller must hold q.mu.
+func (q *skinQueue) pruneLocked() {
+	cutoff := time.Now().Add(-resultTTL)
+	for id, r := range q.results {
+		if (r.Status == "done" || r.Status == "failed") && r.DoneAt.Before(cutoff) {
+			delete(q.results, id)
+		}
 	}
-	buf := [20]byte{}
-	i := len(buf)
-	for v > 0 {
-		i--
-		buf[i] = byte('0' + v%10)
-		v /= 10
+	if len(q.results) <= maxJobResults {
+		return
 	}
-	return string(buf[i:])
+
+	// Still too many: evict the oldest finished entries first.
+	type candidate struct {
+		id   string
+		done time.Time
+	}
+	var finished []candidate
+	for id, r := range q.results {
+		if r.Status == "done" || r.Status == "failed" {
+			finished = append(finished, candidate{id: id, done: r.DoneAt})
+		}
+	}
+	if len(finished) == 0 {
+		return
+	}
+	oldest := finished[0]
+	for _, c := range finished[1:] {
+		if c.done.Before(oldest.done) {
+			oldest = c
+		}
+	}
+	delete(q.results, oldest.id)
 }

@@ -1,15 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-only
 #include "SkinPreviewWidget.h"
 
-#include "SkinPreviewWidget.h"
-
+#include "auth/BackendAuthClient.h"
 #include "core/SkinClient.h"
 
+#include <QDebug>
 #include <QFileDialog>
 #include <QPixmap>
 #include <QVBoxLayout>
-
-#include <QDebug>
 
 SkinPreviewWidget::SkinPreviewWidget(QWidget *parent)
     : QWidget(parent)
@@ -32,8 +30,20 @@ SkinPreviewWidget::SkinPreviewWidget(QWidget *parent)
     setLayout(layout);
 }
 
+void SkinPreviewWidget::setAuthClient(BackendAuthClient *client)
+{
+    m_authClient = client;
+}
+
 void SkinPreviewWidget::onUploadClicked()
 {
+    if (m_authClient == nullptr || m_authClient->accessToken().isEmpty()) {
+        const QString error = tr("Bejelentkezés szükséges a skin feltöltéséhez.");
+        m_statusLabel->setText(error);
+        emit skinUploadFinished(false, QString(), error);
+        return;
+    }
+
     QString fileName =
         QFileDialog::getOpenFileName(this, QStringLiteral("Skin kiválasztása"),
                                      QString(), QStringLiteral("PNG Fájlok (*.png)"));
@@ -41,20 +51,22 @@ void SkinPreviewWidget::onUploadClicked()
     if (fileName.isEmpty())
         return;
 
-    SkinClient *client = new SkinClient(nullptr, this);
+    auto *client = new SkinClient(m_authClient, this);
     client->uploadSkin(fileName, [this, client](bool success, const QString &skinId, const QString &error) {
         if (!success) {
             m_statusLabel->setText(error.isEmpty()
                                        ? tr("Feltöltés sikertelen.")
                                        : tr("Feltöltés sikertelen: %1").arg(error));
             emit skinUploadFinished(false, QString(), error);
+            client->deleteLater();
             return;
         }
 
         client->downloadAvatar(skinId, [this, client](bool success, const QPixmap &avatar) {
+            client->deleteLater();
             if (!success || avatar.isNull()) {
-                m_statusLabel->setText(tr("Ábras betöltése sikertelen."));
-                emit skinUploadFinished(false, skinId, tr("Ábras betöltése sikertelen."));
+                m_statusLabel->setText(tr("Avatár betöltése sikertelen."));
+                emit skinUploadFinished(false, skinId, tr("Avatár betöltése sikertelen."));
                 return;
             }
 
@@ -62,7 +74,5 @@ void SkinPreviewWidget::onUploadClicked()
             m_statusLabel->setText(tr("Skin sikeresen feltöltve!"));
             emit skinUploadFinished(true, skinId, QString());
         });
-
-        emit skinUploadFinished(true, skinId, QString());
     });
 }

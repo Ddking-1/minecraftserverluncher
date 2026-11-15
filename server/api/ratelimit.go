@@ -10,50 +10,59 @@ import (
 	"golang.org/x/time/rate"
 )
 
-// Config a rate limiter viselkedésének beállítására szolgál.
+// Config configures a RateLimiter.
 type Config struct {
-	// RequestsPerMinute megadja, hogy egy IP-cím per perc 최대 몇 kérést tehet.
+	// RequestsPerMinute is the sustained per-key request budget.
 	RequestsPerMinute int
 
-	// CleanupInterval a háttér goroutines időközét adja meg másodpercben,
-	// ami után a nem aktív IP-címek törlődnek.
+	// CleanupInterval is how often idle keys are swept from memory.
 	CleanupInterval time.Duration
 
-	// CleanupTolerance azt az időt adja meg, ami alatt egy IP-címnek
-	// nem kell újabb kérést küldenie ahhoz, hogy ne torölődjön.
+	// CleanupTolerance is how long a key may stay idle before it is removed.
 	CleanupTolerance time.Duration
+
+	// TrustProxy makes the limiter read the client address from
+	// X-Forwarded-For / X-Real-IP. Only enable this when the backend is
+	// reachable exclusively through a reverse proxy that overwrites those
+	// headers; otherwise a client can spoof them and bypass rate limiting.
+	TrustProxy bool
 }
 
-// defaultConfig az ip-szerű értékekkel tér vissza.
+const defaultRequestsPerMinute = 30
+
+// defaultConfig returns sensible, non-secret defaults.
 func defaultConfig() Config {
 	return Config{
-		RequestsPerMinute: 30,
-		CleanupInterval:  3 * time.Minute,
-		CleanupTolerance: 5 * time.Minute,
+		RequestsPerMinute: defaultRequestsPerMinute,
+		CleanupInterval:   3 * time.Minute,
+		CleanupTolerance:  5 * time.Minute,
 	}
 }
 
-// visitor egyetlen IP-cím állapotát tárolja.
+// visitor holds the token bucket and last-seen time for one key.
 type visitor struct {
 	limiter  *rate.Limiter
 	lastSeen time.Time
 }
 
-// RateLimiter a konkrét rate limiter objektum, amely szálbiztos módon
-// kezeli a látogatókat.
+// RateLimiter is a concurrency-safe per-client token-bucket limiter.
 type RateLimiter struct {
 	visitors    map[string]*visitor
 	mu          sync.RWMutex
 	cfg         Config
 	cleanupDone chan struct{}
+	stopOnce    sync.Once
 }
 
-// NewRateLimiter létrehoz egy új RateLimiter példányt az alapértelmezett,
-// vagy a megadott konfigurációval.
+// NewRateLimiter creates a RateLimiter with the default configuration or the
+// supplied one. A non-positive RequestsPerMinute falls back to the default.
 func NewRateLimiter(cfg ...Config) *RateLimiter {
 	c := defaultConfig()
 	if len(cfg) > 0 {
 		c = cfg[0]
+	}
+	if c.RequestsPerMinute <= 0 {
+		c.RequestsPerMinute = defaultRequestsPerMinute
 	}
 	if c.CleanupInterval <= 0 {
 		c.CleanupInterval = 3 * time.Minute
@@ -73,56 +82,46 @@ func NewRateLimiter(cfg ...Config) *RateLimiter {
 	return rl
 }
 
-// getVisitor visszaadja a látogatót az IP-címhez, vagy létrehoz egyet,
-// ha nem áll rendelkezésre.
-func (rl *RateLimiter) getVisitor(ip string) *visitor {
+// getVisitor returns the visitor for key, creating it when missing.
+func (rl *RateLimiter) getVisitor(key string) *visitor {
 	rl.mu.Lock()
 	defer rl.mu.Unlock()
 
-	v, ok := rl.visitors[ip]
+	v, ok := rl.visitors[key]
 	if !ok {
-		// Átszámítjuk a percenkénti kérést másodpercenkéntire
+		// Convert the per-minute budget to a per-second refill rate. The burst
+		// equals the per-minute budget so short legitimate bursts are allowed.
 		limit := rate.Limit(float64(rl.cfg.RequestsPerMinute) / 60.0)
-
 		v = &visitor{
-			limiter: rate.NewLimiter(
-				limit,
-				rl.cfg.RequestsPerMinute, // Ez a "burst" (hirtelen beeső) kérések maximális száma
-			),
+			limiter:  rate.NewLimiter(limit, rl.cfg.RequestsPerMinute),
 			lastSeen: time.Now(),
 		}
-		rl.visitors[ip] = v
+		rl.visitors[key] = v
 	}
 	v.lastSeen = time.Now()
 	return v
 }
 
-// Allow IP-cím alapján dönti el, hogy a kérést fogadja-e a limiter,
-// vagy elutasítja a korlátozás miatt.
-func (rl *RateLimiter) Allow(ip string) bool {
-	v := rl.getVisitor(ip)
-	return v.limiter.Allow()
+// Allow reports whether a request from the given key may proceed.
+func (rl *RateLimiter) Allow(key string) bool {
+	return rl.getVisitor(key).limiter.Allow()
 }
 
-// cleanupCycle végrehajt egyetlen takarítási ciklust:
-// kitörli azokat az IP-címeket, amelyek utolsó látogatás után
-// eltelt CleaningTolerance időszak alatt nem küldtek kérést.
+// cleanupCycle removes visitors that have been idle for longer than the
+// tolerance window.
 func (rl *RateLimiter) cleanupCycle() {
 	rl.mu.Lock()
 	defer rl.mu.Unlock()
 
-	now := time.Now()
-	threshold := now.Add(-rl.cfg.CleanupTolerance)
-
-	for ip, v := range rl.visitors {
+	threshold := time.Now().Add(-rl.cfg.CleanupTolerance)
+	for key, v := range rl.visitors {
 		if v.lastSeen.Before(threshold) {
-			delete(rl.visitors, ip)
+			delete(rl.visitors, key)
 		}
 	}
 }
 
-// cleanupLoop a háttér goroutines, amely rendszeres időközönként
-// meghívja a cleanupCycle-et a memória terhelés csökkentése érdekében.
+// cleanupLoop sweeps idle visitors until Stop is called.
 func (rl *RateLimiter) cleanupLoop() {
 	ticker := time.NewTicker(rl.cfg.CleanupInterval)
 	defer ticker.Stop()
@@ -137,35 +136,54 @@ func (rl *RateLimiter) cleanupLoop() {
 	}
 }
 
-// Stop leállítja a takarítási goroutines-et, és biztosítja az
-// erőforrások felszabadítást.
+// Stop terminates the cleanup goroutine. It is safe to call multiple times.
 func (rl *RateLimiter) Stop() {
-	close(rl.cleanupDone)
+	rl.stopOnce.Do(func() {
+		close(rl.cleanupDone)
+	})
 }
 
-// HandlerMiddleware HTTP middleware, amely a kérés IP-címét kéri le,
-// és ha a limiter elutasítja, a 429 Too Many Requests válaszkal tér vissza
-// a megfelelő header-kal együtt.
-func (rl *RateLimiter) HandlerMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ip := r.Header.Get("X-Forwarded-For")
-		if ip != "" {
-			// Ha több IP van, az első az eredeti kliens
-			ips := strings.Split(ip, ",")
-			ip = strings.TrimSpace(ips[0])
-		} else {
-			ip, _, _ = net.SplitHostPort(r.RemoteAddr)
-			if ip == "" {
-				ip = r.RemoteAddr
+// clientIP resolves the rate-limit key for a request.
+//
+// Forwarding headers are attacker-controlled unless a trusted proxy sets them,
+// so they are only honoured when TrustProxy is enabled. The right-most value of
+// X-Forwarded-For is the address appended by the closest proxy; the left-most
+// value is client-controlled and must not be used for security decisions.
+func (rl *RateLimiter) clientIP(r *http.Request) string {
+	if rl.cfg.TrustProxy {
+		if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+			parts := strings.Split(xff, ",")
+			for i := len(parts) - 1; i >= 0; i-- {
+				if ip := strings.TrimSpace(parts[i]); ip != "" {
+					return ip
+				}
 			}
 		}
+		if ip := strings.TrimSpace(r.Header.Get("X-Real-IP")); ip != "" {
+			return ip
+		}
+	}
 
-		if !rl.Allow(ip) {
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil || host == "" {
+		host = r.RemoteAddr
+	}
+	if host == "" {
+		host = "unknown"
+	}
+	return host
+}
+
+// HandlerMiddleware applies the limiter to the next handler and answers 429 with
+// Retry-After / X-RateLimit-Reset headers when the budget is exhausted.
+func (rl *RateLimiter) HandlerMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !rl.Allow(rl.clientIP(r)) {
 			w.Header().Set("Retry-After", "60")
 			w.Header().Set("X-RateLimit-Reset", time.Now().Add(time.Minute).UTC().Format(time.RFC1123))
 			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 			w.WriteHeader(http.StatusTooManyRequests)
-			w.Write([]byte("429 Too Many Requests"))
+			_, _ = w.Write([]byte("429 Too Many Requests"))
 			return
 		}
 
