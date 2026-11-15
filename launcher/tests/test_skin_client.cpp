@@ -29,9 +29,13 @@ int main(int argc, char **argv)
     check(!SkinClient::isSupportedSize(128, 128), "128x128 rejected");
 
     BackendAuthClient backend;
-    // The client refuses plaintext backends.
-    backend.setBackendUrl(QStringLiteral("http://127.0.0.1:1"));
-    check(backend.backendUrl().isEmpty(), "non-HTTPS backend rejected");
+    // Remote plaintext backends are refused; loopback HTTP is allowed for the
+    // local development backend.
+    backend.setBackendUrl(QStringLiteral("http://example.com"));
+    check(backend.backendUrl().isEmpty(), "remote non-HTTPS backend rejected");
+    backend.setBackendUrl(QStringLiteral("http://127.0.0.1:8080"));
+    check(backend.backendUrl() == QStringLiteral("http://127.0.0.1:8080"),
+          "loopback HTTP backend allowed");
 
     SkinClient client(&backend);
     QTemporaryDir dir;

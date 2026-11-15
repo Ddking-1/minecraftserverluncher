@@ -58,6 +58,29 @@ Trusted launcher authentication must support:
 - maximum session lifetime 30 days
 - server-side revocation
 - logout
+
+## Launcher GUI configuration
+
+The Qt launcher performs the backend login from `MainWindow`:
+
+- The backend URL is entered in the GUI and stored in `launcher.json`
+  (`backend_url`). It must be an origin (`https://host[:port]`); a path, query,
+  fragment or embedded credentials are rejected. Remote backends require
+  HTTPS. Plain `http://` is accepted only for `localhost`, `127.0.0.1` and
+  `::1`, for local development; it never leaves the machine.
+- The last successful username is stored in `launcher.json` (`username`) to
+  pre-fill the login dialog and to restore the session on startup. Passwords
+  are never stored.
+- Access and refresh tokens are stored by `TokenStorage` under
+  `QStandardPaths::AppDataLocation`; on Windows the file is DPAPI-protected.
+  Usernames are validated before being used as token file names, so a
+  tampered settings file cannot escape the token directory.
+- A restored, non-expired session pushes its access token into
+  `BackendAuthClient`, which `SkinClient` uses for authenticated skin-file
+  requests. An expired token is refreshed; a failed restore or logout clears
+  the in-memory token.
+- The backend URL cannot be changed while logged in, because the token belongs
+  to the backend it was issued by.
 - logout-all
 - device association
 

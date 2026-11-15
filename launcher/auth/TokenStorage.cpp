@@ -18,6 +18,23 @@ namespace {
 // Marker prefix for DPAPI-protected files (version 1).
 constexpr char kDpapiPrefix[] = "DPAPI1:";
 
+// Usernames become file names, so they must not contain path separators or
+// traversal sequences. This mirrors the backend's username rule.
+[[nodiscard]]
+bool isSafeUsername(const QString &username)
+{
+    if (username.isEmpty() || username.size() > 64)
+        return false;
+    for (const QChar &c : username) {
+        const ushort code = c.unicode();
+        const bool allowed = (code >= 'a' && code <= 'z') || (code >= 'A' && code <= 'Z')
+            || (code >= '0' && code <= '9') || code == '-' || code == '_';
+        if (!allowed)
+            return false;
+    }
+    return true;
+}
+
 #ifdef Q_OS_WIN
 // Protect plaintext with the current user's DPAPI credentials.
 [[nodiscard]]
@@ -66,12 +83,16 @@ TokenStorage::TokenStorage(const QString &dataDir) : m_dataDir(dataDir)
 
 QString TokenStorage::filePathFor(const QString &username) const
 {
+    if (!isSafeUsername(username))
+        return QString();
     return m_dataDir + QStringLiteral("/tokens/") + username + QStringLiteral(".json");
 }
 
 bool TokenStorage::save(const AuthSession &session) const
 {
     const QString path = filePathFor(session.username);
+    if (path.isEmpty())
+        return false;
     QDir().mkpath(QFileInfo(path).absolutePath());
 
     QJsonObject obj;
@@ -105,7 +126,10 @@ bool TokenStorage::save(const AuthSession &session) const
 
 bool TokenStorage::load(const QString &username, AuthSession &out) const
 {
-    QFile file(filePathFor(username));
+    const QString path = filePathFor(username);
+    if (path.isEmpty())
+        return false;
+    QFile file(path);
     if (!file.open(QIODevice::ReadOnly))
         return false;
     const QByteArray raw = file.readAll();
@@ -141,5 +165,7 @@ bool TokenStorage::load(const QString &username, AuthSession &out) const
 
 void TokenStorage::remove(const QString &username) const
 {
-    QFile::remove(filePathFor(username));
+    const QString path = filePathFor(username);
+    if (!path.isEmpty())
+        QFile::remove(path);
 }

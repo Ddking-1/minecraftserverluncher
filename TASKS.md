@@ -71,6 +71,17 @@ after 5 attempts, the Architect fixes the specific piece (Smart Fallback).
 - [x] Velocity plugin builds against API 4.2.0 with JDK 25; JSON-escape the
       access token in the proxy auth request
 
+## BATCH 14 — Launcher GUI login & backend URL wiring (DONE 2026-11-15)
+- [x] Backend URL editing, validation (HTTPS; loopback HTTP) and persistence in
+      `launcher.json`; last username remembered
+- [x] Login/logout buttons wired to `SessionManager`; stored session restored
+      at startup and access token synced into `BackendAuthClient`
+- [x] Embedded skin panel receives the authenticated client, so uploads work
+      from `MainWindow`
+- [x] Login dialog validation, token-store username hardening, GUI tests
+      (`test_main_window`, extended `test_login_dialog`/`test_settings_store`)
+- [ ] Compile + run CTest with Qt 6.6.3 / MSVC 2022 (blocked here: no Qt)
+
 ## BATCH 11 — Auto-Update Wire-In
 - [ ] Wire `UpdateManager` into launcher startup (compare local vs manifest)
 - [ ] Download update with SHA-256 verify + prepare swap process

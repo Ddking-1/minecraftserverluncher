@@ -10,11 +10,10 @@ The T1–T45 backlog (`docs/MASTER_PLAN_EXTENDED.md`) is complete except T11
 DECISION-005 (metadata source).
 
 Status:
-Green. Backend: `go build`, `go vet`, `go test ./...` all pass. Launcher:
-CMake configure + Release build with Qt 6.6.3 MSVC 2022 succeed; CTest runs 11
-tests (hwid, settings, update_manifest, skin_model, backend_contract,
-settings_store, mod_scanner, skin_cache, rotating_logger, update_checker,
-file_integrity), all pass.
+Green for the Go backend and the Velocity plugin. Launcher: CMake defines 23
+CTest targets (including the new `main_window`); the C++/Qt GUI changes of the
+latest task are source-reviewed only because this cloud environment has no Qt 6
+toolchain.
 
 Branch:
 master (all task branches fast-forward merged and pushed).
@@ -40,11 +39,11 @@ Current step:
 - Milestone `feature/go-backend-hardening-and-fuzz` is COMPLETED.
 - Fuzz test coverage: 100% — native Go Fuzz targets added for the Skin processor (`server/skins/processor_fuzz_test.go`) and the rate limiter (`server/api/ratelimit_fuzz_test.go`).
 - Build system (CMake) audit: 100% — `launcher/CMakeLists.txt` hardened with C++17, `-Wall -Wextra -Werror`, Qt6 Core/Network only, AUTOMOC, full source list and Windows libs; OpenSSL dependency removed from HWIDExtractor.cpp; root `CMakeLists.txt` deduplicated; verified GREEN with a real build.
-- Qt6 GUI wiring: MainWindow skeleton + SkinPreviewWidget `skinUploadFinished` signal added on this branch (source only, not yet compiled or wired into `main.cpp`).
+- Qt6 GUI wiring: MainWindow + SkinPreviewWidget are wired into `main.cpp`. MainWindow now owns the backend URL setting and the login/logout/session-restore flow (source only, not compiled in this environment).
 - Documentation: AI-generated-code disclaimer added to README.md and docs/AI_CONTEXT.md; CHANGELOG.md, PROGRESS.md and WORK_STATE.md updated.
 
 Next step:
-Compile and wire the new MainWindow into main.cpp when the GUI entry point is implemented. T11 Velocity remains BLOCKED on DECISION-004/005.
+Compile the launcher on a Qt 6.6.3 + MSVC 2022 machine and run the CTest suite (including `main_window`); resolve the Velocity token transport. T11 Velocity remains BLOCKED on DECISION-004/005.
 
 Repository facts:
 - default branch: master
@@ -253,4 +252,52 @@ with DECISION-level review.
 
 Branch:
 fix/skin-api-routing-launcher-integration (merged into `master` and pushed by the
+agent as the final git step of this task, per AGENTS.md rule 26).
+
+## 2026-11-15 - LAUNCHER GUI LOGIN, BACKEND URL AND SESSION RESTORE
+
+Status:
+SOURCE-COMPLETE, NOT COMPILED HERE. The launcher GUI now owns the backend
+configuration and the login session. This cloud environment has no Qt 6
+toolchain, so the C++/Qt changes are source-reviewed only; the Go backend and
+the Velocity plugin are unaffected.
+
+DONE:
+- `SettingsStore::Settings` gained `backendUrl` and `username` (`backend_url`,
+  `username` in `launcher.json`); `save` creates missing parent directories.
+- `MainWindow` owns `BackendAuthClient`, `SessionManager` and `TokenStorage`:
+  backend URL edit/save with normalization, login/logout buttons, auth status
+  line, last-username prefill, startup session restore and status messages.
+- The authenticated client is handed to `SkinPreviewWidget` via
+  `setAuthClient`, and the panel is enabled only while logged in, so a skin
+  upload from `MainWindow` is authenticated end-to-end.
+- `BackendAuthClient::setBackendUrl` accepts HTTPS and loopback HTTP
+  (`localhost`, `127.0.0.1`, `::1`), rejects URL paths/credentials, and clears
+  the URL on empty input.
+- `SessionManager` pushes a restored access token into `BackendAuthClient` and
+  clears the in-memory token on logout/refresh failure.
+- `TokenStorage` refuses usernames that are not safe file names (traversal
+  hardening). `LoginDialog` validates username/password, shows an inline error
+  and pre-fills the last username.
+- `main.cpp` sets the organization/application identity for stable
+  `QStandardPaths` locations.
+- Tests: new `test_main_window` (offscreen); extended `test_login_dialog` and
+  `test_settings_store`; `test_skin_client` loopback-HTTP expectation;
+  `test_backend_contract`/`test_skin_client` now link `core/HWIDExtractor.cpp`.
+  `MinecraftLauncher` compiles `gui/LoginDialog.cpp`.
+
+Remaining known issues:
+1. The Qt launcher was not compiled or CTest-run in this environment; a
+   Windows machine with Qt 6.6.3 + MSVC 2022 is required.
+2. The Velocity plugin still expects a `minecraftserverlauncher-token`
+   GameProfile property that the launcher does not set.
+3. `ResolveLibraries` / `ResolveAssets` remain stubs pending DECISION-005.
+4. Auto-update is implemented but not wired into launcher startup.
+
+Next step:
+Build the launcher and run CTest on the Windows/Qt machine; then resolve the
+Velocity token transport with DECISION-level review.
+
+Branch:
+feat/launcher-gui-login-backend-url (merged into `master` and pushed by the
 agent as the final git step of this task, per AGENTS.md rule 26).

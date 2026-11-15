@@ -39,6 +39,10 @@ void SessionManager::restore(const QString &username, Callback cb)
 
     if (!isExpired(stored)) {
         m_session = std::make_shared<AuthSession>(stored);
+        // Restoring a still-valid session must also restore the HTTP client's
+        // bearer token, otherwise API clients (SkinClient) stay unauthenticated.
+        if (m_client != nullptr)
+            m_client->setAccessToken(stored.access_token);
         if (cb)
             cb(true, QString());
         return;
@@ -47,6 +51,8 @@ void SessionManager::restore(const QString &username, Callback cb)
     // Access token expired: refresh using the stored refresh token.
     m_client->refresh(stored.refresh_token, [this, stored, cb](const AuthResult &res) {
         if (!res.success) {
+            if (m_client != nullptr)
+                m_client->setAccessToken(QString());
             if (cb)
                 cb(false, res.error);
             return;
@@ -67,6 +73,10 @@ void SessionManager::logout(Callback cb)
     const QString username = m_session->username;
     const QString refreshToken = m_session->refresh_token;
     m_session.reset();
+    // Drop the bearer token immediately so no request can use the ended
+    // session, even if the server-side logout call fails.
+    if (m_client != nullptr)
+        m_client->setAccessToken(QString());
 
     m_client->logout(refreshToken, [this, username, cb](const AuthResult &res) {
         m_storage->remove(username);

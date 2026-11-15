@@ -40,19 +40,24 @@ produce `MinecraftLauncher.exe`. The CTest suite (hwid, settings,
 update_manifest, skin_model, backend_contract, settings_store, mod_scanner,
 skin_cache, rotating_logger, update_checker, file_integrity, editor_config,
 skin_client, download_asset, download_queue, java_detector, game_paths,
-game_launcher, editor_settings_widget, login_dialog, skin_upload_widget,
-update_manager) is defined in `launcher/CMakeLists.txt`. Newer launcher
-work includes the update manifest parser, skin model, backend status-code error
-mapping, a request timeout, and CLI filter/version options.
+game_launcher, editor_settings_widget, login_dialog, main_window,
+skin_upload_widget, update_manager) is defined in `launcher/CMakeLists.txt`.
+Newer launcher work includes the update manifest parser, skin model, backend
+status-code error mapping, a request timeout, and CLI filter/version options.
 
 The Qt6 `MainWindow` is wired into `launcher/main.cpp` and embeds
 `SkinPreviewWidget`, whose `skinUploadFinished` signal updates the status bar.
-The widget takes a `BackendAuthClient` via `setAuthClient`; without an
-authenticated client it reports that login is required instead of issuing a
-request. `SessionManager` pushes the access token into `BackendAuthClient`, and
-`SkinClient` uses it for authenticated `/api/v1/skin-files` requests. The C++
-tree could not be compiled in the current cloud environment (no Qt 6
-toolchain); only the Go and Velocity builds are verified there.
+`MainWindow` owns the backend session: it edits and persists the backend URL
+and the last username in `launcher.json`, opens `LoginDialog`, calls
+`SessionManager::login/restore/logout`, and hands the resulting
+`BackendAuthClient` to the skin panel. Tokens stay in the DPAPI-protected
+`TokenStorage` (never in `launcher.json`), a valid restored session pushes its
+access token into the client, and logout clears it. The remote-backend policy
+is HTTPS-only; plain HTTP is accepted just for `localhost`/`127.0.0.1`/`::1`
+so the local development backend can be used. `SkinClient` then reaches the
+authenticated `/api/v1/skin-files` endpoints. The C++ tree could not be
+compiled in the current cloud environment (no Qt 6 toolchain); only the Go and
+Velocity builds are verified there.
 
 The Velocity plugin builds against `velocity-api:4.2.0` with JDK 25
 (`./gradlew build` produces `build/libs/minecraftserverlauncher-velocity-0.1.0.jar`).

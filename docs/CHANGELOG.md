@@ -2,6 +2,34 @@
 
 ## Unreleased
 
+### Launcher - GUI login, backend URL configuration and session restore (2026-11-15)
+
+- `MainWindow` now owns a `BackendAuthClient`, `SessionManager` and
+  `TokenStorage`. It exposes a backend URL field with save/normalization, login
+  and logout buttons, and an authentication status line; the authenticated
+  client is handed to the embedded `SkinPreviewWidget`, so skin uploads work
+  from the GUI instead of only through the background API.
+- The backend URL and the last username are persisted in `launcher.json`
+  (`backend_url`, `username`); access/refresh tokens are never written there.
+  A saved session is restored on startup and its access token is pushed into
+  the HTTP client. Logout clears the client token even if the server-side
+  logout call fails.
+- Backend URL policy: HTTPS is required for remote hosts; plain HTTP is
+  accepted only for loopback (`localhost`, `127.0.0.1`, `::1`), which also
+  makes the local development backend usable. Empty input clears the URL.
+- `LoginDialog` validates the username (3-32 characters, letters/digits/`-`/`_`)
+  and a minimum password length locally, shows an inline error, and pre-fills
+  the last username.
+- `TokenStorage` rejects usernames that could traverse out of the token
+  directory, and `SettingsStore::save` creates missing parent directories.
+- Launcher startup sets the organization/application identity so
+  `QStandardPaths` resolves stable settings and token locations.
+- New `test_main_window` CTest target (offscreen) covers URL validation and
+  persistence, login gating and session-restore token propagation;
+  `test_login_dialog` covers validation and `test_settings_store` covers the new
+  fields. `test_backend_contract` and `test_skin_client` now link the missing
+  `HWIDExtractor` source, and the launcher target compiles `LoginDialog.cpp`.
+
 ### Backend/Launcher - skin API wiring, authorization and hardening (2026-11-15)
 
 - Skin file API moved to `/api/v1/skin-files` and mounted on the authenticated

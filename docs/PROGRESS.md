@@ -659,3 +659,53 @@ Manual user action:
 None for Git: the agent creates the branch, commits, pushes and merges it into
 `master`. A Qt 6 (6.6.3+, MSVC 2022) machine is required to compile/CTest the
 launcher changes.
+
+## 2026-11-15 — LAUNCHER GUI LOGIN + BACKEND URL WIRING
+
+Agent/model: Buffy (Codebuff)
+Branch: feat/launcher-gui-login-backend-url
+Task: Wire the backend URL configuration and the login/logout/session-restore flow into `MainWindow` so skin upload works from the GUI, not only through the background API.
+Started: 2026-11-15
+Completed: 2026-11-15
+
+Files:
+- launcher/gui/MainWindow.h, launcher/gui/MainWindow.cpp (backend URL field and
+  persistence, login/logout buttons, auth status, session restore, authenticated
+  client handed to SkinPreviewWidget)
+- launcher/gui/LoginDialog.h, launcher/gui/LoginDialog.cpp (validation, inline
+  error, last-username prefill)
+- launcher/core/SettingsStore.h/.cpp (`backend_url`, `username`, mkpath on save)
+- launcher/auth/BackendAuthClient.cpp (HTTPS + loopback HTTP URL policy,
+  normalization, explicit clearing)
+- launcher/auth/SessionManager.cpp (restored token pushed to the client, token
+  cleared on logout/refresh failure)
+- launcher/auth/TokenStorage.cpp (safe username -> file name)
+- launcher/main.cpp (organization/application identity for QStandardPaths)
+- launcher/CMakeLists.txt (new test_main_window target; HWIDExtractor added to
+  the auth tests; LoginDialog compiled into MinecraftLauncher)
+- launcher/tests/test_main_window.cpp (new), test_login_dialog.cpp,
+  test_settings_store.cpp, test_skin_client.cpp
+- .github/workflows/ci.yml (build test_main_window)
+- docs/AI_CONTEXT.md, docs/WORK_STATE.md, docs/CHANGELOG.md, docs/AUTH.md,
+  TASKS.md
+
+Tests:
+- Not run for the launcher: this cloud VM has no Qt 6 / CMake toolchain, so the
+  C++/Qt changes are source-reviewed only.
+- `cd server && go build ./...` and `go vet ./...` -> pass (backend unchanged).
+- Workflow YAML parsed with PyYAML -> pass.
+- `git diff --check` -> pass.
+
+Current status:
+Source-complete on the task branch. The GUI can configure the backend URL
+(HTTPS, loopback HTTP allowed), log in/out, restore a stored session, and pass
+the authenticated client to the skin panel. Tokens remain in TokenStorage, not
+in launcher.json.
+
+Next:
+Compile + CTest on Windows with Qt 6.6.3/MSVC 2022 (source-only here), then
+resolve the Velocity token transport.
+
+Manual user action:
+A Windows machine with Qt 6.6.3 and MSVC 2022 is required to build the launcher
+and run its CTest suite. Git operations are handled by the agent.

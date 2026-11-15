@@ -60,6 +60,11 @@ std::unique_ptr<BaseInstance> makeInstance(const InstanceMetadata &meta, const Q
 int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
+    // Stable identity for QStandardPaths: launcher.json (AppConfigLocation) and
+    // the DPAPI-protected token store (AppDataLocation) live under these.
+    QCoreApplication::setOrganizationName(QStringLiteral("MinecraftServerLauncher"));
+    QCoreApplication::setApplicationName(QStringLiteral("MinecraftLauncher"));
+    QCoreApplication::setApplicationVersion(LauncherVersion::kVersion);
 
     MainWindow window;
     window.show();

@@ -2,7 +2,9 @@
 #include "SettingsStore.h"
 
 #include <QChar>
+#include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -98,6 +100,8 @@ bool load(const QString &path, Settings &out)
     s.javaPath = obj.value(QStringLiteral("java_path")).toString();
     s.minMemoryMb = obj.value(QStringLiteral("min_memory_mb")).toInt(2048);
     s.maxMemoryMb = obj.value(QStringLiteral("max_memory_mb")).toInt(4096);
+    s.backendUrl = obj.value(QStringLiteral("backend_url")).toString();
+    s.username = obj.value(QStringLiteral("username")).toString();
 
     const QJsonArray args = obj.value(QStringLiteral("jvm_args")).toArray();
     for (const QJsonValue &v : args) {
@@ -122,11 +126,17 @@ bool save(const QString &path, const Settings &in)
     obj.insert(QStringLiteral("java_path"), s.javaPath);
     obj.insert(QStringLiteral("min_memory_mb"), s.minMemoryMb);
     obj.insert(QStringLiteral("max_memory_mb"), s.maxMemoryMb);
+    obj.insert(QStringLiteral("backend_url"), s.backendUrl);
+    obj.insert(QStringLiteral("username"), s.username);
 
     QJsonArray args;
     for (const QString &a : s.jvmArgs)
         args.append(a);
     obj.insert(QStringLiteral("jvm_args"), args);
+
+    const QString parentDir = QFileInfo(path).absolutePath();
+    if (!parentDir.isEmpty())
+        QDir().mkpath(parentDir);
 
     QSaveFile file(path);
     if (!file.open(QIODevice::WriteOnly))

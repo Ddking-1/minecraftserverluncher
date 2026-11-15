@@ -12,6 +12,12 @@ struct Settings {
     int minMemoryMb = 2048;
     int maxMemoryMb = 4096;
     QStringList jvmArgs;
+
+    // Backend the launcher talks to (scheme://host[:port]) and the last account
+    // that logged in. The access/refresh tokens are never stored here; they
+    // live in the DPAPI-protected token store (TokenStorage).
+    QString backendUrl;
+    QString username;
 };
 
 // Documented defaults.

@@ -33,9 +33,16 @@ target_include_directories(test_skin_model PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(test_skin_model PRIVATE Qt6::Core)
 add_test(NAME skin_model COMMAND test_skin_model)
 
-add_executable(test_backend_contract tests/test_backend_contract.cpp auth/BackendAuthClient.cpp)
+add_executable(test_backend_contract
+    tests/test_backend_contract.cpp
+    auth/BackendAuthClient.cpp
+    core/HWIDExtractor.cpp
+)
 target_include_directories(test_backend_contract PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(test_backend_contract PRIVATE Qt6::Core Qt6::Network)
+if(WIN32)
+    target_link_libraries(test_backend_contract PRIVATE bcrypt iphlpapi)
+endif()
 add_test(NAME backend_contract COMMAND test_backend_contract)
 
 add_executable(test_settings_store tests/test_settings_store.cpp core/SettingsStore.cpp)
@@ -77,6 +84,7 @@ add_executable(test_skin_client
     tests/test_skin_client.cpp
     core/SkinClient.cpp
     auth/BackendAuthClient.cpp
+    core/HWIDExtractor.cpp
 )
 target_include_directories(test_skin_client PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(test_skin_client PRIVATE
@@ -84,6 +92,9 @@ target_link_libraries(test_skin_client PRIVATE
     Qt6::Network
     Qt6::Test
 )
+if(WIN32)
+    target_link_libraries(test_skin_client PRIVATE bcrypt iphlpapi)
+endif()
 
 target_compile_features(test_skin_client PRIVATE cxx_std_17)
 
@@ -128,6 +139,35 @@ set_target_properties(test_login_dialog PROPERTIES QT_WIX OFF)
 add_test(NAME login_dialog COMMAND test_login_dialog)
 set_tests_properties(login_dialog PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 
+add_executable(test_main_window
+    tests/test_main_window.cpp
+    gui/MainWindow.cpp
+    gui/MainWindow.h
+    gui/LoginDialog.cpp
+    gui/LoginDialog.h
+    ui/SkinPreviewWidget.cpp
+    ui/SkinPreviewWidget.h
+    core/SkinClient.cpp
+    core/SettingsStore.cpp
+    auth/BackendAuthClient.cpp
+    auth/SessionManager.cpp
+    auth/TokenStorage.cpp
+    core/HWIDExtractor.cpp
+)
+target_include_directories(test_main_window PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(test_main_window PRIVATE
+    Qt6::Widgets
+    Qt6::Core
+    Qt6::Network
+    Qt6::Test
+)
+if(WIN32)
+    target_link_libraries(test_main_window PRIVATE bcrypt iphlpapi crypt32)
+endif()
+set_target_properties(test_main_window PROPERTIES QT_WIX OFF)
+add_test(NAME main_window COMMAND test_main_window)
+set_tests_properties(main_window PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
 add_executable(test_skin_upload_widget tests/test_skin_upload_widget.cpp gui/SkinUploadWidget.cpp)
 target_include_directories(test_skin_upload_widget PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(test_skin_upload_widget PRIVATE Qt6::Widgets Qt6::Core)
@@ -154,6 +194,8 @@ add_executable(MinecraftLauncher
     main.cpp
     gui/MainWindow.cpp
     gui/MainWindow.h
+    gui/LoginDialog.cpp
+    gui/LoginDialog.h
     ui/SkinPreviewWidget.cpp
     ui/SkinPreviewWidget.h
     core/BaseInstance.cpp

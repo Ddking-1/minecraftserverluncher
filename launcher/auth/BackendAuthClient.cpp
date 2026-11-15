@@ -84,13 +84,40 @@ QString BackendAuthClient::backendUrl() const
 
 void BackendAuthClient::setBackendUrl(const QString &url)
 {
-    if (!url.startsWith(QStringLiteral("https://"))) {
-        qWarning() << "Backend URL must use HTTPS; refusing insecure URL:" << url;
+    const QString trimmed = url.trimmed();
+    if (trimmed.isEmpty()) {
+        // Clearing the URL is explicit (logout / reconfiguration).
+        m_backendUrl.clear();
         return;
     }
-    m_backendUrl = url;
-    if (m_backendUrl.endsWith(QLatin1Char('/')))
-        m_backendUrl.chop(1);
+
+    const QUrl parsed(trimmed);
+    const QString scheme = parsed.scheme().toLower();
+    const QString host = parsed.host();
+    if (!parsed.isValid() || host.isEmpty() || !parsed.userInfo().isEmpty()
+        || parsed.hasQuery() || parsed.hasFragment()
+        || (!parsed.path().isEmpty() && parsed.path() != QLatin1String("/"))) {
+        qWarning() << "Backend URL rejected: expected an origin such as https://api.example.com:"
+                   << url;
+        return;
+    }
+
+    // HTTPS is mandatory for a remote backend. Plain HTTP is allowed only for
+    // a loopback backend, which never leaves the machine and is how the local
+    // development backend (and the HTTP contract test) is reached.
+    const bool loopback = host == QLatin1String("localhost")
+        || host == QLatin1String("127.0.0.1")
+        || host == QLatin1String("::1");
+    if (scheme != QLatin1String("https") && !(scheme == QLatin1String("http") && loopback)) {
+        qWarning() << "Backend URL must use HTTPS (HTTP is allowed only for loopback):" << url;
+        return;
+    }
+
+    QString normalized = parsed.toString(QUrl::RemovePath | QUrl::RemoveQuery
+                                         | QUrl::RemoveFragment);
+    while (normalized.endsWith(QLatin1Char('/')))
+        normalized.chop(1);
+    m_backendUrl = normalized;
 }
 
 QString BackendAuthClient::accessToken() const

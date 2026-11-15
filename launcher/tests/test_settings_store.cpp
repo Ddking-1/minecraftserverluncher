@@ -15,6 +15,7 @@ private slots:
     void defaults();
     void clamp();
     void saveAndLoad();
+    void backendFields();
     void missingFile();
     void malformedFile();
     void jvmArgSafety();
@@ -49,6 +50,8 @@ void TestSettingsStore::saveAndLoad()
     out.minMemoryMb = 1024;
     out.maxMemoryMb = 8192;
     out.jvmArgs = QStringList{QStringLiteral("-XX:+UseG1GC"), QStringLiteral("-Dfoo=bar")};
+    out.backendUrl = QStringLiteral("https://api.example.com");
+    out.username = QStringLiteral("alice");
 
     QVERIFY(SettingsStore::save(path, out));
 
@@ -58,6 +61,29 @@ void TestSettingsStore::saveAndLoad()
     QCOMPARE(in.minMemoryMb, out.minMemoryMb);
     QCOMPARE(in.maxMemoryMb, out.maxMemoryMb);
     QCOMPARE(in.jvmArgs, out.jvmArgs);
+    QCOMPARE(in.backendUrl, out.backendUrl);
+    QCOMPARE(in.username, out.username);
+}
+
+void TestSettingsStore::backendFields()
+{
+    const SettingsStore::Settings def = SettingsStore::defaults();
+    QVERIFY(def.backendUrl.isEmpty());
+    QVERIFY(def.username.isEmpty());
+
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString path = dir.filePath(QStringLiteral("nested/launcher.json"));
+
+    SettingsStore::Settings out = SettingsStore::defaults();
+    out.backendUrl = QStringLiteral("http://127.0.0.1:8080");
+    out.username = QStringLiteral("bob-01");
+    QVERIFY(SettingsStore::save(path, out));
+
+    SettingsStore::Settings in;
+    QVERIFY(SettingsStore::load(path, in));
+    QCOMPARE(in.backendUrl, out.backendUrl);
+    QCOMPARE(in.username, out.username);
 }
 
 void TestSettingsStore::missingFile()
