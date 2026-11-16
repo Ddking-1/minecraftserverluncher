@@ -65,6 +65,12 @@ func pngDimensions(b []byte) (int, int, bool) {
 	if w <= 0 || h <= 0 {
 		return 0, 0, false
 	}
+	// Defense in depth: reject absurdly large declared dimensions even though
+	// ValidSkinDimensions would reject them later, so a malicious header
+	// cannot drive downstream allocations.
+	if w > 10000 || h > 10000 {
+		return 0, 0, false
+	}
 	return w, h, true
 }
 
@@ -103,6 +109,10 @@ func jpegDimensions(b []byte) (int, int, bool) {
 			h := int(binary.BigEndian.Uint16(b[i+5 : i+7]))
 			w := int(binary.BigEndian.Uint16(b[i+7 : i+9]))
 			if w <= 0 || h <= 0 {
+				return 0, 0, false
+			}
+			// Defense in depth: reject absurdly large declared dimensions.
+			if w > 10000 || h > 10000 {
 				return 0, 0, false
 			}
 			return w, h, true

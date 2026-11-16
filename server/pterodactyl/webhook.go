@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -131,8 +132,16 @@ func HandleWebhook(cfg WebhookConfig) http.HandlerFunc {
 }
 
 func readLimited(r io.Reader, limit int) ([]byte, error) {
-	r = io.LimitReader(r, int64(limit))
-	return io.ReadAll(r)
+	// Read one byte beyond the limit so we can detect truncation and reject
+	// oversized bodies with 413 instead of silently accepting a truncated one.
+	data, err := io.ReadAll(io.LimitReader(r, int64(limit)+1))
+	if err != nil {
+		return nil, err
+	}
+	if len(data) > limit {
+		return nil, errors.New("payload too large")
+	}
+	return data, nil
 }
 
 func isAllowedEventType(cfg WebhookConfig, eventType string) bool {
@@ -156,16 +165,6 @@ func verifySignature(secret string, body []byte, provided string, tolerance time
 
 	if strings.EqualFold(expected, provided) {
 		return true
-	}
-
-	// Also try decoding the provided value as hex if it looks like hex.
-	if len(provided) == 64 {
-		decoded, err := hex.DecodeString(provided)
-		if err == nil {
-			if hmac.Equal([]byte(expected), decoded) {
-				return true
-			}
-		}
 	}
 
 	return false

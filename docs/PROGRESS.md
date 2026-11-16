@@ -1074,3 +1074,5 @@ Current status: DONE.
 
 2026-11-16b: security hardening pass 2 (XSS, PNG bomb guard, CSP, gitignore),
 docs/SECURITY.md, docs/BACKLOG.md (feature candidates). linux-ci green.
+
+2026-11-16 (rev3): security fail-closed gates, HWID device_id, webhook cleanup, image guard, feature flags + capabilities endpoint.

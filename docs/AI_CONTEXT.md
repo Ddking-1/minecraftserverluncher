@@ -257,3 +257,5 @@ Batch (2026-11-16b): security audit pass 2 — XSS-safe admin UI, PNG
 decompression-bomb guard, CSP header, .gitignore secret/build artifacts,
 docs/SECURITY.md, docs/BACKLOG.md (feature candidates pending approval).
 linux-ci green.
+
+Batch (rev3 build): S1 fail-closed approval/invite gates, S2 HWID device_id requirement (config-gated), S3 webhook cleanup (dead branch removed, oversized body 413), S4 image dimension guard in SniffImage, S8 feature flags + GET /api/v1/capabilities endpoint. linux-ci pending.

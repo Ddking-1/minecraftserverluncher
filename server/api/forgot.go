@@ -100,3 +100,19 @@ func (s *Server) handleResetPassword(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "password updated"})
 }
+
+// handleCapabilities reports the server version and the enabled feature flags
+// so clients (e.g. the launcher) can adapt their UI without hardcoding.
+func (s *Server) handleCapabilities(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]any{
+		"version": s.cfg.LauncherVersion,
+		"features": map[string]bool{
+			"invites":           s.cfg.FeatureInvites,
+			"captcha":           s.cfg.FeatureCaptcha,
+			"crash_reports":     s.cfg.FeatureCrashReports,
+			"modpacks":          s.cfg.FeatureModpacks,
+			"offline_mode":      s.cfg.FeatureOfflineMode,
+			"require_device_id": s.cfg.RequireDeviceID,
+		},
+	})
+}

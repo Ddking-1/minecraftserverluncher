@@ -146,8 +146,15 @@ func (h *SkinHandler) handleGetSkin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Skin approval workflow: non-owners may only read approved skins.
+	// Fail-closed: a database error denies read rather than silently
+	// bypassing the approval gate.
 	if h.DB != nil && !ownsSkinFile(r, id) {
-		if approved, err := h.DB.IsSkinFileApproved(id); err == nil && !approved {
+		approved, err := h.DB.IsSkinFileApproved(id)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "internal error")
+			return
+		}
+		if !approved {
 			writeError(w, http.StatusForbidden, "skin pending approval")
 			return
 		}
@@ -176,8 +183,15 @@ func (h *SkinHandler) handleGetAvatar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Skin approval workflow: non-owners may only read approved skins.
+	// Fail-closed: a database error denies read rather than silently
+	// bypassing the approval gate.
 	if h.DB != nil && !ownsSkinFile(r, id) {
-		if approved, err := h.DB.IsSkinFileApproved(id); err == nil && !approved {
+		approved, err := h.DB.IsSkinFileApproved(id)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "internal error")
+			return
+		}
+		if !approved {
 			writeError(w, http.StatusForbidden, "skin pending approval")
 			return
 		}

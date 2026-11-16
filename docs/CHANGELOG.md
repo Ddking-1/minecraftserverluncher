@@ -504,3 +504,11 @@ No production functionality is claimed at this stage.
 - CSP header added to security headers middleware.
 - .gitignore: .dev.vars, secret/key/pem, build-local.
 - docs/SECURITY.md and docs/BACKLOG.md added.
+
+### Security/extensibility batch (rev3, 2026-11-16)
+
+- Fail-closed approval & invite gates (S1).
+- HWID ban device_id requirement, config-gated (S2).
+- Webhook: removed dead signature branch, oversized body now 413 (S3).
+- Image dimension guard in SniffImage (S4).
+- Feature flags (AUTH_FEATURE_*) + GET /api/v1/capabilities (S8).

@@ -54,6 +54,10 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
 	if !decodeBody(w, r, &req) {
 		return
 	}
+	if s.cfg.RequireDeviceID && strings.TrimSpace(req.DeviceID) == "" {
+		writeError(w, http.StatusBadRequest, "device_id is required")
+		return
+	}
 	username := strings.TrimSpace(req.Username)
 	// Anti-bot: honeypot field must be empty.
 	if strings.TrimSpace(req.Website) != "" {
@@ -84,7 +88,14 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
 	// Invite-only beta registration: when an allowlist is configured, only
 	// allowlisted identifiers may register. An empty allowlist keeps the
 	// open-registration behaviour so development and tests keep working.
-	if count, err := s.db.InviteCount(); err == nil && count > 0 {
+	// Fail-closed: a database error denies registration rather than silently
+	// bypassing the invite gate.
+	inviteCount, err := s.db.InviteCount()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+	if inviteCount > 0 {
 		invited, err := s.db.IsInvited(username)
 		if err != nil || !invited {
 			writeError(w, http.StatusForbidden, "nem beta tester")
@@ -118,6 +129,12 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	var req loginRequest
 	if !decodeBody(w, r, &req) {
+		return
+	}
+	// HWID-ban hardening: when enabled, refuse requests without a device id so
+	// a banned client cannot bypass the ban by omitting the identifier.
+	if s.cfg.RequireDeviceID && strings.TrimSpace(req.DeviceID) == "" {
+		writeError(w, http.StatusBadRequest, "device_id is required")
 		return
 	}
 	// Anti-bot: honeypot field must be empty.
@@ -157,7 +174,14 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Account approval workflow: unapproved accounts cannot log in.
-	if approved, err := s.db.IsAccountApproved(acc.ID); err == nil && !approved {
+	// Fail-closed: a database error denies login rather than silently
+	// bypassing the approval gate.
+	approved, err := s.db.IsAccountApproved(acc.ID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+	if !approved {
 		writeError(w, http.StatusForbidden, "account pending approval")
 		return
 	}

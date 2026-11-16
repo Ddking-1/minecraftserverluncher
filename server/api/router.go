@@ -145,6 +145,7 @@ func (s *Server) Handler() http.Handler {
 	public.HandleFunc("POST /api/v1/auth/forgot", s.handleForgotPassword)
 	public.HandleFunc("POST /api/v1/auth/reset", s.handleResetPassword)
 	public.HandleFunc("GET /api/v1/updates/manifest", s.handleUpdatesManifest)
+	public.HandleFunc("GET /api/v1/capabilities", s.handleCapabilities)
 	public.HandleFunc("GET /readyz", s.handleReadyz)
 	public.HandleFunc("POST /api/v1/proxy/auth", s.handleProxyAuth)
 	if s.PterodactylWebhook != nil {
@@ -217,6 +218,7 @@ func (s *Server) Handler() http.Handler {
 
 	mux.Handle("/api/v1/auth/", wrap(publicGroup))
 	mux.Handle("/api/v1/updates/", wrap(publicGroup))
+	mux.Handle("/api/v1/capabilities", wrap(publicGroup))
 	mux.Handle("/api/v1/proxy/", wrap(publicGroup))
 	mux.Handle("/api/v1/webhooks/", wrap(publicGroup))
 	mux.Handle("/api/v1/account/", wrap(protectedGroup))

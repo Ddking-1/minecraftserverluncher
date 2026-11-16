@@ -61,6 +61,17 @@ type Config struct {
 	// TurnstileSecret is the server-side Cloudflare Turnstile secret used to
 	// verify tokens. Empty disables CAPTCHA enforcement (dev mode).
 	TurnstileSecret string
+	// RequireDeviceID, when true, rejects login/register requests that do not
+	// carry a non-empty device_id. Recommended on in production to prevent
+	// HWID-ban bypass via an omitted device identifier.
+	RequireDeviceID bool
+	// Feature flags (AUTH_FEATURE_*) toggle optional capabilities without
+	// code changes. The capability manifest endpoint exposes these to clients.
+	FeatureInvites       bool
+	FeatureCaptcha       bool
+	FeatureCrashReports  bool
+	FeatureModpacks      bool
+	FeatureOfflineMode   bool
 }
 
 // Default values. These are non-secret operational defaults only.
@@ -104,6 +115,12 @@ func Load() (*Config, error) {
 		SkinStorageDir:     envOr("AUTH_SKIN_STORAGE_DIR", defaultSkinStorageDir),
 		TurnstileSiteKey:   os.Getenv("AUTH_TURNSTILE_SITE_KEY"),
 		TurnstileSecret:    os.Getenv("AUTH_TURNSTILE_SECRET"),
+		RequireDeviceID:    envBool("AUTH_REQUIRE_DEVICE_ID"),
+		FeatureInvites:     envBoolDefault("AUTH_FEATURE_INVITES", true),
+		FeatureCaptcha:     envBoolDefault("AUTH_FEATURE_CAPTCHA", true),
+		FeatureCrashReports: envBoolDefault("AUTH_FEATURE_CRASH_REPORTS", false),
+		FeatureModpacks:    envBoolDefault("AUTH_FEATURE_MODPACKS", false),
+		FeatureOfflineMode: envBoolDefault("AUTH_FEATURE_OFFLINE_MODE", false),
 	}
 
 	if v := os.Getenv("AUTH_ACCESS_TOKEN_TTL"); v != "" {
@@ -164,5 +181,22 @@ func envBool(name string) bool {
 		return true
 	default:
 		return false
+	}
+}
+
+// envBoolDefault behaves like envBool but returns fallback when the variable
+// is unset or empty, so feature flags can default to on or off.
+func envBoolDefault(name string, fallback bool) bool {
+	v := strings.TrimSpace(os.Getenv(name))
+	if v == "" {
+		return fallback
+	}
+	switch strings.ToLower(v) {
+	case "1", "true", "yes", "on":
+		return true
+	case "0", "false", "no", "off":
+		return false
+	default:
+		return fallback
 	}
 }
