@@ -5,6 +5,7 @@ import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.connection.PostLoginEvent;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.event.player.PlayerChooseInitialServerEvent;
+import com.velocitypowered.api.event.player.ServerPreConnectEvent;
 import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.plugin.annotation.DataDirectory;
 import com.velocitypowered.api.proxy.ProxyServer;
@@ -15,6 +16,10 @@ import net.minecraftserverlauncher.velocity.auth.BackendAuthClient;
 import net.minecraftserverlauncher.velocity.config.PluginConfig;
 import java.nio.file.Path;
 import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 
 /**
@@ -22,8 +27,10 @@ import org.slf4j.Logger;
  *
  * <p>Authorization model: the proxy is an enforcement point, not the source of
  * truth. On login it asks the Go backend to validate the player's session
- * token and, if the backend denies it, the player is disconnected. The admin
- * token and backend URL come from the local velocity.toml config.
+ * token and, if the backend denies it, the player is disconnected. A join to
+ * any backend server is additionally gated on the player having passed that
+ * check, so a player can never reach a backend before authorization. The
+ * admin token and backend URL come from the local velocity.toml config.
  */
 @Plugin(
         id = "minecraftserverlauncher",
@@ -39,6 +46,10 @@ public final class LauncherVelocityPlugin {
     private final Logger logger;
     private final Path dataDirectory;
     private BackendAuthClient authClient;
+
+    // Players that have passed backend authorization. Guarded by a concurrent
+    // set so the login thread and the connection thread never race.
+    private final Set<UUID> authorized = ConcurrentHashMap.newKeySet();
 
     @Inject
     public LauncherVelocityPlugin(ProxyServer server, Logger logger,
@@ -62,7 +73,8 @@ public final class LauncherVelocityPlugin {
     /**
      * On login, validate the player's session token against the backend. The
      * token is taken from a GameProfile property set by the launcher; a
-     * missing or backend-denied token disconnects the player.
+     * missing or backend-denied token disconnects the player before they can
+     * reach any backend server.
      */
     @Subscribe
     public void onPostLogin(PostLoginEvent event) {
@@ -76,19 +88,33 @@ public final class LauncherVelocityPlugin {
             player.disconnect(Component.text("Not authorized"));
             return;
         }
-        authClient.validateAccessToken(token.get()).whenComplete((valid, err) -> {
-            if (Boolean.TRUE.equals(valid)) {
-                logger.debug("Player {} authorized", player.getUsername());
-            } else {
-                player.disconnect(Component.text("Session not authorized"));
-            }
-        });
+        boolean valid;
+        try {
+            valid = authClient.validateAccessToken(token.get()).get(5, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            logger.warn("Player {} authorization failed: {}", player.getUsername(), e.toString());
+            valid = false;
+        }
+        if (!valid) {
+            player.disconnect(Component.text("Session not authorized"));
+            return;
+        }
+        authorized.add(player.getUniqueId());
+        logger.debug("Player {} authorized", player.getUsername());
+    }
+
+    @Subscribe
+    public void onServerPreConnect(ServerPreConnectEvent event) {
+        // Reject any join attempt by a player that has not passed backend
+        // authorization, regardless of how the connection was initiated.
+        if (!authorized.contains(event.getPlayer().getUniqueId())) {
+            event.setResult(ServerPreConnectEvent.ServerResult.denied());
+        }
     }
 
     @Subscribe
     public void onPlayerChooseInitialServer(PlayerChooseInitialServerEvent event) {
         // Server selection is deferred: backend authorization is the gate.
-        // (Kept as an explicit listener seam for future policy.)
     }
 
     private static Optional<String> findProperty(Player player, String name) {
@@ -99,4 +125,4 @@ public final class LauncherVelocityPlugin {
         }
         return Optional.empty();
     }
-}
+}

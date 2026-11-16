@@ -14,7 +14,9 @@ import java.util.concurrent.TimeUnit;
  *
  * <p>Security: the admin token is required for the request, the client has a
  * short connect/read timeout and a bounded completion timeout, and the token
- * is sent in the request body (never a query string).
+ * is sent in the request body (never a query string). The access token is
+ * JSON-escaped before being placed in the body so a crafted token cannot
+ * break out of the JSON string.
  */
 public class BackendAuthClient {
 
@@ -37,7 +39,7 @@ public class BackendAuthClient {
         if (accessToken == null || accessToken.isEmpty()) {
             return CompletableFuture.completedFuture(false);
         }
-        String json = "{\"access_token\":\"" + jsonEscape(accessToken) + "\"}";
+        String json = "{\"access_token\":\"" + escapeJson(accessToken) + "\"}";
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(baseUrl + "/api/v1/proxy/auth"))
                 .timeout(Duration.ofSeconds(5))
@@ -46,37 +48,42 @@ public class BackendAuthClient {
                 .POST(HttpRequest.BodyPublishers.ofString(json, StandardCharsets.UTF_8))
                 .build();
         return http.sendAsync(request, HttpResponse.BodyHandlers.ofString())
-                .thenApply(resp -> resp.statusCode() == 200 && resp.body().contains("\"status\":\"ok\""))
+                .thenApply(resp -> resp.statusCode() == 200
+                        && resp.body() != null
+                        && resp.body().contains("\"status\":\"ok\""))
+                .exceptionally(err -> false)
                 .completeOnTimeout(false, 5, TimeUnit.SECONDS);
     }
 
-    /**
-     * Escapes a value for embedding in a JSON string literal. The access token
-     * originates from client-controlled profile data, so it must never be
-     * concatenated into JSON verbatim.
-     */
-    private static String jsonEscape(String value) {
-        StringBuilder out = new StringBuilder(value.length() + 8);
-        for (int i = 0; i < value.length(); i++) {
-            char c = value.charAt(i);
+    private static String escapeJson(String s) {
+        StringBuilder sb = new StringBuilder(s.length() + 8);
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
             switch (c) {
-                case '"' -> out.append("\\\"");
-                case '\\' -> out.append("\\\\");
-                case '\b' -> out.append("\\b");
-                case '\f' -> out.append("\\f");
-                case '\n' -> out.append("\\n");
-                case '\r' -> out.append("\\r");
-                case '\t' -> out.append("\\t");
-                default -> {
+                case '"':
+                    sb.append("\\\"");
+                    break;
+                case '\\':
+                    sb.append("\\\\");
+                    break;
+                case '\n':
+                    sb.append("\\n");
+                    break;
+                case '\r':
+                    sb.append("\\r");
+                    break;
+                case '\t':
+                    sb.append("\\t");
+                    break;
+                default:
                     if (c < 0x20) {
-                        out.append(String.format("\\u%04x", (int) c));
+                        sb.append(String.format("\\u%04x", (int) c));
                     } else {
-                        out.append(c);
+                        sb.append(c);
                     }
-                }
             }
         }
-        return out.toString();
+        return sb.toString();
     }
 
     private static String stripTrailingSlash(String url) {
@@ -85,4 +92,4 @@ public class BackendAuthClient {
         }
         return url;
     }
-}
+}
