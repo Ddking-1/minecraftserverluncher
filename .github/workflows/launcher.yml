@@ -27,11 +27,29 @@ jobs:
           host: windows
           target: desktop
           arch: win64_msvc2019_64
-          # Deterministic install root: aqt creates <dir>/6.6.3/msvc2019_64.
-          dir: ${{ github.workspace }}/Qt
+          # aqt creates <dir>/Qt/<version>/<arch> (it adds its own "Qt" folder).
+          dir: ${{ github.workspace }}
           cache: true
       - name: Configure
-        run: cmake -S launcher -B launcher/build -G "Visual Studio 17 2022" -A x64 -DCMAKE_PREFIX_PATH="${{ github.workspace }}/Qt/6.6.3/msvc2019_64"
+        shell: pwsh
+        run: |
+          # windows-latest now ships Visual Studio 2026 (generator "Visual Studio 18 2026"),
+          # so pick the newest generator the image actually has instead of pinning VS 17.
+          $help = cmake --help | Out-String
+          $generator = $null
+          foreach ($g in @('Visual Studio 18 2026', 'Visual Studio 17 2022')) {
+            if ($help -match [regex]::Escape($g)) { $generator = $g; break }
+          }
+          $prefix = Join-Path $env:GITHUB_WORKSPACE 'Qt/6.6.3/msvc2019_64'
+          if (-not (Test-Path $prefix)) { throw "Qt prefix not found: $prefix" }
+          if ($generator) {
+            Write-Host "Using generator: $generator"
+            cmake -S launcher -B launcher/build -G $generator -A x64 -DCMAKE_PREFIX_PATH=$prefix
+          } else {
+            Write-Host 'No Visual Studio generator found; using the CMake default'
+            cmake -S launcher -B launcher/build -A x64 -DCMAKE_PREFIX_PATH=$prefix
+          }
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Build
         run: cmake --build launcher/build --config Release
       - name: Test
