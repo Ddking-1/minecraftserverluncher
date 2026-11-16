@@ -600,10 +600,18 @@ Verification:
   `velocity` jobs are `success` (~105 s).
 
 Credentials: the `ai2` SSH password and the root password used for the install
-were **not** written into the repository; they exist only in the transient
-`.tmp-remote/` helper directory on the operator machine, which is not tracked.
-The runner registration token was written through `/tmp` on the host and
-deleted immediately after `config.sh`.
+were **not** written into the repository. They live in `runner.env` in the
+repository root on the operator machine, which is git-ignored by the existing
+`*.env` rule (verify with `git check-ignore -v runner.env`) and therefore never
+appears in `git status`, a commit or a push. That file also records the host,
+runner name/version/labels, the systemd unit, the paths, which workflows use
+the host, and copy-paste commands for status, re-registration and manual test
+runs, so it can be copied as a single file to another machine or handed to
+another model. The runner registration token was written through `/tmp` on the
+host and deleted immediately after `config.sh`.
+
+If `runner.env` is ever exposed, rotate the two passwords on the host
+(`passwd ai2`, `passwd root`) and update the file.
 
 Branch:
 ci/linux-runner-tests (linux-ci workflow) and ci/drop-redundant-workflow

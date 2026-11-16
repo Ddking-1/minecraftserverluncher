@@ -53,7 +53,13 @@ Velocity build and is the only workflow that currently produces runs.
 `launcher.yml` and `backend.yml` still target `[self-hosted, windows]`; no
 Windows runner is registered, so those jobs queue (with path filters) instead of
 running. The old `ci.yml` was deleted because it duplicated the other workflows
-and queued an unfiltered Windows job on every push to `master`. The CTest suite (hwid, settings,
+and queued an unfiltered Windows job on every push to `master`.
+
+Host access and runner operational details are kept out of the repository in
+`runner.env` in the repository root (git-ignored through the existing `*.env`
+rule: host, SSH and root login, runner name/version/labels, systemd unit, paths
+and commands). Read that file for access; never commit it or paste its values
+into issues, logs or commits. The CTest suite (hwid, settings,
 update_manifest, skin_model, backend_contract, settings_store, mod_scanner,
 skin_cache, rotating_logger, update_checker, file_integrity, editor_config,
 skin_client, download_asset, download_queue, java_detector, game_paths,

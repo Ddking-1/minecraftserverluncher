@@ -956,6 +956,11 @@ Files:
 - docs/WORK_STATE.md, docs/PROGRESS.md, docs/CHANGELOG.md, docs/AI_CONTEXT.md
 
 Tests:
+- `runner.env` (git-ignored, repo root) sources cleanly in bash and holds the
+  SSH/root logins, host facts, runner metadata and the run commands.
+- `git check-ignore -v runner.env` -> `.gitignore:34:*.env`; `git status` stays
+  clean with the file present; `git log --all -- runner.env` is empty, so the
+  values were never committed.
 - Runner `debian-ai-runner` (2.338.2) online, labels self-hosted/linux/x64/debian-13.
 - `linux-ci` run 43907599898 on master: `go` job success, `velocity` job
   success (~105 s total).

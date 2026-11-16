@@ -16,6 +16,11 @@
   offline.
 - Fixed the `Configure launcher (MSVC)` step in the (now removed) `ci.yml`: it
   was invalid because a step had both `uses:` and `run:`.
+- Added a local, git-ignored `runner.env` credential/runbook file (host, SSH and
+  root login, runner name/version/labels, systemd unit, workflow ownership and
+  copy-paste commands). It is excluded by the existing `*.env` rule, so it never
+  enters the repository, and it can be copied to another machine to reuse the
+  setup.
 
 ### Launcher - warnings-as-errors for the test targets (2026-11-16)
 
