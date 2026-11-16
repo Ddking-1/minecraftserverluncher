@@ -27,14 +27,12 @@ jobs:
           host: windows
           target: desktop
           arch: win64_msvc2019_64
+          # Deterministic install root: aqt creates <dir>/6.6.3/msvc2019_64.
+          dir: ${{ github.workspace }}/Qt
           cache: true
-        continue-on-error: true
       - name: Configure
-        if: steps.install_qt.outcome == 'success'
-        run: cmake -S launcher -B launcher/build -G "Visual Studio 17 2022" -A x64 -DCMAKE_PREFIX_PATH="${{ env.Qt6_DIR }}/.."
+        run: cmake -S launcher -B launcher/build -G "Visual Studio 17 2022" -A x64 -DCMAKE_PREFIX_PATH="${{ github.workspace }}/Qt/6.6.3/msvc2019_64"
       - name: Build
-        if: steps.install_qt.outcome == 'success'
         run: cmake --build launcher/build --config Release
       - name: Test
-        if: steps.install_qt.outcome == 'success'
         run: ctest --test-dir launcher/build -C Release --output-on-failure
