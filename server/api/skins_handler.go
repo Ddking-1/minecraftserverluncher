@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"minecraftserverluncher/server/database"
 	"minecraftserverluncher/server/skins"
 )
 
@@ -25,6 +26,7 @@ type SkinHandler struct {
 	Storage     *skins.SkinStorage
 	History     *skins.ThreadSafeSkinHistory
 	RateLimiter *RateLimiter
+	DB          *database.DB // optional; enables skin approval workflow
 }
 
 func (h *SkinHandler) handleUpload(w http.ResponseWriter, r *http.Request) {
@@ -138,6 +140,13 @@ func (h *SkinHandler) handleGetSkin(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "skin not found")
 		return
 	}
+	// Skin approval workflow: non-owners may only read approved skins.
+	if h.DB != nil && !ownsSkinFile(r, id) {
+		if approved, err := h.DB.IsSkinFileApproved(id); err == nil && !approved {
+			writeError(w, http.StatusForbidden, "skin pending approval")
+			return
+		}
+	}
 	data, err := h.Storage.GetSkin(id)
 	if err != nil {
 		if strings.Contains(err.Error(), "does not exist") {
@@ -160,6 +169,13 @@ func (h *SkinHandler) handleGetAvatar(w http.ResponseWriter, r *http.Request) {
 	if id == "" {
 		writeError(w, http.StatusNotFound, "avatar not found")
 		return
+	}
+	// Skin approval workflow: non-owners may only read approved skins.
+	if h.DB != nil && !ownsSkinFile(r, id) {
+		if approved, err := h.DB.IsSkinFileApproved(id); err == nil && !approved {
+			writeError(w, http.StatusForbidden, "skin pending approval")
+			return
+		}
 	}
 	avatarID := id + "-avatar"
 	data, err := h.Storage.GetSkin(avatarID)

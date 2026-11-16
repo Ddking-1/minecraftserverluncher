@@ -54,3 +54,17 @@ jobs:
         run: cmake --build launcher/build --config Release
       - name: Test
         run: ctest --test-dir launcher/build -C Release --output-on-failure
+      - name: Deploy Qt (windeployqt)
+        shell: pwsh
+        run: |
+          $qtBin = Join-Path $env:GITHUB_WORKSPACE 'Qt/6.6.3/msvc2019_64/bin'
+          $exe = Join-Path $env:GITHUB_WORKSPACE 'launcher/build/Release/MinecraftLauncher.exe'
+          if (-not (Test-Path $exe)) { throw "launcher exe not found: $exe" }
+          & (Join-Path $qtBin 'windeployqt.exe') --release --no-translations $exe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Upload runnable launcher artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MinecraftLauncher-windows
+          path: launcher/build/Release/
+          if-no-files-found: error

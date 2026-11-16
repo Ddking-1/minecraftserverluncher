@@ -201,7 +201,8 @@ CREATE TABLE IF NOT EXISTS accounts (
     username         TEXT    NOT NULL UNIQUE,
     password_hash    TEXT    NOT NULL,
     created_at       TEXT    NOT NULL,
-    minecraft_banned INTEGER NOT NULL DEFAULT 0
+    minecraft_banned INTEGER NOT NULL DEFAULT 0,
+    approved         INTEGER NOT NULL DEFAULT 1
 );
 
 CREATE TABLE IF NOT EXISTS devices (
@@ -316,6 +317,13 @@ CREATE TABLE IF NOT EXISTS invite_allowlist (
     created_at  TEXT    NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_invite_allowlist_identifier ON invite_allowlist(identifier);
+
+CREATE TABLE IF NOT EXISTS skin_file_approvals (
+    skin_id     TEXT    PRIMARY KEY,
+    approved    INTEGER NOT NULL DEFAULT 1,
+    reviewer    TEXT    NOT NULL DEFAULT '',
+    reviewed_at TEXT    NOT NULL DEFAULT ''
+);
 `
 	if _, err := db.sql.Exec(schema); err != nil {
 		return fmt.Errorf("database: migrate: %w", err)
@@ -324,6 +332,7 @@ CREATE INDEX IF NOT EXISTS idx_invite_allowlist_identifier ON invite_allowlist(i
 	// pick them up without a manual migration.
 	for _, stmt := range []string{
 		`ALTER TABLE accounts ADD COLUMN minecraft_banned INTEGER NOT NULL DEFAULT 0`,
+		`ALTER TABLE accounts ADD COLUMN approved INTEGER NOT NULL DEFAULT 1`,
 	} {
 		if _, err := db.sql.Exec(stmt); err != nil {
 			// Ignore "duplicate column" errors; any other error is fatal.
@@ -1437,6 +1446,81 @@ func (db *DB) IsMinecraftBanned(accountID int64) (bool, error) {
 			return false, ErrNotFound
 		}
 		return false, fmt.Errorf("database: is minecraft banned: %w", err)
+	}
+	return v != 0, nil
+}
+
+// ---------------------------------------------------------------------------
+// Account approval workflow
+// ---------------------------------------------------------------------------
+
+// SetAccountApproved sets the approved flag for an account.
+func (db *DB) SetAccountApproved(accountID int64, approved bool) error {
+	val := 0
+	if approved {
+		val = 1
+	}
+	res, err := db.sql.Exec(`UPDATE accounts SET approved = ? WHERE id = ?`, val, accountID)
+	if err != nil {
+		return fmt.Errorf("database: set account approved: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("database: set account approved rows: %w", err)
+	}
+	if n == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// IsAccountApproved reports whether an account is approved (may log in).
+func (db *DB) IsAccountApproved(accountID int64) (bool, error) {
+	var v int
+	if err := db.sql.QueryRow(`SELECT approved FROM accounts WHERE id = ?`, accountID).Scan(&v); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, ErrNotFound
+		}
+		return false, fmt.Errorf("database: is account approved: %w", err)
+	}
+	return v != 0, nil
+}
+
+// ---------------------------------------------------------------------------
+// Skin file approval workflow
+// ---------------------------------------------------------------------------
+
+// SetSkinFileApproval records an admin approval decision for a skin file id.
+func (db *DB) SetSkinFileApproval(skinID string, approved bool, reviewer string) error {
+	val := 0
+	if approved {
+		val = 1
+	}
+	_, err := db.sql.Exec(
+		`INSERT INTO skin_file_approvals (skin_id, approved, reviewer, reviewed_at)
+		 VALUES (?, ?, ?, ?)
+		 ON CONFLICT(skin_id) DO UPDATE SET
+		   approved = excluded.approved,
+		   reviewer = excluded.reviewer,
+		   reviewed_at = excluded.reviewed_at`,
+		skinID, val, reviewer, nowText(),
+	)
+	if err != nil {
+		return fmt.Errorf("database: set skin file approval: %w", err)
+	}
+	return nil
+}
+
+// IsSkinFileApproved reports whether a skin file is approved for public read.
+// A missing row is treated as approved (back-compat for existing skins).
+func (db *DB) IsSkinFileApproved(skinID string) (bool, error) {
+	var v int
+	err := db.sql.QueryRow(`SELECT approved FROM skin_file_approvals WHERE skin_id = ?`, skinID).Scan(&v)
+	if errors.Is(err, sql.ErrNoRows) {
+		return true, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("database: is skin file approved: %w", err)
 	}
 	return v != 0, nil
 }

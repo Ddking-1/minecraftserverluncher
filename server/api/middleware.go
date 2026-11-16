@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"log"
 	"net/http"
+	"strings"
 	"runtime/debug"
 	"time"
 )
@@ -21,6 +22,8 @@ const requestIDCtxKey = ctxKey("request-id")
 func withRequestID(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := r.Header.Get("X-Request-Id")
+		// Sanitize client-provided request ids to prevent log/header injection.
+		id = sanitizeRequestID(id)
 		if id == "" {
 			buf := make([]byte, 16)
 			if _, err := rand.Read(buf); err != nil {
@@ -86,4 +89,21 @@ func (s *Server) withSecurityHeaders(next http.Handler) http.Handler {
 		w.Header().Set("Referrer-Policy", "no-referrer")
 		next.ServeHTTP(w, r)
 	})
+}
+
+// sanitizeRequestID strips control characters and caps length so a client
+// cannot inject newlines or oversized values into logs/headers.
+func sanitizeRequestID(id string) string {
+	id = strings.TrimSpace(id)
+	if len(id) > 64 {
+		id = id[:64]
+	}
+	var b strings.Builder
+	for _, c := range id {
+		if c < 0x20 || c == 0x7f {
+			continue
+		}
+		b.WriteRune(c)
+	}
+	return b.String()
 }

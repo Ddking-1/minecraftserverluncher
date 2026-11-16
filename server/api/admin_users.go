@@ -328,3 +328,47 @@ func (s *Server) handleAdminGrantPermission(w http.ResponseWriter, r *http.Reque
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "granted"})
 }
+
+// handleAdminAccountApproval sets the approved flag for an account.
+func (s *Server) handleAdminAccountApproval(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil || id <= 0 {
+		writeError(w, http.StatusBadRequest, "invalid user id")
+		return
+	}
+	var req struct {
+		Approved bool `json:"approved"`
+	}
+	if !decodeBody(w, r, &req) {
+		return
+	}
+	if err := s.db.SetAccountApproved(id, req.Approved); err != nil {
+		if errors.Is(err, database.ErrNotFound) {
+			writeError(w, http.StatusNotFound, "user not found")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"id": id, "approved": req.Approved})
+}
+
+// handleAdminSkinApproval sets the approval flag for a skin file id.
+func (s *Server) handleAdminSkinApproval(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if id == "" {
+		writeError(w, http.StatusBadRequest, "invalid skin id")
+		return
+	}
+	var req struct {
+		Approved bool `json:"approved"`
+	}
+	if !decodeBody(w, r, &req) {
+		return
+	}
+	if err := s.db.SetSkinFileApproval(id, req.Approved, "admin"); err != nil {
+		writeError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"skin_id": id, "approved": req.Approved})
+}

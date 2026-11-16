@@ -47,6 +47,9 @@ type Server struct {
 	statsCache   *cache.Cache[string, any]
 	accountCache *cache.Cache[int64, *database.Account]
 	sessionCache *cache.Cache[int64, *sessions.TokenPair]
+
+	// Anti-bot / anti-abuse helpers.
+	antiBot *antiBot
 }
 
 // NewServer constructs the API server with caches for read-heavy endpoints.
@@ -62,6 +65,7 @@ func NewServer(db *database.DB, cfg *config.Config, skinHandler *SkinHandler) *S
 			TrustProxy:        cfg.TrustProxy,
 		}),
 		// TTL caches for read-heavy endpoints.
+		antiBot:      newAntiBot(time.Minute, 20),
 		statsCache:   cache.New[string, any](30 * time.Second),
 		accountCache: cache.New[int64, *database.Account](5 * time.Minute),
 		sessionCache: cache.New[int64, *sessions.TokenPair](2 * time.Minute),
@@ -184,6 +188,8 @@ func (s *Server) Handler() http.Handler {
 	admin.HandleFunc("POST /api/admin/users/{id}/roles", s.handleAdminGrantRole)
 	admin.HandleFunc("DELETE /api/admin/users/{id}/roles/{role}", s.handleAdminRevokeRole)
 	admin.HandleFunc("POST /api/admin/users/{id}/permissions", s.handleAdminGrantPermission)
+	admin.HandleFunc("POST /api/admin/users/{id}/approve", s.handleAdminAccountApproval)
+	admin.HandleFunc("POST /api/admin/skins/{id}/approve", s.handleAdminSkinApproval)
 	admin.HandleFunc("GET /api/admin/invites", s.handleAdminListInvites)
 	admin.HandleFunc("POST /api/admin/invites", s.handleAdminAddInvite)
 	admin.HandleFunc("DELETE /api/admin/invites/{id}", s.handleAdminRemoveInvite)
@@ -302,6 +308,7 @@ type registerRequest struct {
 	Password   string `json:"password"`
 	DeviceID   string `json:"device_id"`
 	DeviceName string `json:"device_name"`
+	Website    string `json:"website"` // honeypot; must be empty
 }
 
 type loginRequest struct {
@@ -309,6 +316,7 @@ type loginRequest struct {
 	Password   string `json:"password"`
 	DeviceID   string `json:"device_id"`
 	DeviceName string `json:"device_name"`
+	Website    string `json:"website"` // honeypot; must be empty
 }
 
 type refreshRequest struct {

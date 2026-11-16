@@ -54,6 +54,11 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
 	if !decodeBody(w, r, &req) {
 		return
 	}
+	// Anti-bot: honeypot field must be empty.
+	if strings.TrimSpace(req.Website) != "" {
+		writeError(w, http.StatusBadRequest, "invalid request")
+		return
+	}
 	username := strings.TrimSpace(req.Username)
 	if !validUsername(username) {
 		writeError(w, http.StatusBadRequest, "invalid username")
@@ -61,6 +66,11 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
 	}
 	if !validPassword(req.Password) {
 		writeError(w, http.StatusBadRequest, "password must be at least 8 characters")
+		return
+	}
+	// Anti-bot: per-username rate limit.
+	if s.antiBot != nil && !s.antiBot.allow("register:"+strings.ToLower(username)) {
+		writeError(w, http.StatusTooManyRequests, "too many requests")
 		return
 	}
 
@@ -103,6 +113,16 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	if !decodeBody(w, r, &req) {
 		return
 	}
+	// Anti-bot: honeypot field must be empty.
+	if strings.TrimSpace(req.Website) != "" {
+		writeError(w, http.StatusBadRequest, "invalid request")
+		return
+	}
+	// Anti-bot: per-username rate limit.
+	if s.antiBot != nil && !s.antiBot.allow("login:"+strings.ToLower(strings.TrimSpace(req.Username))) {
+		writeError(w, http.StatusTooManyRequests, "too many requests")
+		return
+	}
 	acc, err := s.db.AccountByUsername(strings.TrimSpace(req.Username))
 	if err != nil {
 		if errors.Is(err, database.ErrNotFound) {
@@ -118,6 +138,12 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := auth.VerifyPassword(acc.PasswordHash, req.Password); err != nil {
 		writeError(w, http.StatusUnauthorized, "invalid credentials")
+		return
+	}
+
+	// Account approval workflow: unapproved accounts cannot log in.
+	if approved, err := s.db.IsAccountApproved(acc.ID); err == nil && !approved {
+		writeError(w, http.StatusForbidden, "account pending approval")
 		return
 	}
 
