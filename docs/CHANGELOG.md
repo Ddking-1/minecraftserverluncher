@@ -483,3 +483,10 @@ No production functionality is claimed at this stage.
   non-owner read gate.
 - Launcher CI: windeployqt deploy step + upload-artifact of runnable build.
 - Security audit: docs/SECURITY_AUDIT.md.
+
+### Tripwire / RBAC / admin UI (2026-11-16)
+
+- Tripwire events table + admin endpoint + recording on honeypot/invalid creds.
+- adminAuthorized now accepts per-user bearer tokens with admin permission/role
+  (shared token still supported); admin role+permission seeded on migrate.
+- web/static/skin-manager.html rewired to real login + bearer-token endpoints.

@@ -646,3 +646,6 @@ build-local/Release/MinecraftLauncher.exe (MSVC Release, windeployqt).
 
 Batch (2026-11-16): anti-bot + approval workflows + CI artifact landed on
 master; security audit documented in docs/SECURITY_AUDIT.md.
+
+Batch (2026-11-16): tripwire + RBAC admin + admin web UI + security fixes
+landed on master; CI green.

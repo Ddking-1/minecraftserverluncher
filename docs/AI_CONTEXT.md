@@ -242,3 +242,9 @@ windeployqt-deployed, starts under offscreen).
 Batch (2026-11-16): anti-bot hardening (honeypot + per-username limiter +
 sanitized X-Request-Id), account/skin approval workflows, launcher CI artifact
 (windeployqt + upload-artifact), security audit doc. linux-ci green.
+
+Batch (2026-11-16): tripwire anomaly tracking (DB + admin endpoint + recording
+in honeypot/invalid-creds), per-user RBAC admin auth (adminAuthorized now
+accepts bearer with admin permission/role; admin role+permission seeded),
+admin web UI rewired to real bearer-token endpoints, security audit follow-up.
+linux-ci green.
