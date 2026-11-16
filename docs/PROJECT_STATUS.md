@@ -147,7 +147,7 @@ This is a proposal for discussion, not a decision:
 
 1. **Scope of v1 — Velocity included.** v1 needs the Velocity plugin WITH join authorization/permission management. (DECISION-level: proxy auth is in scope.)
 2. **Auto-update hosting — GitHub Releases + backend redirect.** Update files live on GitHub Releases of the public launcher repo (free, versioned, CDN). The client checks BOTH the backend and GitHub; the backend can tell the client the update host moved (DNS/URL change), and the client refreshes its stored location. This gives a primary + backup path. Recorded as **DECISION-007**.
-3. **Metadata source (DECISION-005) — not yet understood.** Owner asked for clarification (see §8). Pending.
+3. **Metadata source (DECISION-005) — RESOLVED.** Online fetch from Mojang/Fabric meta with a local cache and a bundled fallback list (cache-first, network refresh, offline fallback). Recorded as **DECISION-009**.
 4. **Distribution/legal — publish only what is legally required.** Keep private by default; publish publicly only what a license (Prism GPLv3) requires, and prefer publishing slightly more than the bare minimum when that reduces legal risk. Recorded as **DECISION-008**. (DECISION-004 still needs counsel confirmation of exact GPLv3 obligations.)
 5. **Windows CI — owner asked "why change it?"** See §9. Recommendation stands: move to GitHub-hosted `windows-latest` (no maintenance) OR register a Windows self-hosted runner. Pending owner choice.
 6. **Beta & access control.** Beta/alpha labels everywhere. Registration is **invite-only by email allowlist** (admin pre-approves tester emails; registration with an unlisted email is rejected with "not a beta tester"). Target capacity: ~200 users at beta launch. Full admin permission system with granular, per-user permissions (e.g. Minecraft ban but not system ban; approve username-change requests; approve skin requests). User data isolation: the server must only return data belonging to the requesting account; admin panel must not even be referenced in HTML for non-admins (even in dev). Skin uploads must be format-validated (magic bytes + dimensions + size) to prevent malware. Anti-bot + ban handling. Modular, independently testable builds with emulated/mock backends.
@@ -178,19 +178,33 @@ These must be added to the roadmap (TASKS_40 or a new phase) before implementati
 4. Add the new requirements above to `docs/TASKS_40.md` as a new phase.
 5. Implement in order: (a) Velocity proxy auth (N15–N20), (b) invite-only registration + admin permissions, (c) modpack/update wiring, (d) skin hardening, (e) beta labeling + capacity test.
 
-## 8. Clarification: question 3 (metadata source)
+## 8. Metadata source — RESOLVED (DECISION-009)
 
-"Metadata" = the list of Minecraft versions and Fabric loader versions the launcher offers when creating an instance. Two options:
-- **Online:** the launcher downloads the version list from Mojang (and Fabric's meta server) at runtime. Simpler to implement, always up to date, but requires internet and trusts those servers.
-- **Offline/bundled:** ship a fixed list inside the launcher. Works without network and is safer, but goes stale and must be updated with every release.
+Decision: **online fetch + local cache + bundled fallback list** (cache-first, network refresh, offline fallback). The owner's exact words: "online + helyi cache", i.e. online with a local cache, so it keeps working if Mojang/Fabric is unreachable.
 
-Recommendation for a small beta team: **online with a bundled fallback cache** (fetch once, cache locally, use cache if offline). This needs DECISION-005 to be recorded.
+Recorded as DECISION-009 in `docs/DECISIONS.md`.
 
-## 9. Clarification: Windows CI
+## 9. Windows CI — can it run on the Debian runner? NO
 
-Right now `launcher.yml` and `backend.yml` say "run on a self-hosted Windows runner", but **no Windows runner is registered** in this repo — only the Debian one. So whenever `launcher/` or `server/` changes, those jobs sit in the queue forever and never run. Two fixes:
-- **Option A (recommended):** change `runs-on` to `windows-latest` (GitHub's own Windows machines). Free minutes, zero maintenance, Qt is installable there. Downside: uses GitHub Actions minutes (2000/month free for private repos).
-- **Option B:** register a Windows PC as a self-hosted runner (like the Debian one). No minute limits, but that PC must stay on and maintained.
+**Short answer: no, not for the launcher build.** The launcher is a Windows
+binary (Qt6 + MSVC/MinGW Windows toolchain), and Linux cannot build Windows
+Qt applications without a full cross-compilation toolchain (MXE etc.), which
+is heavy and fragile. So the Windows build cannot run on the Debian runner.
+
+Right now `launcher.yml` and `backend.yml` say "run on a self-hosted Windows
+runner", but **no Windows runner is registered** — only the Debian one. So
+whenever `launcher/` or `server/` changes, those jobs sit in the queue forever.
+
+Two fixes (still open, owner's choice):
+- **Option A (recommended):** change `runs-on` to `windows-latest` (GitHub's own
+  Windows machines). Free minutes (2000/month for private repos), zero
+  maintenance, Qt is installable there.
+- **Option B:** register the owner's Windows PC as a self-hosted runner (like
+  the Debian one). No minute limits, but that PC must stay on and maintained.
+
+Note: Windows builds are already verified locally by the agent (MSVC + MinGW,
+23/23 tests) on the owner's machine, so even without Windows CI the builds are
+known to work — CI would only add automatic verification on every push.
 
 Pick A or B.
 

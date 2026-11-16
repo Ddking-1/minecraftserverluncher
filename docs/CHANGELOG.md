@@ -27,12 +27,13 @@
 - Recorded owner decisions from the 2026-11-16 discussion in
   `docs/PROJECT_STATUS.md` and `docs/DECISIONS.md` (DECISION-007 update host:
   GitHub Releases primary + backend redirect/backup; DECISION-008 legal
-  publication scope: publish only what is legally required). New requirements
-  captured: invite-only registration by email allowlist, granular per-user admin
-  permissions, user data isolation, skin upload hardening, anti-bot, beta
-  labeling, ~200-user capacity, mrpack-like modpack delivery, modular emulated
-  test builds. DECISION-005 (metadata source) and the Windows CI choice remain
-  open.
+  publication scope: publish only what is legally required; DECISION-009
+  metadata source: online fetch + local cache + bundled fallback). New
+  requirements captured: invite-only registration by email allowlist, granular
+  per-user admin permissions, user data isolation, skin upload hardening,
+  anti-bot, beta labeling, ~200-user capacity, mrpack-like modpack delivery,
+  modular emulated test builds. The Windows CI choice remains open (the Windows
+  build cannot run on the Debian runner).
 
 ### Launcher - warnings-as-errors for the test targets (2026-11-16)
 

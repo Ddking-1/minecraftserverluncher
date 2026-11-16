@@ -65,11 +65,14 @@ A high-level, owner-facing gap analysis and minimum publishable baseline live
 in `docs/PROJECT_STATUS.md`. Owner decisions from 2026-11-16: Velocity + join
 authorization is in v1; updates are hosted on GitHub Releases with a backend
 redirect/backup (DECISION-007); legal publication is limited to what is legally
-required, preferring slightly more (DECISION-008); registration is invite-only
-by email allowlist with a granular per-user admin permission system; target
-~200 beta users; modpack delivery is mrpack-like with signed, tamper-checked
-manifests; beta labels everywhere. Pending: DECISION-005 (metadata source,
-clarified in PROJECT_STATUS §8) and the Windows CI choice (§9). The CTest suite (hwid, settings,
+required, preferring slightly more (DECISION-008); metadata source is online
+fetch + local cache + bundled fallback (DECISION-009); registration is
+invite-only by email allowlist with a granular per-user admin permission
+system; target ~200 beta users; modpack delivery is mrpack-like with signed,
+tamper-checked manifests; beta labels everywhere. The only remaining open item
+is the Windows CI choice (PROJECT_STATUS §9): the Windows build cannot run on
+the Debian runner, so it is either GitHub-hosted `windows-latest` (A) or a
+self-hosted Windows runner (B). The CTest suite (hwid, settings,
 update_manifest, skin_model, backend_contract, settings_store, mod_scanner,
 skin_cache, rotating_logger, update_checker, file_integrity, editor_config,
 skin_client, download_asset, download_queue, java_detector, game_paths,

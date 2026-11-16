@@ -623,3 +623,6 @@ docs/project-status-update2: records owner decisions (Velocity in v1,
 GitHub Releases updates with backend redirect, legal publication scope,
 invite-only registration, granular admin permissions, ~200 users, mrpack-like
 modpack, beta labeling) as DECISION-007/008 and updates PROJECT_STATUS.
+docs/decision-009-and-ci-answer: DECISION-009 (metadata: online + local cache)
+recorded; PROJECT_STATUS §9 clarified that the Windows build cannot run on the
+Debian runner (Option A/B remain open).

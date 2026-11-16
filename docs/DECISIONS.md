@@ -367,3 +367,38 @@ Affected files:
 Reversible: yes, before the first public release
 
 Legal review required: YES (confirm exact GPLv3 obligations with counsel)
+
+### DECISION-009 — Metadata source: online with local cache fallback
+
+Date: 2026-11-16
+
+Status: APPROVED (owner decision, 2026-11-16 discussion)
+
+Decision:
+The launcher fetches Minecraft and Fabric version metadata from the official
+online sources (Mojang version manifest, Fabric meta server) at runtime, and
+caches the result locally so it keeps working offline (cache-first with
+network refresh, bundled fallback list as last resort).
+
+Reason:
+Always up to date without shipping a new launcher release for every Minecraft
+update, while still working on a machine without internet (cache). Matches
+the owner's stated preference ("online + local cache").
+
+Alternatives:
+- online only (rejected: breaks offline use)
+- bundled offline list only (rejected: goes stale, requires frequent releases)
+
+Consequences:
+- `ResolveLibraries`/`ResolveAssets` launch steps can be implemented against
+  this contract; network calls must be cached and must not block the UI.
+- The cache location and TTL must be documented and tested.
+- A bundled fallback list ships with the installer as last resort.
+
+Affected files:
+`launcher/updates/*`, `launcher/minecraft/*`, `docs/UPDATE_SPEC.md`,
+`docs/AI_CONTEXT.md`
+
+Reversible: yes
+
+Legal review required: no
