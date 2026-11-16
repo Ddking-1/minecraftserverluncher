@@ -462,6 +462,9 @@ second commit on it).
 
 ## 2026-11-16 - MSVC 2022 BUILD ATTEMPT (BLOCKED, NO CODE CHANGES)
 
+> SUPERSEDED: the toolchain was installed later the same day; see
+> "MSVC 2022 BUILD AND TEST (UNBLOCKED, VERIFIED)" at the end of this file.
+
 The MSVC build could not be run: this machine has no Visual Studio, no MSVC
 compiler and no Windows SDK (`vswhere.exe`, `Program Files (x86)/Microsoft
 Visual Studio/2022` and `Windows Kits/10` are all absent). The Qt 6.6.3
@@ -482,3 +485,36 @@ Exact next step (requires an administrator):
    `ctest --test-dir build-msvc -C Release --output-on-failure`
    `MinecraftLauncher` is built with `/W4 /WX`, so this run is the actual
    warnings-as-errors gate that the GCC 13.1 build could not cover.
+
+## 2026-11-16 - MSVC 2022 BUILD AND TEST (UNBLOCKED, VERIFIED)
+
+The Visual Studio 2022 Build Tools (17.14.37906.3, MSVC 19.44.35230, Windows SDK
+10.0.26100.0) were installed with the "Desktop development with C++" workload,
+so the `/W4 /WX` gate is now covered.
+
+Commands (from the repository root):
+
+    cmake -S launcher -B C:/Users/Try.APAPC/build-msvc -G "Visual Studio 17 2022" -A x64 \
+          -DCMAKE_PREFIX_PATH=C:/Users/Try.APAPC/Qt/6.6.3/msvc2019_64
+    cmake --build C:/Users/Try.APAPC/build-msvc --config Release --parallel
+    ctest --test-dir C:/Users/Try.APAPC/build-msvc -C Release --output-on-failure
+
+Results:
+- Configure: OK, MSVC 19.44.35230.0, Windows SDK 10.0.26100.0.
+- Release build: exit 0. `MinecraftLauncher` compiles clean under `/W4 /WX`;
+  the only warning in the whole build is C4834 (discarded `[[nodiscard]]`
+  result at `launcher/auth/SessionManager.cpp:118`) raised while compiling
+  `test_main_window`, a test target that does not use `/WX`. Recorded as an
+  observation, not a build break.
+- `MinecraftLauncher.exe` starts and stays alive for the 4 s check window.
+- `ctest -C Release`: 23/23 passed, 0 failed.
+
+The run also found a runtime packaging defect: the test executables link the
+shared `Qt6Test.dll`, which was never staged, so 14 of the 23 tests aborted at
+load time with `0xc0000135` (STATUS_DLL_NOT_FOUND). `launcher/CMakeLists.txt`
+now copies `Qt6Test.dll` next to the binaries (guarded by `EXISTS`); the suite
+is green and the MinGW build is protected on machines where the Qt bin
+directory is not on `PATH` either.
+
+Branch:
+fix/windows-build-and-e2e-verification.

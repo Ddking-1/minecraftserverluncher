@@ -38,8 +38,10 @@ The C++/Qt6 launcher core is implemented on `master` and the build baseline is
 GREEN on Windows 11, verified 2026-11-16: CMake configure and a Release build
 with Qt 6.6.3 succeed, `MinecraftLauncher.exe` and all 23 CTest binaries are
 produced, and `ctest` reports 23/23 passing. The verified toolchain is the Qt
-6.6.3 `mingw_64` package with MinGW GCC 13.1; MSVC 2022 is not installed on
-that machine, so the MSVC `/W4 /WX` build remains unverified. The CTest suite (hwid, settings,
+6.6.3 `mingw_64` package with MinGW GCC 13.1, and the MSVC 2022 Build Tools
+(MSVC 19.44, Windows SDK 10.0.26100) were installed later on 2026-11-16: the
+MSVC Release build is clean under `/W4 /WX` and `ctest -C Release` also reports
+23/23. The CTest suite (hwid, settings,
 update_manifest, skin_model, backend_contract, settings_store, mod_scanner,
 skin_cache, rotating_logger, update_checker, file_integrity, editor_config,
 skin_client, download_asset, download_queue, java_detector, game_paths,
@@ -170,10 +172,9 @@ SettingsStore, RotatingFileLogger, FileIntegrity, Version), `launcher/minecraft`
 TokenStorage using Windows DPAPI, SessionManager), `launcher/launch`
 (LaunchTask/LaunchStep framework), `launcher/updates` (UpdateManifest parser,
 UpdateChecker) and `launcher/game` (JavaDetector, MinecraftLauncher). CMake
-configure and `cmake --build ... --config Release` succeed with Qt 6.6.3
-MSVC 2022; CTest runs 11 passing tests (hwid, settings, update_manifest,
-skin_model, backend_contract, settings_store, mod_scanner, skin_cache,
-rotating_logger, update_checker, file_integrity). Library/asset download steps
+configure and `cmake --build ... --config Release` succeed with Qt 6.6.3 under
+both MinGW GCC 13.1 and MSVC 2022; CTest runs 23/23 passing tests under both,
+including the `/W4 /WX` gate on the MSVC launcher target. Library/asset download steps
 remain stubs pending DECISION-005. The CI workflow
 (`.github/workflows/launcher.yml`) runs on the self-hosted Windows runner; the
 `jurplel/install-qt-action` step is non-blocking (`continue-on-error: true`)

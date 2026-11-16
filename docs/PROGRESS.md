@@ -840,3 +840,41 @@ configure/build/ctest commands recorded in docs/WORK_STATE.md.
 Manual user action:
 Approve/perform the elevated Visual Studio Build Tools installation (see the
 exact command in docs/WORK_STATE.md).
+
+## 2026-11-16 — MSVC 2022 BUILD AND FULL CTest PASS
+
+Agent/model: Buffy (Codebuff) - code agent
+Branch: fix/windows-build-and-e2e-verification
+Task: Build the launcher and run the full CTest suite with MSVC 2022 so the
+  `/W4 /WX` warnings-as-errors gate is covered.
+Started: 2026-11-16
+Completed: 2026-11-16
+
+Files:
+- launcher/CMakeLists.txt (stage `Qt6Test.dll` next to the binaries)
+- docs/WORK_STATE.md, docs/PROGRESS.md, docs/CHANGELOG.md, docs/AI_CONTEXT.md
+
+Tests:
+- VS 2022 Build Tools 17.14.37906.3 (MSVC 19.44.35230, Windows SDK 10.0.26100)
+  installed with the C++ workload; configure and Release build with the Qt 6.6.3
+  `msvc2019_64` binaries succeeded.
+- Release build exit 0; `/W4 /WX` clean on `MinecraftLauncher`. The only warning
+  in the build is C4834 in `auth/SessionManager.cpp:118`, compiled into
+  `test_main_window` (that target has no `/WX`).
+- First `ctest -C Release` run: 9/23 passed, 14 failed with `0xc0000135` because
+  the tests link the unstaged shared `Qt6Test.dll`.
+- After staging `Qt6Test.dll`: `ctest -C Release --output-on-failure` ->
+  23/23 passed, 0 failed.
+- MSVC-built `MinecraftLauncher.exe` starts and stays alive (4 s window).
+
+Current status:
+DONE. Both supported toolchains are green: MinGW GCC 13.1 and MSVC 2022, 23/23
+CTest each, and the `/W4 /WX` gate is now actually exercised.
+
+Next:
+Optional: add MSVC to CI once the self-hosted runner has the Build Tools; the
+C4834 warning in the test target can be cleaned up if the test targets ever
+adopt `/WX`.
+
+Manual user action:
+None. (The elevated Build Tools install has been approved and completed.)

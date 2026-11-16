@@ -287,12 +287,19 @@ if(WIN32)
             endif()
         endforeach()
     endif()
+    # Qt6Test is a shared library too: the test executables link it, so without
+    # it next to them they abort with 0xc0000135 (STATUS_DLL_NOT_FOUND).
+    set(QT_TEST_DLL "")
+    if(EXISTS "${QT_BIN_DIR}/Qt6Test.dll")
+        set(QT_TEST_DLL "${QT_BIN_DIR}/Qt6Test.dll")
+    endif()
     add_custom_target(stage_qt_runtime ALL
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "${QT_BIN_DIR}/Qt6Core.dll"
             "${QT_BIN_DIR}/Qt6Gui.dll"
             "${QT_BIN_DIR}/Qt6Network.dll"
             "${QT_BIN_DIR}/Qt6Widgets.dll"
+            ${QT_TEST_DLL}
             ${OPENSSL_RUNTIME_DLLS}
             ${MINGW_RUNTIME_DLLS}
             $<TARGET_FILE_DIR:MinecraftLauncher>/

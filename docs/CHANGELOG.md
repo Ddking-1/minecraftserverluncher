@@ -1,6 +1,22 @@
 ﻿# CHANGELOG
 
 ## Unreleased
+### Launcher - MSVC 2022 build with the /W4 /WX gate (2026-11-16)
+
+- Visual Studio 2022 Build Tools (17.14.37906.3, MSVC 19.44.35230, Windows SDK
+  10.0.26100.0) are installed, so the launcher is finally built with the
+  compiler family the project targets.
+- Configure (`Visual Studio 17 2022` generator, Qt 6.6.3 `msvc2019_64`) and the
+  Release build succeed. `MinecraftLauncher` compiles clean under `/W4 /WX`; the
+  only warning in the build is C4834 in the `test_main_window` target, which
+  does not use `/WX`.
+- Fixed a runtime packaging defect the MSVC run exposed: the tests link the
+  shared `Qt6Test.dll`, which CMake never staged, so 14 of 23 tests aborted with
+  `0xc0000135` (STATUS_DLL_NOT_FOUND). `launcher/CMakeLists.txt` now copies it
+  next to the binaries when present.
+- `ctest -C Release`: 23/23 passing, matching the MinGW result; the MSVC-built
+  `MinecraftLauncher.exe` starts normally.
+
 ### Launcher - OpenSSL 3 and HTTPS end-to-end verification (2026-11-16)
 
 - Qt's OpenSSL 3 package (3.0.16) is installed and the runtime is staged next to
