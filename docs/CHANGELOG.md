@@ -1,6 +1,22 @@
 ﻿# CHANGELOG
 
 ## Unreleased
+### CI - Windows workflows actually build on hosted `windows-latest` (2026-11-16)
+
+- `launcher.yml` and `backend.yml` now use `runs-on: windows-latest` (Option A,
+  `docs/PROJECT_STATUS.md` §9) instead of a `[self-hosted, windows]` label with
+  no registered runner, so their jobs no longer queue forever.
+- Made the hosted launcher job build for real after the first run exposed three
+  image-specific problems: the action exports no `Qt6_DIR` (Qt now installs to a
+  known path and `CMAKE_PREFIX_PATH` is derived from it; aqt appends its own
+  `Qt` folder), `windows-latest` is the `windows-2025-vs2026` image so the
+  pinned `Visual Studio 17 2022` generator does not exist (the newest available
+  generator is detected), and a failed Qt install now fails the job instead of
+  being hidden by `continue-on-error` plus gated steps.
+- Verified: backend run `43935525316` (go mod verify/vet/test/build) and launcher
+  run `43936830013` (Qt 6.6.3 `msvc2019_64`, configure, build, 23/23 CTest) both
+  succeed on GitHub's machines, and `linux-ci` stays green.
+
 ### CI - self-hosted Debian runner and a Linux workflow (2026-11-16)
 
 - Added a repository-scoped GitHub Actions self-hosted runner on the Debian 13

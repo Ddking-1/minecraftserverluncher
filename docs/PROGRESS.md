@@ -987,3 +987,45 @@ Manual user action:
 None for the runner itself. Note that the runner executes repo workflows as
 user `ai2`; keep the host patched and do not open the private repo to
 untrusted collaborators.
+
+## 2026-11-16 — WINDOWS CI MOVED TO GITHUB-HOSTED windows-latest (OPTION A)
+
+Agent/model: Buffy (Codebuff)
+Branch: ci/windows-latest-runners, ci/launcher-windows-real-build, ci/launcher-vs2026-generator (all fast-forward merged into master)
+Task: Owner chose Option A: run the Windows workflows on GitHub's free
+`windows-latest` runners instead of a self-hosted Windows runner, with a warning
+if the 2000 free min/month run out.
+Started: 2026-11-16
+Completed: 2026-11-16
+Files:
+- `.github/workflows/launcher.yml`, `.github/workflows/backend.yml` (`runs-on:
+  windows-latest`)
+- `.github/workflows/launcher.yml` also: explicit Qt install `dir`, generator
+  detection, no `continue-on-error`, no gated build steps
+- `docs/PROJECT_STATUS.md` (§9 result + image facts), `docs/AI_CONTEXT.md`,
+  `docs/CHANGELOG.md`, `docs/WORK_STATE.md`, `docs/PROGRESS.md`
+Tests:
+- Backend run 43935525316 on windows-latest: `go mod verify`, `go vet`,
+  `go test`, `go build` all success (real execution).
+- Launcher run 43936830013 on windows-latest: Install Qt (6.6.3 msvc2019_64),
+  Configure, Build, Test all success; `100% tests passed out of 23`.
+- `linux-ci` run 43936830033 on master: success.
+Findings during the first hosted run:
+- `install-qt-action` exports no `Qt6_DIR` -> `CMAKE_PREFIX_PATH` became "/..".
+- aqt appends its own `Qt` folder -> real prefix is
+  `<workspace>/Qt/6.6.3/msvc2019_64`.
+- `windows-latest` = `windows-2025-vs2026` image, so `-G "Visual Studio 17
+  2022"` fails; the workflow now picks the newest generator present.
+- `continue-on-error` + `if:` gates turned the broken run into a green job that
+  built nothing; removed.
+Current status:
+DONE. Both Windows workflows run and pass on GitHub-hosted machines; master is
+green (linux-ci + launcher + backend).
+Next:
+Velocity proxy auth (N15–N20), then invite-only registration + granular admin
+permissions.
+Manual user action:
+Set a GitHub Actions usage/billing alert (Settings -> Billing) so you are warned
+before the 2000 free private-repo minutes/month are used up; if they run out,
+register your Windows PC as a self-hosted runner (Option B) and switch the two
+workflows back to it.

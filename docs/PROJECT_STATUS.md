@@ -198,6 +198,22 @@ but keeping both on `windows-latest` is simpler and still within the free tier.
 Note: Windows builds are also verified locally by the agent (MSVC + MinGW,
 23/23 tests), so even if CI minutes run out the builds are known to work.
 
+**Verified end-to-end on 2026-11-16** (runs `43935525316` backend, `43936830013`
+launcher): both workflows now really execute on GitHub's machines. The backend
+runs `go mod verify`, `go vet`, `go test`, `go build`; the launcher installs Qt
+6.6.3 `msvc2019_64`, configures, builds and passes **23/23** CTest tests. Three
+image facts were found and fixed during that first run:
+
+1. `install-qt-action` exports no `Qt6_DIR`, so `CMAKE_PREFIX_PATH` must come
+   from a known install path. The action also appends its own `Qt` folder, so Qt
+   lands in `<workspace>/Qt/6.6.3/msvc2019_64`.
+2. `windows-latest` is now the `windows-2025-vs2026` image, i.e. **Visual
+   Studio 2026**. A pinned `-G "Visual Studio 17 2022"` fails with "could not
+   find any instance of Visual Studio" there, so the workflow detects the newest
+   generator the image has.
+3. A failing Qt install must fail the job. The old `continue-on-error` + `if:`
+   gates turned the broken first run into a green job that built nothing.
+
 **Manual action for the owner:** set a billing/usage alert in GitHub →
 Settings → Billing → Actions spending limit, so you are notified before the
 2000 free minutes run out. If they do run out, switch to Option B (register

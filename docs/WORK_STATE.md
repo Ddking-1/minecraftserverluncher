@@ -20,6 +20,15 @@ unverified.
 Branch:
 master (all task branches fast-forward merged and pushed).
 
+CI status (2026-11-16): `linux-ci` runs on the self-hosted Debian runner; the
+Windows workflows (`launcher.yml`, `backend.yml`) now run on GitHub-hosted
+`windows-latest` and are green end-to-end — launcher run `43936830013` builds
+with Qt 6.6.3 `msvc2019_64` and passes 23/23 CTest tests, backend run
+`43935525316` passes `go mod verify`, `go vet`, `go test`, `go build`. The image
+is `windows-2025-vs2026`, so the workflow detects the newest Visual Studio
+generator. Free private-repo Actions minutes: 2000/month; the owner sets a
+billing alert and switches to a self-hosted Windows runner if they run out.
+
 Phase 3 tasks (all DONE):
 - P3-01 SettingsStore (launcher.json load/save, defaults, atomic) + tests
 - P3-02 Mod list scanner (mods/ dir, enabled/disabled, sorted) + tests

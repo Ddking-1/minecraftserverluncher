@@ -50,10 +50,16 @@ runner 2.338.2) runs on the LAN Debian 13 host `192.168.1.23` as a systemd
 service, with labels `self-hosted, linux, x64, debian-13`.
 `.github/workflows/linux-ci.yml` uses it for the Go backend suite and the
 Velocity build and is the only workflow that currently produces runs.
-`launcher.yml` and `backend.yml` still target `[self-hosted, windows]`; no
-Windows runner is registered, so those jobs queue (with path filters) instead of
-running. The old `ci.yml` was deleted because it duplicated the other workflows
-and queued an unfiltered Windows job on every push to `master`.
+`launcher.yml` and `backend.yml` target GitHub-hosted `windows-latest` (Option A);
+both really run there since 2026-11-16 (backend: go mod verify/vet/test/build;
+launcher: Qt 6.6.3 `msvc2019_64`, Configure, Build, 23/23 CTest tests). That image
+is `windows-2025-vs2026`, so the Configure step detects the newest Visual Studio
+generator instead of pinning VS 17, `install-qt-action` is given an explicit
+`dir` (aqt installs into `<workspace>/Qt/<version>/<arch>` because it appends its
+own `Qt` folder), and a failed Qt install fails the job (no `continue-on-error`
+or gated steps that could skip the build). The old `ci.yml` was deleted because
+it duplicated the other workflows and queued an unfiltered Windows job on every
+push to `master`.
 
 Host access and runner operational details are kept out of the repository in
 `runner.env` in the repository root (git-ignored through the existing `*.env`
@@ -207,11 +213,9 @@ configure and `cmake --build ... --config Release` succeed with Qt 6.6.3 under
 both MinGW GCC 13.1 and MSVC 2022; CTest runs 23/23 passing tests under both,
 including the `/W4 /WX` gate on the MSVC launcher target. Library/asset download steps
 remain stubs pending DECISION-005. The CI workflow
-(`.github/workflows/launcher.yml`) runs on the self-hosted Windows runner; the
-`jurplel/install-qt-action` step is non-blocking (`continue-on-error: true`)
-and the Configure/Build/Test steps are gated on its success, so the workflow
-passes even when Qt cannot be installed (Qt is not pre-installed on the
-runner).
+(`.github/workflows/launcher.yml`) runs on GitHub-hosted `windows-latest`, where
+Qt 6.6.3 is installed by `jurplel/install-qt-action`; a failing install now fails
+the job instead of skipping Configure/Build/Test.
 
 The Velocity plugin builds against `velocity-api:4.2.0` with JDK 25
 (`./gradlew build` produces `build/libs/minecraftserverlauncher-velocity-0.1.0.jar`).
