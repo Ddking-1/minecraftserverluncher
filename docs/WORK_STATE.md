@@ -543,3 +543,23 @@ Verification:
 
 Branch:
 fix/msvc-strict-warnings-tests.
+
+## 2026-11-16 - MERGED INTO master
+
+Both task branches were fast-forward merged into `master` (no merge commits, no
+force pushes, linear history preserved):
+
+1. `fix/windows-build-and-e2e-verification` (`bf3862b`, `ba18545`, `49cff8d`,
+   `78f66c6`) - the Windows build/CTest work, the OpenSSL 3 + TLS staging, the
+   MSVC 2022 verification and the `Qt6Test.dll` staging fix.
+2. `fix/msvc-strict-warnings-tests` (`8373675`) - the C4834 fix and the
+   warnings-as-errors gate on every test target.
+
+`master` is now at `8373675` and matches `origin/master`.
+Post-merge verification on `master` itself:
+- MSVC 2022 Release build: exit 0, zero warnings/errors.
+- MinGW GCC 13.1 Release build: exit 0.
+- `ctest`: 23/23 passed on both toolchains.
+
+The merged task branches were left in place (they are already contained in
+`master`); no branch was deleted and no history was rewritten.

@@ -912,3 +912,31 @@ that code.
 
 Manual user action:
 None.
+
+## 2026-11-16 — MERGE OF THE TWO LAUNCHER TASK BRANCHES INTO master
+
+Agent/model: Buffy (Codebuff) - code agent
+Branch: docs/merge-windows-verification (merged into master)
+Task: Finish the Git/GitHub handling: merge the completed task branches into
+  `master`, push, and verify `master`.
+Started: 2026-11-16
+Completed: 2026-11-16
+
+Files:
+- docs/WORK_STATE.md, docs/PROGRESS.md (merge record only, no code change)
+
+Tests (run on merged `master`, commit `8373675`):
+- MSVC 2022 Release build: exit 0, zero warnings/errors.
+- MinGW GCC 13.1 Release build: exit 0.
+- `ctest`: 23/23 passed on both toolchains.
+
+Current status:
+DONE. `master` = `origin/master` = `8373675`, linear history, both toolchains
+build and test green. `fix/windows-build-and-e2e-verification` and
+`fix/msvc-strict-warnings-tests` are fully contained in `master`.
+
+Next:
+No pending local task branches.
+
+Manual user action:
+None.
