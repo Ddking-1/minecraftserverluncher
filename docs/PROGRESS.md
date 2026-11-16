@@ -809,3 +809,34 @@ transport.
 Manual user action:
 None for Git. The user should keep OpenSSL 3 available (OPENSSL_DIR or the Qt
 bin directory) when packaging.
+
+## 2026-11-16 — MSVC 2022 BUILD ATTEMPT (BLOCKED)
+
+Agent/model: Buffy (Codebuff) - code agent
+Branch: fix/windows-build-and-e2e-verification
+Task: Build the launcher and run the CTest suite with MSVC 2022 so the
+  `/W4 /WX` warnings-as-errors gate is covered.
+Started: 2026-11-16
+Completed: 2026-11-16 (blocked, no code changes)
+
+Files:
+- docs/WORK_STATE.md, docs/PROGRESS.md (this entry)
+
+Tests:
+- Qt 6.6.3 `msvc2019_64` installed OK via aqtinstall.
+- No MSVC toolchain present: no Visual Studio 2022, no `vswhere.exe`, no
+  Windows SDK.
+- `vs_buildtools.exe` (C++ workload) elevation was requested twice and was
+  cancelled at the UAC prompt both times, so nothing was installed.
+
+Current status:
+BLOCKED on administrator approval. Nothing was changed on the machine beyond
+the Qt MSVC binaries, and no repository code was modified by this attempt.
+
+Next:
+Install the Visual Studio 2022 Build Tools C++ workload, then run the MSVC
+configure/build/ctest commands recorded in docs/WORK_STATE.md.
+
+Manual user action:
+Approve/perform the elevated Visual Studio Build Tools installation (see the
+exact command in docs/WORK_STATE.md).

@@ -459,3 +459,26 @@ public chains verify. Recorded as an observation, not a defect.
 Branch:
 fix/windows-build-and-e2e-verification (same task branch; the OpenSSL work is a
 second commit on it).
+
+## 2026-11-16 - MSVC 2022 BUILD ATTEMPT (BLOCKED, NO CODE CHANGES)
+
+The MSVC build could not be run: this machine has no Visual Studio, no MSVC
+compiler and no Windows SDK (`vswhere.exe`, `Program Files (x86)/Microsoft
+Visual Studio/2022` and `Windows Kits/10` are all absent). The Qt 6.6.3
+`msvc2019_64` binaries were installed successfully via aqtinstall, so only the
+compiler is missing.
+
+Two elevated installs of `vs_buildtools.exe` (17.14, C++ workload) were
+requested and both were cancelled at the UAC prompt, so nothing was installed
+and no system change was made.
+
+Exact next step (requires an administrator):
+1. Run `C:\Users\Try.APAPC\devtools\dl\vs_buildtools.exe` and select the
+   "Desktop development with C++" workload, or run it elevated with
+   `--quiet --wait --norestart --installPath "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools" --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended`.
+2. Then:
+   `cmake -S launcher -B build-msvc -G "Visual Studio 17 2022" -A x64 -DCMAKE_PREFIX_PATH=C:/Users/Try.APAPC/Qt/6.6.3/msvc2019_64`
+   `cmake --build build-msvc --config Release`
+   `ctest --test-dir build-msvc -C Release --output-on-failure`
+   `MinecraftLauncher` is built with `/W4 /WX`, so this run is the actual
+   warnings-as-errors gate that the GCC 13.1 build could not cover.
