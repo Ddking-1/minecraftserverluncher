@@ -60,7 +60,7 @@ func NewServer(db *database.DB, cfg *config.Config, skinHandler *SkinHandler) *S
 		devices:     devices.NewService(db),
 		cfg:         cfg,
 		SkinHandler: skinHandler,
-		limiter: NewRateLimiter(Config{
+		limiter:     NewRateLimiter(Config{
 			RequestsPerMinute: cfg.RateLimitPerMinute,
 			TrustProxy:        cfg.TrustProxy,
 		}),
@@ -69,6 +69,13 @@ func NewServer(db *database.DB, cfg *config.Config, skinHandler *SkinHandler) *S
 		statsCache:   cache.New[string, any](30 * time.Second),
 		accountCache: cache.New[int64, *database.Account](5 * time.Minute),
 		sessionCache: cache.New[int64, *sessions.TokenPair](2 * time.Minute),
+	}
+
+	// Wire tripwire recording into the skin handler (if any).
+	if skinHandler != nil {
+		skinHandler.OnTripwire = func(r *http.Request, kind, detail string) {
+			s.recordTripwire(r, kind, detail)
+		}
 	}
 
 	// The async skin worker persists validated uploads and invalidates the

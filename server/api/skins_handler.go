@@ -27,6 +27,8 @@ type SkinHandler struct {
 	History     *skins.ThreadSafeSkinHistory
 	RateLimiter *RateLimiter
 	DB          *database.DB // optional; enables skin approval workflow
+	// OnTripwire, if set, records an anomaly event (best-effort).
+	OnTripwire func(r *http.Request, kind, detail string)
 }
 
 func (h *SkinHandler) handleUpload(w http.ResponseWriter, r *http.Request) {
@@ -56,6 +58,9 @@ func (h *SkinHandler) handleUpload(w http.ResponseWriter, r *http.Request) {
 
 	processed, err := skins.ProcessSkin(f, file[0].Size)
 	if err != nil {
+		if h.OnTripwire != nil {
+			h.OnTripwire(r, "invalid_skin_upload", err.Error())
+		}
 		writeError(w, http.StatusBadRequest, "invalid skin: "+err.Error())
 		return
 	}
