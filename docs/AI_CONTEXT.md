@@ -248,3 +248,7 @@ in honeypot/invalid-creds), per-user RBAC admin auth (adminAuthorized now
 accepts bearer with admin permission/role; admin role+permission seeded),
 admin web UI rewired to real bearer-token endpoints, security audit follow-up.
 linux-ci green.
+
+Batch (2026-11-16): Cloudflare Turnstile CAPTCHA (config-gated, dev mode when
+unset), admin dashboard HTML (web/static/admin.html), skin-manager rewired with
+Turnstile widget. linux-ci green.

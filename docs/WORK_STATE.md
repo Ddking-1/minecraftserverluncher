@@ -649,3 +649,5 @@ master; security audit documented in docs/SECURITY_AUDIT.md.
 
 Batch (2026-11-16): tripwire + RBAC admin + admin web UI + security fixes
 landed on master; CI green.
+
+Batch (2026-11-16): Turnstile CAPTCHA + admin dashboard landed; master green.

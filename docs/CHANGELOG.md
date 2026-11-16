@@ -490,3 +490,9 @@ No production functionality is claimed at this stage.
 - adminAuthorized now accepts per-user bearer tokens with admin permission/role
   (shared token still supported); admin role+permission seeded on migrate.
 - web/static/skin-manager.html rewired to real login + bearer-token endpoints.
+
+### CAPTCHA / admin dashboard (2026-11-16)
+
+- Cloudflare Turnstile verification on register/login (env-gated).
+- Admin dashboard (web/static/admin.html) wired to real endpoints.
+- skin-manager.html now uses real bearer-token auth + Turnstile widget.
