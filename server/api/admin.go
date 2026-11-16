@@ -11,16 +11,39 @@ import (
 // adminAuthorized reports whether the request carries the configured admin
 // token. If no admin token is configured, admin endpoints are disabled.
 func (s *Server) adminAuthorized(w http.ResponseWriter, r *http.Request) bool {
+	// Legacy shared admin token (backward compatible).
+	if s.cfg.AdminToken != "" {
+		provided := r.Header.Get("X-Admin-Token")
+		if provided != "" && subtle.ConstantTimeCompare([]byte(provided), []byte(s.cfg.AdminToken)) == 1 {
+			return true
+		}
+	}
+
+	// Per-user RBAC migration: a bearer token for an account that has the
+	// "admin" role or the "admin" permission is also accepted. This lets
+	// individual accounts act as admins without sharing the global token.
+	if token, ok := bearerToken(r); ok {
+		accountID, err := s.sessions.ValidateAccess(token)
+		if err == nil && accountID > 0 {
+			if has, _ := s.db.HasPermissionFast(accountID, "admin"); has {
+				return true
+			}
+			// Fall back to a role named "admin".
+			roles, _ := s.db.AccountRoles(accountID)
+			for _, role := range roles {
+				if role.Name == "admin" {
+					return true
+				}
+			}
+		}
+	}
+
 	if s.cfg.AdminToken == "" {
 		http.NotFound(w, r)
 		return false
 	}
-	provided := r.Header.Get("X-Admin-Token")
-	if subtle.ConstantTimeCompare([]byte(provided), []byte(s.cfg.AdminToken)) != 1 {
-		writeError(w, http.StatusUnauthorized, "unauthorized")
-		return false
-	}
-	return true
+	writeError(w, http.StatusUnauthorized, "unauthorized")
+	return false
 }
 
 type hwidRequest struct {

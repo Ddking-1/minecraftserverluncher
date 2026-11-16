@@ -372,3 +372,16 @@ func (s *Server) handleAdminSkinApproval(w http.ResponseWriter, r *http.Request)
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"skin_id": id, "approved": req.Approved})
 }
+
+// handleAdminTripwires lists recent tripwire (tamper/anomaly) events.
+func (s *Server) handleAdminTripwires(w http.ResponseWriter, r *http.Request) {
+	if !s.adminAuthorized(w, r) {
+		return
+	}
+	events, err := s.db.ListTripwireEvents(200)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"events": events, "total": len(events)})
+}

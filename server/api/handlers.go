@@ -54,12 +54,13 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
 	if !decodeBody(w, r, &req) {
 		return
 	}
+	username := strings.TrimSpace(req.Username)
 	// Anti-bot: honeypot field must be empty.
 	if strings.TrimSpace(req.Website) != "" {
+		s.recordTripwire(r, "honeypot_register", username)
 		writeError(w, http.StatusBadRequest, "invalid request")
 		return
 	}
-	username := strings.TrimSpace(req.Username)
 	if !validUsername(username) {
 		writeError(w, http.StatusBadRequest, "invalid username")
 		return
@@ -115,6 +116,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	// Anti-bot: honeypot field must be empty.
 	if strings.TrimSpace(req.Website) != "" {
+		s.recordTripwire(r, "honeypot_login", strings.TrimSpace(req.Username))
 		writeError(w, http.StatusBadRequest, "invalid request")
 		return
 	}
@@ -137,6 +139,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := auth.VerifyPassword(acc.PasswordHash, req.Password); err != nil {
+		s.recordTripwire(r, "invalid_credentials", strings.TrimSpace(req.Username))
 		writeError(w, http.StatusUnauthorized, "invalid credentials")
 		return
 	}

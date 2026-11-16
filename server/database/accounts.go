@@ -318,6 +318,17 @@ CREATE TABLE IF NOT EXISTS invite_allowlist (
 );
 CREATE INDEX IF NOT EXISTS idx_invite_allowlist_identifier ON invite_allowlist(identifier);
 
+CREATE TABLE IF NOT EXISTS tripwire_events (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    kind       TEXT    NOT NULL,
+    detail     TEXT    NOT NULL DEFAULT '',
+    ip         TEXT    NOT NULL DEFAULT '',
+    account_id INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT    NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_tripwire_events_kind ON tripwire_events(kind);
+CREATE INDEX IF NOT EXISTS idx_tripwire_events_created ON tripwire_events(created_at);
+
 CREATE TABLE IF NOT EXISTS skin_file_approvals (
     skin_id     TEXT    PRIMARY KEY,
     approved    INTEGER NOT NULL DEFAULT 1,
@@ -341,6 +352,17 @@ CREATE TABLE IF NOT EXISTS skin_file_approvals (
 			}
 		}
 	}
+	// Seed the default admin role + permission so per-user RBAC works out of
+	// the box (idempotent).
+	if _, err := db.sql.Exec(`INSERT OR IGNORE INTO roles (name, description, created_at) VALUES ('admin', 'Administrator role', ?)`, nowText()); err != nil {
+		return fmt.Errorf("database: seed admin role: %w", err)
+	}
+	if _, err := db.sql.Exec(`INSERT OR IGNORE INTO permissions (name, description, created_at) VALUES ('admin', 'Administrator permission', ?)`, nowText()); err != nil {
+		return fmt.Errorf("database: seed admin permission: %w", err)
+	}
+	// Link the admin permission to the admin role.
+	_, _ = db.sql.Exec(`INSERT OR IGNORE INTO role_permissions (role_id, permission_id)
+		SELECT r.id, p.id FROM roles r, permissions p WHERE r.name='admin' AND p.name='admin'`)
 	return nil
 }
 
@@ -1523,4 +1545,63 @@ func (db *DB) IsSkinFileApproved(skinID string) (bool, error) {
 		return false, fmt.Errorf("database: is skin file approved: %w", err)
 	}
 	return v != 0, nil
+}
+
+// ---------------------------------------------------------------------------
+// Tripwire events (anomaly / tamper detection)
+// ---------------------------------------------------------------------------
+
+// TripwireEvent records a suspicious client or request anomaly.
+type TripwireEvent struct {
+	ID        int64
+	Kind      string
+	Detail    string
+	IP        string
+	AccountID int64
+	CreatedAt string
+}
+
+// RecordTripwire persists a tripwire event and returns its id.
+func (db *DB) RecordTripwire(kind, detail, ip string, accountID int64) (int64, error) {
+	res, err := db.sql.Exec(
+		`INSERT INTO tripwire_events (kind, detail, ip, account_id, created_at) VALUES (?, ?, ?, ?, ?)`,
+		kind, detail, ip, accountID, nowText(),
+	)
+	if err != nil {
+		return 0, fmt.Errorf("database: record tripwire: %w", err)
+	}
+	id, err := res.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("database: tripwire id: %w", err)
+	}
+	return id, nil
+}
+
+// ListTripwireEvents returns the most recent tripwire events (newest first).
+func (db *DB) ListTripwireEvents(limit int) ([]TripwireEvent, error) {
+	if limit <= 0 {
+		limit = 100
+	}
+	rows, err := db.sql.Query(
+		`SELECT id, kind, detail, ip, account_id, created_at
+		 FROM tripwire_events ORDER BY id DESC LIMIT ?`, limit,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("database: list tripwire: %w", err)
+	}
+	defer rows.Close()
+	var out []TripwireEvent
+	for rows.Next() {
+		var e TripwireEvent
+		var created string
+		if err := rows.Scan(&e.ID, &e.Kind, &e.Detail, &e.IP, &e.AccountID, &created); err != nil {
+			return nil, fmt.Errorf("database: scan tripwire: %w", err)
+		}
+		e.CreatedAt = created
+		out = append(out, e)
+	}
+	if out == nil {
+		out = []TripwireEvent{}
+	}
+	return out, rows.Err()
 }
