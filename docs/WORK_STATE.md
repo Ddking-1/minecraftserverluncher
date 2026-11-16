@@ -616,3 +616,6 @@ If `runner.env` is ever exposed, rotate the two passwords on the host
 Branch:
 ci/linux-runner-tests (linux-ci workflow) and ci/drop-redundant-workflow
 (workflow cleanup + this documentation).
+
+docs/project-status-overview: adds docs/PROJECT_STATUS.md, an owner-facing gap
+analysis and minimum publishable baseline (draft).

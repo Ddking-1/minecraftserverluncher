@@ -21,6 +21,9 @@
   copy-paste commands). It is excluded by the existing `*.env` rule, so it never
   enters the repository, and it can be copied to another machine to reuse the
   setup.
+- Added `docs/PROJECT_STATUS.md`: an owner-facing gap analysis and a proposed
+  minimum publishable baseline (v1), plus the blocking decisions and open
+  questions. Documentation only.
 
 ### Launcher - warnings-as-errors for the test targets (2026-11-16)
 

@@ -59,7 +59,12 @@ Host access and runner operational details are kept out of the repository in
 `runner.env` in the repository root (git-ignored through the existing `*.env`
 rule: host, SSH and root login, runner name/version/labels, systemd unit, paths
 and commands). Read that file for access; never commit it or paste its values
-into issues, logs or commits. The CTest suite (hwid, settings,
+into issues, logs or commits.
+
+A high-level, owner-facing gap analysis and minimum publishable baseline live
+in `docs/PROJECT_STATUS.md` (draft, pending owner scope decisions). It lists
+what is verified, what is missing, which decisions block release (DECISION-004,
+DECISION-005, skin-files cross-account read) and proposed v1 scope. The CTest suite (hwid, settings,
 update_manifest, skin_model, backend_contract, settings_store, mod_scanner,
 skin_cache, rotating_logger, update_checker, file_integrity, editor_config,
 skin_client, download_asset, download_queue, java_detector, game_paths,
