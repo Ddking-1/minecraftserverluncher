@@ -30,5 +30,3 @@ func clientIPForTripwire(r *http.Request) string {
 	}
 	return strings.TrimSpace(host)
 }
-EOF
-echo done
