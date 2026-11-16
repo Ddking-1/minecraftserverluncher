@@ -1061,3 +1061,13 @@ Username/skin approval workflow, anti-bot hardening, admin web UI wiring.
 Manual user action:
 None required. Optional: run build-local/Release/MinecraftLauncher.exe on a
 clean machine to confirm the deployed Qt DLLs are sufficient.
+
+## 2026-11-16 — ANTI-BOT + APPROVAL WORKFLOWS + CI ARTIFACT + SECURITY AUDIT
+
+Agent/model: Buffy (Codebuff)
+Branch: master (commits 2383908..076d43d)
+Task: Anti-bot hardening, account/skin approval workflows, launcher CI artifact,
+security audit of whole codebase.
+Tests: linux-ci green (go vet/test/build); launcher workflow green incl.
+windeployqt + upload-artifact.
+Current status: DONE.
