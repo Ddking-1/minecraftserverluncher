@@ -53,3 +53,13 @@ Scope: full backend (server/), launcher (launcher/), web static assets, CI workf
 - Rate limiter uses the right-most XFF entry only when TrustProxy is on.
 - Security headers (nosniff, frame deny, no-store, referrer no-referrer) set
   globally.
+
+## Update (2026-11-16, second pass)
+
+- Tripwire anomaly tracking added (DB + admin endpoint + recording).
+- Admin authorization now accepts per-user bearer tokens with the "admin"
+  permission/role, in addition to the shared X-Admin-Token (backward compat).
+- Cloudflare Turnstile CAPTCHA integration (config-gated, dev mode when unset).
+- Admin dashboard and skin-manager rewired to real endpoints.
+- Remaining: migrate individual admin handlers to RequirePermission for
+  finer-grained control; add CAPTCHA to frontend with a real site key.
