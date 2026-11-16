@@ -64,6 +64,17 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Invite-only beta registration: when an allowlist is configured, only
+	// allowlisted identifiers may register. An empty allowlist keeps the
+	// open-registration behaviour so development and tests keep working.
+	if count, err := s.db.InviteCount(); err == nil && count > 0 {
+		invited, err := s.db.IsInvited(username)
+		if err != nil || !invited {
+			writeError(w, http.StatusForbidden, "nem beta tester")
+			return
+		}
+	}
+
 	hash, err := auth.HashPassword(req.Password, s.cfg.BcryptCost)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "internal error")

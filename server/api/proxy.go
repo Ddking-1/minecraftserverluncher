@@ -30,7 +30,7 @@ func (s *Server) handleProxyAuth(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "denied"})
 		return
 	}
-	_, err := s.sessions.ValidateAccess(token)
+	accountID, err := s.sessions.ValidateAccess(token)
 	if err != nil {
 		// Distinguish "invalid token" from a server error, but never leak
 		// account info.
@@ -39,6 +39,17 @@ func (s *Server) handleProxyAuth(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		writeError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+	// A Minecraft-level ban is distinct from a system ban: the account may
+	// still log in to the launcher, but proxy joins are rejected.
+	banned, err := s.db.IsMinecraftBanned(accountID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+	if banned {
+		writeJSON(w, http.StatusOK, map[string]string{"status": "denied"})
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})

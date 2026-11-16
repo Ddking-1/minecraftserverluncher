@@ -179,6 +179,16 @@ func (s *Server) Handler() http.Handler {
 	admin.HandleFunc("GET /api/admin/hwid/bans", s.handleListHWIDBans)
 	admin.HandleFunc("GET /api/admin/users", s.handleAdminListUsers)
 	admin.HandleFunc("DELETE /api/admin/users/{id}", s.handleAdminDeleteUser)
+	admin.HandleFunc("POST /api/admin/users/{id}/minecraft-ban", s.handleAdminMinecraftBan)
+	admin.HandleFunc("GET /api/admin/users/{id}/roles", s.handleAdminUserRoles)
+	admin.HandleFunc("POST /api/admin/users/{id}/roles", s.handleAdminGrantRole)
+	admin.HandleFunc("DELETE /api/admin/users/{id}/roles/{role}", s.handleAdminRevokeRole)
+	admin.HandleFunc("POST /api/admin/users/{id}/permissions", s.handleAdminGrantPermission)
+	admin.HandleFunc("GET /api/admin/invites", s.handleAdminListInvites)
+	admin.HandleFunc("POST /api/admin/invites", s.handleAdminAddInvite)
+	admin.HandleFunc("DELETE /api/admin/invites/{id}", s.handleAdminRemoveInvite)
+	admin.HandleFunc("GET /api/admin/roles", s.handleAdminListRoles)
+	admin.HandleFunc("GET /api/admin/permissions", s.handleAdminListPermissions)
 	admin.HandleFunc("POST /api/server/start", s.handleStartServer)
 
 	// Middleware-wrapped route groups. Admin routes only require the

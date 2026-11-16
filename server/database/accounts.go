@@ -43,6 +43,14 @@ type HWIDBan struct {
 	CreatedAt time.Time
 }
 
+// Invite represents an allowlisted registration identifier (username or
+// email) for invite-only beta registration.
+type Invite struct {
+	ID         int64
+	Identifier string
+	CreatedAt  time.Time
+}
+
 // Account is a registered user account.
 type Account struct {
 	ID           int64
@@ -189,10 +197,11 @@ var _ = func() { _ = context.Background() }
 func (db *DB) migrate() error {
 	const schema = `
 CREATE TABLE IF NOT EXISTS accounts (
-    id            INTEGER PRIMARY KEY AUTOINCREMENT,
-    username      TEXT    NOT NULL UNIQUE,
-    password_hash TEXT    NOT NULL,
-    created_at    TEXT    NOT NULL
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    username         TEXT    NOT NULL UNIQUE,
+    password_hash    TEXT    NOT NULL,
+    created_at       TEXT    NOT NULL,
+    minecraft_banned INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS devices (
@@ -300,9 +309,28 @@ CREATE INDEX IF NOT EXISTS idx_role_permissions_role ON role_permissions(role_id
 CREATE INDEX IF NOT EXISTS idx_role_permissions_permission ON role_permissions(permission_id);
 CREATE INDEX IF NOT EXISTS idx_permissions_name ON permissions(name);
 CREATE INDEX IF NOT EXISTS idx_roles_name ON roles(name);
+
+CREATE TABLE IF NOT EXISTS invite_allowlist (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    identifier  TEXT    NOT NULL UNIQUE,
+    created_at  TEXT    NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_invite_allowlist_identifier ON invite_allowlist(identifier);
 `
 	if _, err := db.sql.Exec(schema); err != nil {
 		return fmt.Errorf("database: migrate: %w", err)
+	}
+	// Backfill columns added after the initial schema so existing databases
+	// pick them up without a manual migration.
+	for _, stmt := range []string{
+		`ALTER TABLE accounts ADD COLUMN minecraft_banned INTEGER NOT NULL DEFAULT 0`,
+	} {
+		if _, err := db.sql.Exec(stmt); err != nil {
+			// Ignore "duplicate column" errors; any other error is fatal.
+			if !strings.Contains(strings.ToLower(err.Error()), "duplicate column") {
+				return fmt.Errorf("database: migrate alter: %w", err)
+			}
+		}
 	}
 	return nil
 }
@@ -1286,4 +1314,129 @@ func (db *DB) DeleteSelf(accountID, currentUserID int64) error {
 		return ErrForbidden
 	}
 	return db.DeleteAccount(accountID)
+}
+
+// ---------------------------------------------------------------------------
+// Invite allowlist (beta registration)
+// ---------------------------------------------------------------------------
+
+// AddInvite inserts an identifier into the invite allowlist. It returns
+// ErrConflict when the identifier is already present.
+func (db *DB) AddInvite(identifier string) (*Invite, error) {
+	identifier = strings.TrimSpace(identifier)
+	if identifier == "" {
+		return nil, fmt.Errorf("database: empty invite identifier")
+	}
+	now := nowText()
+	res, err := db.sql.Exec(
+		`INSERT INTO invite_allowlist (identifier, created_at) VALUES (?, ?)`,
+		identifier, now,
+	)
+	if err != nil {
+		if isUniqueViolation(err) {
+			return nil, ErrConflict
+		}
+		return nil, fmt.Errorf("database: add invite: %w", err)
+	}
+	id, err := res.LastInsertId()
+	if err != nil {
+		return nil, fmt.Errorf("database: add invite id: %w", err)
+	}
+	return &Invite{ID: id, Identifier: identifier, CreatedAt: mustParse(now)}, nil
+}
+
+// RemoveInvite deletes an invite by id. It is a no-op when the id does not
+// exist.
+func (db *DB) RemoveInvite(id int64) error {
+	if _, err := db.sql.Exec(`DELETE FROM invite_allowlist WHERE id = ?`, id); err != nil {
+		return fmt.Errorf("database: remove invite: %w", err)
+	}
+	return nil
+}
+
+// IsInvited reports whether identifier is on the allowlist.
+func (db *DB) IsInvited(identifier string) (bool, error) {
+	identifier = strings.TrimSpace(identifier)
+	var n int
+	if err := db.sql.QueryRow(
+		`SELECT COUNT(*) FROM invite_allowlist WHERE identifier = ?`,
+		identifier,
+	).Scan(&n); err != nil {
+		return false, fmt.Errorf("database: is invited: %w", err)
+	}
+	return n > 0, nil
+}
+
+// InviteCount returns the number of entries on the allowlist.
+func (db *DB) InviteCount() (int, error) {
+	var n int
+	if err := db.sql.QueryRow(`SELECT COUNT(*) FROM invite_allowlist`).Scan(&n); err != nil {
+		return 0, fmt.Errorf("database: invite count: %w", err)
+	}
+	return n, nil
+}
+
+// ListInvites returns all allowlisted identifiers, ordered by id.
+func (db *DB) ListInvites() ([]Invite, error) {
+	rows, err := db.sql.Query(`SELECT id, identifier, created_at FROM invite_allowlist ORDER BY id`)
+	if err != nil {
+		return nil, fmt.Errorf("database: list invites: %w", err)
+	}
+	defer rows.Close()
+
+	var out []Invite
+	for rows.Next() {
+		var inv Invite
+		var created string
+		if err := rows.Scan(&inv.ID, &inv.Identifier, &created); err != nil {
+			return nil, fmt.Errorf("database: scan invite: %w", err)
+		}
+		inv.CreatedAt = mustParse(created)
+		out = append(out, inv)
+	}
+	if out == nil {
+		out = []Invite{}
+	}
+	return out, rows.Err()
+}
+
+// ---------------------------------------------------------------------------
+// Minecraft-level ban (distinct from system/HWID bans)
+// ---------------------------------------------------------------------------
+
+// SetMinecraftBanned toggles the minecraft_banned flag for an account.
+func (db *DB) SetMinecraftBanned(accountID int64, banned bool) error {
+	val := 0
+	if banned {
+		val = 1
+	}
+	res, err := db.sql.Exec(
+		`UPDATE accounts SET minecraft_banned = ? WHERE id = ?`, val, accountID,
+	)
+	if err != nil {
+		return fmt.Errorf("database: set minecraft banned: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("database: set minecraft banned rows: %w", err)
+	}
+	if n == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// IsMinecraftBanned reports whether an account is banned from the Minecraft
+// network (proxy joins are rejected).
+func (db *DB) IsMinecraftBanned(accountID int64) (bool, error) {
+	var v int
+	if err := db.sql.QueryRow(
+		`SELECT minecraft_banned FROM accounts WHERE id = ?`, accountID,
+	).Scan(&v); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, ErrNotFound
+		}
+		return false, fmt.Errorf("database: is minecraft banned: %w", err)
+	}
+	return v != 0, nil
 }
