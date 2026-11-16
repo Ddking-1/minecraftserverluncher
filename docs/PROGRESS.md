@@ -940,3 +940,40 @@ No pending local task branches.
 
 Manual user action:
 None.
+
+## 2026-11-16 — SELF-HOSTED DEBIAN RUNNER + LINUX CI
+
+Agent/model: Buffy (Codebuff) - code agent
+Branch: ci/linux-runner-tests, ci/drop-redundant-workflow (both merged to master)
+Task: Install and configure a GitHub Actions self-hosted runner on the LAN
+  Debian host, then actually run tests on it; clean up the resulting CI state.
+Started: 2026-11-16
+Completed: 2026-11-16
+
+Files:
+- .github/workflows/linux-ci.yml (new)
+- .github/workflows/ci.yml (removed, redundant)
+- docs/WORK_STATE.md, docs/PROGRESS.md, docs/CHANGELOG.md, docs/AI_CONTEXT.md
+
+Tests:
+- Runner `debian-ai-runner` (2.338.2) online, labels self-hosted/linux/x64/debian-13.
+- `linux-ci` run 43907599898 on master: `go` job success, `velocity` job
+  success (~105 s total).
+- Local (Windows) verification unchanged: MSVC and MinGW builds green, ctest
+  23/23 on both.
+
+Current status:
+DONE. A self-hosted Linux runner is registered and systemd-managed; the Linux
+workflow runs the Go suite and the Velocity build on it. The redundant `ci`
+workflow that queued Windows jobs forever is gone.
+
+Next:
+The Windows workflows (`launcher.yml`, `backend.yml`) still target a Windows
+runner that is not registered: they stay queued whenever `launcher/**` or
+`server/**` changes. Either register the Windows runner again or move those two
+workflows to `windows-latest`.
+
+Manual user action:
+None for the runner itself. Note that the runner executes repo workflows as
+user `ai2`; keep the host patched and do not open the private repo to
+untrusted collaborators.

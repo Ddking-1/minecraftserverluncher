@@ -1,6 +1,22 @@
 ﻿# CHANGELOG
 
 ## Unreleased
+### CI - self-hosted Debian runner and a Linux workflow (2026-11-16)
+
+- Added a repository-scoped GitHub Actions self-hosted runner on the Debian 13
+  host `192.168.1.23` (`debian-ai-runner`, runner 2.338.2, labels
+  `self-hosted, linux, x64, debian-13`), installed as a systemd service so it
+  survives reboots.
+- Added `.github/workflows/linux-ci.yml`, which runs the Go backend suite
+  (`go mod verify`, `go vet`, `go test`, `go build`) and the Velocity build on
+  that runner. Its first run on `master` passed both jobs.
+- Removed `.github/workflows/ci.yml`. It duplicated `backend.yml`,
+  `launcher.yml` and the new Linux workflow, and its unfiltered Windows jobs
+  queued on every `master` push and never ran while the Windows runner was
+  offline.
+- Fixed the `Configure launcher (MSVC)` step in the (now removed) `ci.yml`: it
+  was invalid because a step had both `uses:` and `run:`.
+
 ### Launcher - warnings-as-errors for the test targets (2026-11-16)
 
 - Fixed C4834 in `launcher/auth/SessionManager.cpp`: `TokenStorage::save()` is

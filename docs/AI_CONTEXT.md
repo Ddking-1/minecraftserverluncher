@@ -43,7 +43,17 @@ produced, and `ctest` reports 23/23 passing. The verified toolchain is the Qt
 MSVC Release build is clean under `/W4 /WX` and `ctest -C Release` also reports
 23/23. The warnings-as-errors gate applies to every test executable as well
 (`/W4 /WX` on MSVC, `-Wall -Wextra -Werror` on GCC/Clang), so test-only code
-cannot hide warnings. The CTest suite (hwid, settings,
+cannot hide warnings.
+
+Continuous integration: a self-hosted GitHub Actions runner (`debian-ai-runner`,
+runner 2.338.2) runs on the LAN Debian 13 host `192.168.1.23` as a systemd
+service, with labels `self-hosted, linux, x64, debian-13`.
+`.github/workflows/linux-ci.yml` uses it for the Go backend suite and the
+Velocity build and is the only workflow that currently produces runs.
+`launcher.yml` and `backend.yml` still target `[self-hosted, windows]`; no
+Windows runner is registered, so those jobs queue (with path filters) instead of
+running. The old `ci.yml` was deleted because it duplicated the other workflows
+and queued an unfiltered Windows job on every push to `master`. The CTest suite (hwid, settings,
 update_manifest, skin_model, backend_contract, settings_store, mod_scanner,
 skin_cache, rotating_logger, update_checker, file_integrity, editor_config,
 skin_client, download_asset, download_queue, java_detector, game_paths,

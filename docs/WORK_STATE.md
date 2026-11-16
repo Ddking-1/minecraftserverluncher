@@ -563,3 +563,48 @@ Post-merge verification on `master` itself:
 
 The merged task branches were left in place (they are already contained in
 `master`); no branch was deleted and no history was rewritten.
+
+## 2026-11-16 - SELF-HOSTED GITHUB ACTIONS RUNNER (DEBIAN) AND LINUX CI
+
+A repository-scoped GitHub Actions self-hosted runner is installed on the LAN
+host `192.168.1.23` (note: the first hand-off said `192.168.1.24`, which does
+not exist on the network; `192.168.1.23:22` is the machine, `debian-ai`).
+
+Host and installation:
+- Debian GNU/Linux 13 (trixie), x86_64, systemd 257, 6 GB RAM, 26 GB free.
+- Runner `actions-runner` **2.338.2** under `/home/ai2/actions-runner`,
+  registered against `Ddking-1/minecraftserverluncher` as
+  `debian-ai-runner` with labels `self-hosted, linux, x64, debian-13`.
+- Runs as the systemd service
+  `actions.runner.Ddking-1-minecraftserverluncher.debian-ai-runner.service`
+  (enabled, active, user `ai2`). Manage with `./svc.sh status|start|stop` from
+  the runner directory; the service survives reboots.
+- The runner needed the .NET runtime dependencies (`libicu-dev` and friends),
+  installed once through the root account.
+
+CI layout after this change:
+- `.github/workflows/linux-ci.yml` (new) runs on `[self-hosted, linux, x64]`:
+  `go mod verify`, `go vet`, `go test ./... -count=1`, `go build ./...` in
+  `server/`, plus the Velocity Gradle build with JDK 25.
+- `.github/workflows/ci.yml` was **deleted**: it duplicated `backend.yml`
+  (Go), `launcher.yml` (Qt/MSVC) and the new `linux-ci` (Velocity), and because
+  it had no path filter it queued a Windows job on every push to `master` and
+  sat in the queue forever once the Windows runner went offline.
+- `launcher.yml` and `backend.yml` still target `[self-hosted, windows]` and
+  keep their path filters, so they only queue when `launcher/**` or
+  `server/**` changes.
+
+Verification:
+- Runner shows `online` in `gh api .../actions/runners`.
+- A run of `linux-ci` on `master` (`43907599898`) passed: both the `go` and
+  `velocity` jobs are `success` (~105 s).
+
+Credentials: the `ai2` SSH password and the root password used for the install
+were **not** written into the repository; they exist only in the transient
+`.tmp-remote/` helper directory on the operator machine, which is not tracked.
+The runner registration token was written through `/tmp` on the host and
+deleted immediately after `config.sh`.
+
+Branch:
+ci/linux-runner-tests (linux-ci workflow) and ci/drop-redundant-workflow
+(workflow cleanup + this documentation).
