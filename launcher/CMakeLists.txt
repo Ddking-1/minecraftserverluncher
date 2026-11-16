@@ -323,4 +323,48 @@ if(WIN32)
     add_dependencies(stage_qt_runtime MinecraftLauncher)
 endif()
 
+# Every test executable is compiled with the same warnings-as-errors gate as the
+# launcher, so test-only translation units cannot hide behind a weaker
+# configuration. Targets must be listed after they exist, hence this late block.
+set(LAUNCHER_TEST_TARGETS
+    test_hwid
+    test_settings
+    test_update_manifest
+    test_skin_model
+    test_backend_contract
+    test_settings_store
+    test_mod_scanner
+    test_skin_cache
+    test_rotating_logger
+    test_update_checker
+    test_file_integrity
+    test_editor_config
+    test_skin_client
+    test_download_asset
+    test_download_queue
+    test_java_detector
+    test_game_paths
+    test_game_launcher
+    test_editor_settings_widget
+    test_login_dialog
+    test_main_window
+    test_skin_upload_widget
+    test_update_manager
+)
+foreach(_test_target IN LISTS LAUNCHER_TEST_TARGETS)
+    if(MSVC)
+        target_compile_options(${_test_target} PRIVATE /W4 /WX)
+    elseif(CMAKE_CXX_COMPILER_ID MATCHES "(GNU|Clang)")
+        target_compile_options(${_test_target} PRIVATE -Wall -Wextra -Werror)
+    endif()
+endforeach()
+
+if(LibFuzzer_FOUND)
+    if(MSVC)
+        target_compile_options(fuzz_manifest_parser PRIVATE /W4 /WX)
+    elseif(CMAKE_CXX_COMPILER_ID MATCHES "(GNU|Clang)")
+        target_compile_options(fuzz_manifest_parser PRIVATE -Wall -Wextra -Werror)
+    endif()
+endif()
+
 enable_testing()

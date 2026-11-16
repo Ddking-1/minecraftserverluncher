@@ -41,7 +41,9 @@ produced, and `ctest` reports 23/23 passing. The verified toolchain is the Qt
 6.6.3 `mingw_64` package with MinGW GCC 13.1, and the MSVC 2022 Build Tools
 (MSVC 19.44, Windows SDK 10.0.26100) were installed later on 2026-11-16: the
 MSVC Release build is clean under `/W4 /WX` and `ctest -C Release` also reports
-23/23. The CTest suite (hwid, settings,
+23/23. The warnings-as-errors gate applies to every test executable as well
+(`/W4 /WX` on MSVC, `-Wall -Wextra -Werror` on GCC/Clang), so test-only code
+cannot hide warnings. The CTest suite (hwid, settings,
 update_manifest, skin_model, backend_contract, settings_store, mod_scanner,
 skin_cache, rotating_logger, update_checker, file_integrity, editor_config,
 skin_client, download_asset, download_queue, java_detector, game_paths,

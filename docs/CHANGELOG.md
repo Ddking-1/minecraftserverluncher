@@ -1,6 +1,17 @@
 ﻿# CHANGELOG
 
 ## Unreleased
+### Launcher - warnings-as-errors for the test targets (2026-11-16)
+
+- Fixed C4834 in `launcher/auth/SessionManager.cpp`: `TokenStorage::save()` is
+  `[[nodiscard]]`, and its result was discarded, so a failed write left the user
+  with a session that would silently disappear on the next launch. The failure
+  is now reported with `qWarning()` (the in-memory session stays valid).
+- Every test executable is now compiled with the same warnings-as-errors gate as
+  the launcher (`/W4 /WX` on MSVC, `-Wall -Wextra -Werror` on GCC/Clang), and so
+  is the libFuzzer target when enabled. Both build trees are warning-free and
+  `ctest` stays 23/23.
+
 ### Launcher - MSVC 2022 build with the /W4 /WX gate (2026-11-16)
 
 - Visual Studio 2022 Build Tools (17.14.37906.3, MSVC 19.44.35230, Windows SDK

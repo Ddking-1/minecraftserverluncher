@@ -2,6 +2,7 @@
 #include "SessionManager.h"
 
 #include <QDateTime>
+#include <QDebug>
 
 #include "BackendAuthClient.h"
 #include "TokenStorage.h"
@@ -115,5 +116,9 @@ void SessionManager::applyTokens(const QString &username, const QString &uuid,
     // (SkinClient) can authenticate without a separate token source.
     if (m_client != nullptr)
         m_client->setAccessToken(accessToken);
-    m_storage->save(*session);
+    // The in-memory session stays valid for this run, so a persistence failure
+    // (disk full, DPAPI unavailable) must not fail the login, but it cannot be
+    // silently ignored either: the next launch would ask for credentials again.
+    if (!m_storage->save(*session))
+        qWarning() << "Could not persist the auth session for" << username;
 }

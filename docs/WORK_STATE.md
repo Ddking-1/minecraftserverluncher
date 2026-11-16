@@ -518,3 +518,28 @@ directory is not on `PATH` either.
 
 Branch:
 fix/windows-build-and-e2e-verification.
+
+## 2026-11-16 - WARNINGS-AS-ERRORS FOR THE TESTS (C4834 FIXED)
+
+`launcher/auth/SessionManager.cpp` (the `applyTokens` tail) called
+`TokenStorage::save()`, which is `[[nodiscard]]`, and discarded the result. MSVC
+reported C4834 while compiling that translation unit for `test_main_window`.
+The session is set in memory first, so a failed write must not fail the login,
+but it also cannot be ignored: the next launch would ask for credentials again
+with no explanation. The result is now checked and reported with
+`qWarning() << "Could not persist the auth session for" << username;`.
+
+`launcher/CMakeLists.txt` now applies the same gate to every test executable
+(`LAUNCHER_TEST_TARGETS`, plus `fuzz_manifest_parser` when LibFuzzer is found):
+`/W4 /WX` on MSVC and `-Wall -Wextra -Werror` on GNU/Clang, so test-only code
+cannot hide behind a weaker configuration. The block sits after the targets are
+defined because `target_compile_options()` requires the target to exist.
+
+Verification:
+- MSVC 2022 Release: build exit 0 with **zero** warnings/errors in the log (the
+  C4834 warning is gone), `ctest -C Release`: 23/23 passed.
+- MinGW GCC 13.1 Release: build exit 0, also warning-free under
+  `-Wall -Wextra -Werror` on the tests, `ctest`: 23/23 passed.
+
+Branch:
+fix/msvc-strict-warnings-tests.

@@ -878,3 +878,37 @@ adopt `/WX`.
 
 Manual user action:
 None. (The elevated Build Tools install has been approved and completed.)
+
+## 2026-11-16 — C4834 FIX AND WARNINGS-AS-ERRORS FOR THE TEST TARGETS
+
+Agent/model: Buffy (Codebuff) - code agent
+Branch: fix/msvc-strict-warnings-tests
+Task: Fix the C4834 `[[nodiscard]]` warning in
+  `launcher/auth/SessionManager.cpp` and extend the warnings-as-errors gate to
+  the test executables.
+Started: 2026-11-16
+Completed: 2026-11-16
+
+Files:
+- launcher/auth/SessionManager.cpp (check `TokenStorage::save()` result, warn)
+- launcher/CMakeLists.txt (`LAUNCHER_TEST_TARGETS` loop + fuzz target)
+- docs/WORK_STATE.md, docs/PROGRESS.md, docs/CHANGELOG.md, docs/AI_CONTEXT.md
+
+Tests:
+- MSVC 2022 Release: configure OK, build exit 0, no warnings or errors in the
+  build log (C4834 gone with the gate active on every test target), `ctest`
+  23/23 passed.
+- MinGW GCC 13.1 Release: build exit 0, warning-free under
+  `-Wall -Wextra -Werror` on the tests, `ctest` 23/23 passed.
+
+Current status:
+DONE. Both toolchains build warning-free with warnings-as-errors on the
+launcher and on every test binary; the suite is 23/23 on both.
+
+Next:
+Optional: make the launcher libraries (`launcher_auth`, `launcher_core`,
+`launcher_minecraft`) strict too, which would need a separate warning sweep of
+that code.
+
+Manual user action:
+None.
