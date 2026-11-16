@@ -61,11 +61,13 @@ so the local development backend can be used. `SkinClient` then reaches the
 authenticated `/api/v1/skin-files` endpoints. That path was verified end to end
 on 2026-11-16 against a locally running Go backend: login returned an access
 token, the upload returned a `skin_id`, and the avatar decoded into a real
-64x64 `QPixmap`. Known limitations: the installed Qt has no TLS backend (no
-OpenSSL 3 DLLs), so HTTPS backends currently fail with "No functional TLS
-backend was found" until `libssl-3-x64.dll`/`libcrypto-3-x64.dll` are shipped;
-and `GET /api/v1/skin-files/{id}` is readable by any authenticated account
-(only delete/activate are owner-scoped).
+64x64 `QPixmap`. HTTPS was verified end to end on 2026-11-16: the Qt OpenSSL 3 package
+(3.0.16), the Qt `tls` plugin directory and the MinGW C++ runtime are staged
+next to the executable by CMake, public certificates validate through the
+system trust store, and login/upload/avatar work over `https://` against a
+real backend with only the packaged files present. The remaining limitation
+in this area is that `GET /api/v1/skin-files/{id}` is readable by any
+authenticated account (only delete/activate are owner-scoped).
 
 The Velocity plugin builds against `velocity-api:4.2.0` with JDK 25
 (`./gradlew build` produces `build/libs/minecraftserverlauncher-velocity-0.1.0.jar`).

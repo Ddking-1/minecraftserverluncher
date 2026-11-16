@@ -1,6 +1,25 @@
 ﻿# CHANGELOG
 
 ## Unreleased
+### Launcher - OpenSSL 3 and HTTPS end-to-end verification (2026-11-16)
+
+- Qt's OpenSSL 3 package (3.0.16) is installed and the runtime is staged next to
+  the launcher by CMake (`find_file` over the Qt bin directory and
+  `OPENSSL_DIR`), together with the MinGW C++ runtime DLLs and the Qt
+  `platforms` and `tls` plugin directories.
+- Fixed a packaging bug that made HTTPS unusable: the TLS backend is a Qt plugin
+  and `plugins/tls` was never staged, so a packaged launcher reported
+  `TLS initialization failed` (`supportsSsl=0`) even with the OpenSSL DLLs in
+  place. `qopensslbackend.dll`, `qschannelbackend.dll` and
+  `qcertonlybackend.dll` are now shipped in `tls/`; the same fix also covers the
+  native Windows Schannel fallback.
+- Verified with `PATH` restricted to `C:\\Windows\\system32` (so every
+  dependency comes from the staged files): the launcher starts, `supportsSsl=1`
+  with OpenSSL 3.0.16, public certificates validate against the system trust
+  store (api.github.com, google.com, login.microsoftonline.com) and login, skin
+  upload and avatar download succeed over `https://` against a real backend
+  (self-signed test CA trusted per process only). `ctest` remains 23/23.
+
 ### Launcher - real Windows build, CTest and backend end-to-end verification (2026-11-16)
 
 - The launcher was built for the first time in a real Qt 6.6.3 toolchain

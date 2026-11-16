@@ -259,12 +259,42 @@ if(WIN32)
     endif()
     get_filename_component(QT_BIN_DIR "${QT_CORE_PATH}" DIRECTORY)
     set(QT_PLATFORM_SRC "${QT_BIN_DIR}/../plugins/platforms/qwindows.dll")
+
+    # Qt's TLS backend (OpenSSL) is loaded at runtime. Stage the OpenSSL 3 DLLs
+    # next to the launcher when they can be found, otherwise HTTPS backends fail
+    # with "No functional TLS backend was found" on a machine without OpenSSL.
+    find_file(OPENSSL_SSL_DLL NAMES libssl-3-x64.dll
+        HINTS "${QT_BIN_DIR}" "$ENV{OPENSSL_DIR}/bin")
+    find_file(OPENSSL_CRYPTO_DLL NAMES libcrypto-3-x64.dll
+        HINTS "${QT_BIN_DIR}" "$ENV{OPENSSL_DIR}/bin")
+    if(OPENSSL_SSL_DLL AND OPENSSL_CRYPTO_DLL)
+        set(OPENSSL_RUNTIME_DLLS "${OPENSSL_SSL_DLL}" "${OPENSSL_CRYPTO_DLL}")
+    else()
+        set(OPENSSL_RUNTIME_DLLS "")
+        message(WARNING "OpenSSL 3 DLLs not found: HTTPS backends will not work "
+                        "at runtime. Install OpenSSL 3 or set OPENSSL_DIR.")
+    endif()
+
+    # A GCC/MinGW build needs its own C++ runtime next to the executable; without
+    # it the launcher cannot start on a machine that has no toolchain installed.
+    set(MINGW_RUNTIME_DLLS "")
+    if(MINGW)
+        get_filename_component(MINGW_BIN_DIR "${CMAKE_CXX_COMPILER}" DIRECTORY)
+        foreach(_runtime libstdc++-6.dll libgcc_s_seh-1.dll libwinpthread-1.dll)
+            find_file(MINGW_RUNTIME_${_runtime} NAMES "${_runtime}" HINTS "${MINGW_BIN_DIR}")
+            if(MINGW_RUNTIME_${_runtime})
+                list(APPEND MINGW_RUNTIME_DLLS "${MINGW_RUNTIME_${_runtime}}")
+            endif()
+        endforeach()
+    endif()
     add_custom_target(stage_qt_runtime ALL
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "${QT_BIN_DIR}/Qt6Core.dll"
             "${QT_BIN_DIR}/Qt6Gui.dll"
             "${QT_BIN_DIR}/Qt6Network.dll"
             "${QT_BIN_DIR}/Qt6Widgets.dll"
+            ${OPENSSL_RUNTIME_DLLS}
+            ${MINGW_RUNTIME_DLLS}
             $<TARGET_FILE_DIR:MinecraftLauncher>/
         COMMAND ${CMAKE_COMMAND} -E make_directory
             "$<TARGET_FILE_DIR:MinecraftLauncher>/platforms"
@@ -274,6 +304,12 @@ if(WIN32)
         COMMAND ${CMAKE_COMMAND} -E copy_directory
             "${QT_BIN_DIR}/../plugins/platforms"
             "$<TARGET_FILE_DIR:MinecraftLauncher>/platforms"
+        # The TLS backends are Qt plugins too (qopensslbackend.dll). Without the
+        # tls/ directory Qt reports "TLS initialization failed" and HTTPS is
+        # unusable even when the OpenSSL DLLs are present next to the binary.
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${QT_BIN_DIR}/../plugins/tls"
+            "$<TARGET_FILE_DIR:MinecraftLauncher>/tls"
         COMMENT "Staging Qt runtime next to launcher"
         DEPENDS MinecraftLauncher
     )

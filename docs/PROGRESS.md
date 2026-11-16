@@ -770,3 +770,42 @@ Manual user action:
 None for Git (agent handles branch/commit/push). The user should decide the
 skin-file read policy and confirm that OpenSSL 3 DLLs will ship with the
 launcher.
+## 2026-11-16 — OPENSSL 3 + HTTPS END-TO-END VERIFICATION
+
+Agent/model: Buffy (Codebuff) - code agent
+Branch: fix/windows-build-and-e2e-verification
+Task: Install OpenSSL 3 for the Qt launcher and prove that login + skin upload
+  work over HTTPS, with the packaged runtime only.
+Started: 2026-11-16
+Completed: 2026-11-16
+
+Files:
+- launcher/CMakeLists.txt (stage plugins/tls, OpenSSL 3 DLLs via find_file,
+  MinGW C++ runtime DLLs)
+- docs/WORK_STATE.md, docs/PROGRESS.md, docs/CHANGELOG.md, docs/AI_CONTEXT.md
+
+Tests:
+- OpenSSL 3.0.16 installed from Qt's tools package; DLLs copied into the Qt bin
+  directory and staged next to the executable by CMake.
+- With PATH reduced to C:\\Windows\\system32 (only staged files available):
+  MinecraftLauncher.exe --version -> 0, GUI starts and stays alive,
+  supportsSsl=1 with runtime OpenSSL 3.0.16.
+- Public chains validate through the system trust store: api.github.com,
+  google.com and login.microsoftonline.com all 200. example.com fails with a
+  missing-issuer error (host chain quirk, not a launcher defect).
+- Launcher client over HTTPS (self-signed test CA trusted per process) against
+  the real backend: login ok, upload ok with skin_id, avatar 64x64.
+- ctest 23/23 pass after the packaging changes.
+
+Current status:
+HTTPS works end to end in the packaged launcher layout. The only TLS-related
+open item is the general one: the deployed package must include tls/ and the
+OpenSSL DLLs, which the build now does automatically when they are available.
+
+Next:
+Per-user skin read policy decision; MSVC 2022 (/W4 /WX) build; Velocity token
+transport.
+
+Manual user action:
+None for Git. The user should keep OpenSSL 3 available (OPENSSL_DIR or the Qt
+bin directory) when packaging.

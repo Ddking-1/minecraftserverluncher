@@ -414,3 +414,48 @@ Open issues (documented, deliberately not changed):
 Branch:
 fix/windows-build-and-e2e-verification (created from `master` for this task; the
 agent commits and pushes it as the final Git step).
+## 2026-11-16 - OPENSSL 3 INSTALLATION AND HTTPS END-TO-END VERIFICATION
+
+Installed: Qt's own OpenSSL 3 package via aqtinstall
+(`tools_opensslv3_x64` / `qt.tools.opensslv3.win_x64`, OpenSSL 3.0.16) at
+`C:\\Users\\Try.APAPC\\Qt\\Tools\\OpenSSLv3\\Win_x64`; `libssl-3-x64.dll` and
+`libcrypto-3-x64.dll` were copied into `C:\\Users\\Try.APAPC\\Qt\\6.6.3\\mingw_64\\bin`.
+
+Packaging fixes found while validating HTTPS:
+1. Qt's TLS backend is a **plugin** (`plugins/tls/qopensslbackend.dll`). Only
+   `platforms/` was staged, so with the runtime next to the executable Qt
+   reported `TLS initialization failed` / `supportsSsl=0` even though the
+   OpenSSL DLLs were present. `plugins/tls` is now staged as well (this also
+   ships `qschannelbackend.dll`, the native Windows fallback, and
+   `qcertonlybackend.dll`).
+2. `launcher/CMakeLists.txt` now stages the OpenSSL 3 DLLs next to the
+   executable when they can be found (`find_file` over the Qt bin directory and
+   `OPENSSL_DIR`), with a configure warning when they are missing.
+3. The MinGW C++ runtime (`libstdc++-6.dll`, `libgcc_s_seh-1.dll`,
+   `libwinpthread-1.dll`) is now staged as well; without it the launcher could
+   not start at all on a machine without the toolchain.
+
+Verification (all three with `PATH` reduced to `C:\\Windows\\system32` only, so
+every dependency comes from the staged files):
+- `MinecraftLauncher.exe --version` -> exit 0 and prints the version.
+- Launcher GUI (offscreen) starts and stays alive for the 6 s check window.
+- `supportsSsl=1`, `sslRuntime=OpenSSL 3.0.16 11 Feb 2025` (build-time version
+  string is OpenSSL 3.0.7; Qt loads the 3.0.16 runtime).
+- Public certificate validation through the system trust store:
+  `https://api.github.com/zen`, `https://www.google.com/`,
+  `https://login.microsoftonline.com/` all return HTTP 200 with `error=0`.
+- Launcher client (`BackendAuthClient` + `SkinClient`) against the real backend
+  behind an HTTPS terminator (`https://localhost:8443`, self-signed CA trusted
+  only inside the test process via `QSslConfiguration`): login success, upload
+  success with `skin_id`, avatar decoded as 64x64 `QPixmap`.
+- `ctest` stays 23/23 after the CMake changes.
+
+Note: `https://example.com/` fails with "The issuer certificate of a locally
+looked up certificate could not be found" while GitHub, Google and Microsoft
+validate. That is a property of that host's served chain, not of the launcher:
+the same handshake succeeds with curl using the same CA bundle, and three other
+public chains verify. Recorded as an observation, not a defect.
+
+Branch:
+fix/windows-build-and-e2e-verification (same task branch; the OpenSSL work is a
+second commit on it).
