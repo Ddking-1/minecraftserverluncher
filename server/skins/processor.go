@@ -247,6 +247,16 @@ func (h *ThreadSafeSkinHistory) SetActive(id string) error {
 // composited with the overlay and scaled up to 64x64 with nearest-neighbour
 // sampling so the result stays pixel-crisp.
 func ExtractAvatarHead(data []byte) ([]byte, error) {
+	cfg, _, err := image.DecodeConfig(bytes.NewReader(data))
+	if err != nil {
+		return nil, fmt.Errorf("skin processor: not a valid PNG image: %w", err)
+	}
+	if _, ok := AllowedSkinDimensions[image.Point{X: cfg.Width, Y: cfg.Height}]; !ok {
+		return nil, fmt.Errorf(
+			"skin processor: unsupported skin dimensions %dx%d (allowed: 64x64, 64x32)",
+			cfg.Width, cfg.Height,
+		)
+	}
 	img, err := decodeImage(bytes.NewReader(data))
 	if err != nil {
 		return nil, err
@@ -328,6 +338,20 @@ func ProcessSkin(r io.Reader, maxBytes int64) ([]byte, error) {
 
 	if !pngSignature(buf.Bytes()) {
 		return nil, fmt.Errorf("skin processor: not a valid PNG (bad magic bytes)")
+	}
+
+	// Decode only the header first to reject oversized images before the full
+	// (potentially memory-exhausting) decode. This guards against PNG
+	// decompression bombs.
+	cfg, _, err := image.DecodeConfig(bytes.NewReader(buf.Bytes()))
+	if err != nil {
+		return nil, fmt.Errorf("skin processor: not a valid PNG image: %w", err)
+	}
+	if _, ok := AllowedSkinDimensions[image.Point{X: cfg.Width, Y: cfg.Height}]; !ok {
+		return nil, fmt.Errorf(
+			"skin processor: unsupported skin dimensions %dx%d (allowed: 64x64, 64x32)",
+			cfg.Width, cfg.Height,
+		)
 	}
 
 	img, err := decodeImage(bytes.NewReader(buf.Bytes()))

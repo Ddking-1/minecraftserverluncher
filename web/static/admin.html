@@ -83,10 +83,13 @@
             const users = data.users || [];
             for (const u of users) {
                 const tr = document.createElement('tr');
-                tr.innerHTML = `<td>${u.id}</td><td>${u.username}</td><td>
-                    <button onclick="approveAccount(${u.id}, true)">Approve</button>
-                    <button onclick="approveAccount(${u.id}, false)">Revoke</button>
-                </td>`;
+                const tdId = document.createElement('td'); tdId.textContent = u.id;
+                const tdName = document.createElement('td'); tdName.textContent = u.username;
+                const tdAct = document.createElement('td');
+                const b1 = document.createElement('button'); b1.textContent = 'Approve'; b1.addEventListener('click', () => approveAccount(u.id, true));
+                const b2 = document.createElement('button'); b2.textContent = 'Revoke'; b2.addEventListener('click', () => approveAccount(u.id, false));
+                tdAct.appendChild(b1); tdAct.appendChild(b2);
+                tr.appendChild(tdId); tr.appendChild(tdName); tr.appendChild(tdAct);
                 tbody.appendChild(tr);
             }
             if (!res.ok) document.getElementById('status').textContent = 'users: ' + res.status;
@@ -109,7 +112,10 @@
             const events = data.events || [];
             for (const e of events) {
                 const tr = document.createElement('tr');
-                tr.innerHTML = `<td>${e.id}</td><td>${e.kind}</td><td>${e.detail}</td><td>${e.ip}</td><td>${e.account_id}</td><td>${e.created_at}</td>`;
+                for (const v of [e.id, e.kind, e.detail, e.ip, e.account_id, e.created_at]) {
+                    const td = document.createElement('td'); td.textContent = (v == null ? '' : v);
+                    tr.appendChild(td);
+                }
                 tbody.appendChild(tr);
             }
             if (!res.ok) document.getElementById('status').textContent = 'tripwires: ' + res.status;
