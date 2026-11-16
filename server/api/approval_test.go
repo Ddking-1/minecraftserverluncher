@@ -109,5 +109,3 @@ func TestAccountApprovalGate(t *testing.T) {
 		t.Fatalf("login after approval status = %d, want 200", code)
 	}
 }
-EOF
-echo done
