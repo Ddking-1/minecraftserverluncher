@@ -455,3 +455,21 @@ No production functionality is claimed at this stage.
   credential storage (docs/AUTH.md).
 - Updated `docs/AI_CONTEXT.md`, `docs/WORK_STATE.md`, `docs/PROGRESS.md` and
   `docs/CHANGELOG.md`.
+
+### Feature - Velocity proxy auth + invite-only beta + granular admin (2026-11-16)
+
+- Velocity plugin (N15-N20) now enforces backend authorization: synchronous
+  token validation on PostLogin with disconnect on deny/timeout/missing token,
+  plus a ServerPreConnectEvent guard so no player reaches a backend before
+  approval. BackendAuthClient JSON-escapes the token and bounds the timeout.
+  Gradle build green (JDK 25) -> minecraftserverlauncher-velocity-0.1.0.jar.
+- Backend: invite-only beta registration via an `invite_allowlist` table;
+  non-invited usernames get 403 "nem beta tester" (empty allowlist keeps open
+  registration for dev/tests). Admin CRUD under /api/admin/invites.
+- Minecraft-level ban distinct from system/HWID bans: `minecraft_banned`
+  column + admin endpoint; proxy auth returns "denied" for banned accounts.
+- Granular admin API: role grant/revoke/list and per-user permission grant,
+  plus roles/permissions listing. RBAC schema already present.
+- Runnable launcher build produced locally (MSVC Release, 23/23 CTest) and
+  deployed with windeployqt -> build-local/Release/MinecraftLauncher.exe
+  (starts without crashing under QT_QPA_PLATFORM=offscreen).

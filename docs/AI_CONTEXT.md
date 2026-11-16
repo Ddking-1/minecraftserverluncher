@@ -230,3 +230,11 @@ owner decisions for the Prism-derived launcher work.
 This file must always describe the current real repository state.
 
 Never claim functionality that does not exist.
+
+Batch update (2026-11-16): Velocity proxy auth (N15-N20) enforces backend
+authorization synchronously on PostLogin plus a ServerPreConnectEvent guard;
+Gradle build green. Invite-only beta registration via invite_allowlist
+(403 "nem beta tester" when configured); Minecraft-level ban distinct from
+system/HWID bans; granular admin API for roles/permissions/invites. Runnable
+launcher build: build-local/Release/MinecraftLauncher.exe (MSVC Release,
+windeployqt-deployed, starts under offscreen).

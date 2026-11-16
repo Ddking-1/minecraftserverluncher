@@ -1029,3 +1029,35 @@ Set a GitHub Actions usage/billing alert (Settings -> Billing) so you are warned
 before the 2000 free private-repo minutes/month are used up; if they run out,
 register your Windows PC as a self-hosted runner (Option B) and switch the two
 workflows back to it.
+
+## 2026-11-16 — VELOCITY PROXY AUTH + INVITE-ONLY BETA + GRANULAR ADMIN + RUNNABLE LAUNCHER BUILD
+
+Agent/model: Buffy (Codebuff)
+Branch: feat/velocity-proxy-auth (725f3dc), feat/invite-allowlist-admin (82f2fbe), docs/batch-velocity-invite
+Task: Implement Velocity proxy auth (N15-N20), invite-only beta registration with
+email/identifier allowlist ("nem beta tester"), granular per-user admin
+permissions + Minecraft-level ban distinct from system ban, and produce a
+runnable launcher build.
+Started: 2026-11-16
+Completed: 2026-11-16
+Files:
+- velocity/src/.../LauncherVelocityPlugin.java, auth/BackendAuthClient.java
+- server/database/accounts.go (invite_allowlist, minecraft_banned, helpers)
+- server/api/handlers.go (invite gating on register)
+- server/api/proxy.go (minecraft-banned check)
+- server/api/admin_users.go (invite/role/permission/minecraft-ban endpoints)
+- server/api/router.go (new admin routes)
+- docs/CHANGELOG.md, AI_CONTEXT.md, WORK_STATE.md, PROGRESS.md
+Tests:
+- linux-ci run on master (commit 82f2fbe): go vet ./..., go test ./..., go build ./... all success.
+- Velocity: ./gradlew build success -> minecraftserverlauncher-velocity-0.1.0.jar.
+- Launcher: MSVC Release build success, ctest 23/23 (CI). Local build-local/Release
+  produced and windeployqt-deployed; MinecraftLauncher.exe starts without
+  crashing (QT_QPA_PLATFORM=offscreen, exit 124 = timeout, i.e. running).
+Current status:
+DONE. Both feature branches merged into master and pushed; docs synced.
+Next:
+Username/skin approval workflow, anti-bot hardening, admin web UI wiring.
+Manual user action:
+None required. Optional: run build-local/Release/MinecraftLauncher.exe on a
+clean machine to confirm the deployed Qt DLLs are sufficient.

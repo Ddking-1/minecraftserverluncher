@@ -638,3 +638,8 @@ Debian runner (Option A/B remain open).
 ci/windows-latest-runners: `launcher.yml` and `backend.yml` now run on
 GitHub-hosted `windows-latest` (Option A, owner decision). Remaining watch item:
 the 2000 free Actions minutes/month for private repos.
+
+Feature batch (2026-11-16): Velocity proxy auth + invite-only beta + granular
+admin landed on master (commits 725f3dc, 82f2fbe). Backend tests green on
+linux-ci. Runnable launcher build available at
+build-local/Release/MinecraftLauncher.exe (MSVC Release, windeployqt).
