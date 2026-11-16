@@ -24,8 +24,11 @@
         <form id="loginForm" onsubmit="event.preventDefault(); doLogin();">
             <input type="text" id="username" placeholder="Username" required>
             <input type="password" id="password" placeholder="Password" required>
+            <!-- Cloudflare Turnstile (set data-sitekey to your site key; leave empty to disable in dev) -->
+            <div class="cf-turnstile" data-sitekey="" data-callback="onTurnstile"></div>
             <button type="submit">Login</button>
         </form>
+        <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
     </div>
 
     <div id="appBox" class="hidden">
@@ -44,6 +47,8 @@
 
     <script>
         let accessToken = '';
+        let turnstileToken = '';
+        function onTurnstile(token) { turnstileToken = token; }
 
         function previewImage(event) {
             var reader = new FileReader();
@@ -57,7 +62,7 @@
             const res = await fetch('/api/v1/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password, device_id: 'web-skin-manager' })
+                body: JSON.stringify({ username, password, device_id: 'web-skin-manager', turnstile_token: turnstileToken })
             });
             const data = await res.json().catch(() => ({}));
             if (!res.ok || !data.access_token) {

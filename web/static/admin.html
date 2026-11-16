@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Dashboard</title>
+    <style>
+        body { background: #111; color: #eee; font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+        h1, h2 { color: #3FB950; }
+        .row { display: flex; gap: 10px; margin: 10px 0; flex-wrap: wrap; align-items: center; }
+        input, button { padding: 6px 10px; }
+        button { background: #3FB950; color: #fff; border: none; cursor: pointer; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #333; padding: 6px; text-align: left; font-size: 13px; }
+        .card { background: #1a1a1a; padding: 15px; border-radius: 6px; margin-bottom: 20px; }
+        #status { margin: 10px 0; color: #f88; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <h1>Admin Dashboard</h1>
+    <div id="loginBox" class="card">
+        <h2>Login (admin token or user bearer)</h2>
+        <div class="row">
+            <input type="password" id="adminToken" placeholder="X-Admin-Token (optional)">
+            <input type="text" id="bearer" placeholder="Bearer access token (optional)">
+            <button onclick="setAuth()">Set Auth</button>
+        </div>
+        <p id="status"></p>
+    </div>
+
+    <div id="appBox" class="hidden">
+        <div class="card">
+            <h2>Users</h2>
+            <div class="row">
+                <input type="text" id="userSearch" placeholder="search">
+                <button onclick="loadUsers()">Refresh</button>
+            </div>
+            <table id="usersTable"><thead><tr><th>ID</th><th>Username</th><th>Actions</th></tr></thead><tbody></tbody></table>
+        </div>
+
+        <div class="card">
+            <h2>Tripwires</h2>
+            <button onclick="loadTripwires()">Refresh</button>
+            <table id="tripTable"><thead><tr><th>ID</th><th>Kind</th><th>Detail</th><th>IP</th><th>Account</th><th>When</th></tr></thead><tbody></tbody></table>
+        </div>
+
+        <div class="card">
+            <h2>Skin approval</h2>
+            <div class="row">
+                <input type="text" id="skinId" placeholder="skin id">
+                <button onclick="approveSkin(true)">Approve</button>
+                <button onclick="approveSkin(false)">Reject</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let adminToken = '';
+        let bearer = '';
+
+        function authHeaders() {
+            const h = {};
+            if (adminToken) h['X-Admin-Token'] = adminToken;
+            if (bearer) h['Authorization'] = 'Bearer ' + bearer;
+            return h;
+        }
+
+        function setAuth() {
+            adminToken = document.getElementById('adminToken').value;
+            bearer = document.getElementById('bearer').value;
+            document.getElementById('loginBox').classList.add('hidden');
+            document.getElementById('appBox').classList.remove('hidden');
+            loadUsers();
+            loadTripwires();
+        }
+
+        async function loadUsers() {
+            const q = document.getElementById('userSearch').value;
+            const res = await fetch('/api/admin/users' + (q ? '?q=' + encodeURIComponent(q) : ''), { headers: authHeaders() });
+            const data = await res.json().catch(() => ({}));
+            const tbody = document.querySelector('#usersTable tbody');
+            tbody.innerHTML = '';
+            const users = data.users || [];
+            for (const u of users) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>${u.id}</td><td>${u.username}</td><td>
+                    <button onclick="approveAccount(${u.id}, true)">Approve</button>
+                    <button onclick="approveAccount(${u.id}, false)">Revoke</button>
+                </td>`;
+                tbody.appendChild(tr);
+            }
+            if (!res.ok) document.getElementById('status').textContent = 'users: ' + res.status;
+        }
+
+        async function approveAccount(id, approved) {
+            const res = await fetch('/api/admin/users/' + id + '/approve', {
+                method: 'POST',
+                headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
+                body: JSON.stringify({ approved })
+            });
+            document.getElementById('status').textContent = 'account ' + id + ': ' + res.status;
+        }
+
+        async function loadTripwires() {
+            const res = await fetch('/api/admin/tripwires', { headers: authHeaders() });
+            const data = await res.json().catch(() => ({}));
+            const tbody = document.querySelector('#tripTable tbody');
+            tbody.innerHTML = '';
+            const events = data.events || [];
+            for (const e of events) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>${e.id}</td><td>${e.kind}</td><td>${e.detail}</td><td>${e.ip}</td><td>${e.account_id}</td><td>${e.created_at}</td>`;
+                tbody.appendChild(tr);
+            }
+            if (!res.ok) document.getElementById('status').textContent = 'tripwires: ' + res.status;
+        }
+
+        async function approveSkin(approved) {
+            const id = document.getElementById('skinId').value;
+            const res = await fetch('/api/admin/skins/' + encodeURIComponent(id) + '/approve', {
+                method: 'POST',
+                headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
+                body: JSON.stringify({ approved })
+            });
+            document.getElementById('status').textContent = 'skin ' + id + ': ' + res.status;
+        }
+    </script>
+</body>
+</html>
+EOF
+echo done

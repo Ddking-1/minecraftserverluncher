@@ -312,19 +312,21 @@ func (s *Server) CachedStats(key string, compute func() (any, error)) (any, erro
 // ---- request/response types ----
 
 type registerRequest struct {
-	Username   string `json:"username"`
-	Password   string `json:"password"`
-	DeviceID   string `json:"device_id"`
-	DeviceName string `json:"device_name"`
-	Website    string `json:"website"` // honeypot; must be empty
+	Username        string `json:"username"`
+	Password        string `json:"password"`
+	DeviceID        string `json:"device_id"`
+	DeviceName      string `json:"device_name"`
+	Website         string `json:"website"`       // honeypot; must be empty
+	TurnstileToken  string `json:"turnstile_token"` // CAPTCHA token (optional in dev)
 }
 
 type loginRequest struct {
-	Username   string `json:"username"`
-	Password   string `json:"password"`
-	DeviceID   string `json:"device_id"`
-	DeviceName string `json:"device_name"`
-	Website    string `json:"website"` // honeypot; must be empty
+	Username       string `json:"username"`
+	Password       string `json:"password"`
+	DeviceID       string `json:"device_id"`
+	DeviceName     string `json:"device_name"`
+	Website        string `json:"website"`        // honeypot; must be empty
+	TurnstileToken string `json:"turnstile_token"` // CAPTCHA token (optional in dev)
 }
 
 type refreshRequest struct {

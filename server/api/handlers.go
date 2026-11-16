@@ -61,6 +61,12 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid request")
 		return
 	}
+	// CAPTCHA (Cloudflare Turnstile) verification when configured.
+	if err := s.verifyTurnstile(req.TurnstileToken, clientIPForTripwire(r)); err != nil {
+		s.recordTripwire(r, "captcha_failed_register", username)
+		writeError(w, http.StatusBadRequest, "captcha verification failed")
+		return
+	}
 	if !validUsername(username) {
 		writeError(w, http.StatusBadRequest, "invalid username")
 		return
@@ -118,6 +124,12 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	if strings.TrimSpace(req.Website) != "" {
 		s.recordTripwire(r, "honeypot_login", strings.TrimSpace(req.Username))
 		writeError(w, http.StatusBadRequest, "invalid request")
+		return
+	}
+	// CAPTCHA (Cloudflare Turnstile) verification when configured.
+	if err := s.verifyTurnstile(req.TurnstileToken, clientIPForTripwire(r)); err != nil {
+		s.recordTripwire(r, "captcha_failed_login", strings.TrimSpace(req.Username))
+		writeError(w, http.StatusBadRequest, "captcha verification failed")
 		return
 	}
 	// Anti-bot: per-username rate limit.

@@ -55,6 +55,12 @@ type Config struct {
 	// SkinStorageDir is the directory where processed skins and avatars are
 	// persisted. Skins survive a restart only when this is a writable path.
 	SkinStorageDir string
+	// TurnstileSiteKey is the public Cloudflare Turnstile site key (embedded in
+	// the frontend). Empty disables CAPTCHA enforcement.
+	TurnstileSiteKey string
+	// TurnstileSecret is the server-side Cloudflare Turnstile secret used to
+	// verify tokens. Empty disables CAPTCHA enforcement (dev mode).
+	TurnstileSecret string
 }
 
 // Default values. These are non-secret operational defaults only.
@@ -96,6 +102,8 @@ func Load() (*Config, error) {
 		RateLimitPerMinute: defaultRateLimitPerMin,
 		TrustProxy:         envBool("AUTH_TRUST_PROXY"),
 		SkinStorageDir:     envOr("AUTH_SKIN_STORAGE_DIR", defaultSkinStorageDir),
+		TurnstileSiteKey:   os.Getenv("AUTH_TURNSTILE_SITE_KEY"),
+		TurnstileSecret:    os.Getenv("AUTH_TURNSTILE_SECRET"),
 	}
 
 	if v := os.Getenv("AUTH_ACCESS_TOKEN_TTL"); v != "" {
