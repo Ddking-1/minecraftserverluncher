@@ -473,3 +473,13 @@ No production functionality is claimed at this stage.
 - Runnable launcher build produced locally (MSVC Release, 23/23 CTest) and
   deployed with windeployqt -> build-local/Release/MinecraftLauncher.exe
   (starts without crashing under QT_QPA_PLATFORM=offscreen).
+
+### Security / hardening (2026-11-16)
+
+- Anti-bot: honeypot field on register/login, per-username sliding-window
+  rate limit, sanitized X-Request-Id (no log/header injection).
+- Account approval workflow: approved column + admin endpoint + login gate.
+- Skin file approval workflow: skin_file_approvals table + admin endpoint +
+  non-owner read gate.
+- Launcher CI: windeployqt deploy step + upload-artifact of runnable build.
+- Security audit: docs/SECURITY_AUDIT.md.

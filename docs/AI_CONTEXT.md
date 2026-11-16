@@ -238,3 +238,7 @@ Gradle build green. Invite-only beta registration via invite_allowlist
 system/HWID bans; granular admin API for roles/permissions/invites. Runnable
 launcher build: build-local/Release/MinecraftLauncher.exe (MSVC Release,
 windeployqt-deployed, starts under offscreen).
+
+Batch (2026-11-16): anti-bot hardening (honeypot + per-username limiter +
+sanitized X-Request-Id), account/skin approval workflows, launcher CI artifact
+(windeployqt + upload-artifact), security audit doc. linux-ci green.

@@ -643,3 +643,6 @@ Feature batch (2026-11-16): Velocity proxy auth + invite-only beta + granular
 admin landed on master (commits 725f3dc, 82f2fbe). Backend tests green on
 linux-ci. Runnable launcher build available at
 build-local/Release/MinecraftLauncher.exe (MSVC Release, windeployqt).
+
+Batch (2026-11-16): anti-bot + approval workflows + CI artifact landed on
+master; security audit documented in docs/SECURITY_AUDIT.md.
