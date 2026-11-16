@@ -111,6 +111,8 @@ int main(int argc, char **argv)
 
     UpdateManager updater;
     updater.setEndpoints(QStringLiteral("http://127.0.0.1:%1").arg(server.serverPort()), QStringLiteral("0.1.0"));
+    // Without the signing key every manifest is rejected as unverified.
+    updater.setSigningKey(signingKey);
 
     bool got = false;
     QEventLoop loop;

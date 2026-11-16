@@ -8,7 +8,7 @@
 
 #include "minecraft/ModScanner.h"
 
-class TestModScanner : public QTest
+class TestModScanner : public QObject
 {
     Q_OBJECT
 

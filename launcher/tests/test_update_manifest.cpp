@@ -10,7 +10,7 @@
 
 #include "updates/UpdateManifest.h"
 
-class TestUpdateManifest : public QTest
+class TestUpdateManifest : public QObject
 {
     Q_OBJECT
 
@@ -27,7 +27,7 @@ namespace {
 const char *const kValidHash =
     "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
 
-QJsonObject validManifest()
+QJsonObject makeValidManifest()
 {
     QJsonObject file;
     file.insert(QStringLiteral("path"), QStringLiteral("bin/app.exe"));
@@ -54,7 +54,7 @@ QJsonObject validManifest()
 
 void TestUpdateManifest::validManifest()
 {
-    const UpdateManifest::ParseResult ok = UpdateManifest::parse(validManifest());
+    const UpdateManifest::ParseResult ok = UpdateManifest::parse(makeValidManifest());
     QVERIFY(ok.ok);
     QCOMPARE(ok.component.name, QStringLiteral("launcher"));
     QCOMPARE(ok.component.version, QStringLiteral("1.0.0"));
@@ -65,7 +65,7 @@ void TestUpdateManifest::validManifest()
 
 void TestUpdateManifest::missingName()
 {
-    QJsonObject obj = validManifest();
+    QJsonObject obj = makeValidManifest();
     obj.remove(QStringLiteral("name"));
     const UpdateManifest::ParseResult result = UpdateManifest::parse(obj);
     QVERIFY(!result.ok);
@@ -73,7 +73,7 @@ void TestUpdateManifest::missingName()
 
 void TestUpdateManifest::missingFiles()
 {
-    QJsonObject obj = validManifest();
+    QJsonObject obj = makeValidManifest();
     obj.remove(QStringLiteral("files"));
     const UpdateManifest::ParseResult result = UpdateManifest::parse(obj);
     QVERIFY(!result.ok);
@@ -81,7 +81,7 @@ void TestUpdateManifest::missingFiles()
 
 void TestUpdateManifest::pathTraversal()
 {
-    QJsonObject obj = validManifest();
+    QJsonObject obj = makeValidManifest();
     QJsonArray files = obj.value(QStringLiteral("files")).toArray();
     QJsonObject file = files.at(0).toObject();
     file.insert(QStringLiteral("path"), QStringLiteral("../../etc/passwd"));
@@ -93,7 +93,7 @@ void TestUpdateManifest::pathTraversal()
 
 void TestUpdateManifest::badHashLength()
 {
-    QJsonObject obj = validManifest();
+    QJsonObject obj = makeValidManifest();
     QJsonArray files = obj.value(QStringLiteral("files")).toArray();
     QJsonObject file = files.at(0).toObject();
     file.insert(QStringLiteral("sha256"), QStringLiteral("deadbeef"));
@@ -111,7 +111,7 @@ void TestUpdateManifest::parseFileRoundTrip()
     {
         QFile out(path);
         QVERIFY(out.open(QIODevice::WriteOnly));
-        out.write(QJsonDocument(validManifest()).toJson());
+        out.write(QJsonDocument(makeValidManifest()).toJson());
     }
 
     const UpdateManifest::ParseResult fromFile = UpdateManifest::parseFile(path);

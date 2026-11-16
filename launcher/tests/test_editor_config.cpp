@@ -67,9 +67,10 @@ int main(int argc, char **argv)
 
     // --- Edge case: empty JSON object ---
     const QString emptyPath = badDir.path() + QStringLiteral("/empty.json");
-    if (f.open(QIODevice::WriteOnly)) {
-        f.write(QJsonDocument(QJsonObject()).toJson());
-        f.close();
+    QFile emptyFile(emptyPath);
+    if (emptyFile.open(QIODevice::WriteOnly)) {
+        emptyFile.write(QJsonDocument(QJsonObject()).toJson());
+        emptyFile.close();
     }
     EditorConfig emptyLoaded;
     check(EditorConfig::load(emptyPath, emptyLoaded), "empty JSON loads defaults");

@@ -82,6 +82,11 @@ QString BackendAuthClient::backendUrl() const
     return m_backendUrl;
 }
 
+QNetworkAccessManager *BackendAuthClient::networkAccessManager() const
+{
+    return m_network;
+}
+
 void BackendAuthClient::setBackendUrl(const QString &url)
 {
     const QString trimmed = url.trimmed();

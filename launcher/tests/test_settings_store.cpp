@@ -7,7 +7,7 @@
 
 #include "core/SettingsStore.h"
 
-class TestSettingsStore : public QTest
+class TestSettingsStore : public QObject
 {
     Q_OBJECT
 

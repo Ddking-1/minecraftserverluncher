@@ -59,7 +59,7 @@ public:
     QByteArray responseBody;
 };
 
-class TestBackendContract : public QTest
+class TestBackendContract : public QObject
 {
     Q_OBJECT
 
@@ -99,5 +99,8 @@ void TestBackendContract::loginRequest()
     QCOMPARE(body.value(QStringLiteral("device_id")).toString(), QStringLiteral("dev-1"));
 }
 
-QTEST_APPLESS_MAIN(TestBackendContract)
+// GUILESS (not APPLESS): the test needs a QCoreApplication so QEventLoop,
+// QTimer and QTcpServer can work. Without it the event loop never runs and the
+// test hangs until the CTest timeout.
+QTEST_GUILESS_MAIN(TestBackendContract)
 #include "test_backend_contract.moc"

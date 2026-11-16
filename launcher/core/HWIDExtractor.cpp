@@ -12,8 +12,10 @@
 #include <string>
 #include <vector>
 
+#ifdef _MSC_VER
 #pragma comment(lib, "bcrypt.lib")
 #pragma comment(lib, "iphlpapi.lib")
+#endif
 
 std::string HWIDExtractor::getSMBIOSUUID()
 {

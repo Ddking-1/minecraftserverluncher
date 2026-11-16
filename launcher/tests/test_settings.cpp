@@ -8,7 +8,7 @@
 
 #include "core/InstancePersistence.h"
 
-class TestSettings : public QTest
+class TestSettings : public QObject
 {
     Q_OBJECT
 
@@ -68,7 +68,7 @@ void TestSettings::fileRoundTrip()
 
     QJsonObject out;
     QVERIFY(InstancePersistence::readJsonFile(path, out));
-    QVERIFY(out.isObject());
+    QVERIFY(out.contains(QStringLiteral("max_memory_mb")));
 }
 
 QTEST_APPLESS_MAIN(TestSettings)

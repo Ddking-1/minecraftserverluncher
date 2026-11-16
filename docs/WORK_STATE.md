@@ -10,10 +10,12 @@ The T1–T45 backlog (`docs/MASTER_PLAN_EXTENDED.md`) is complete except T11
 DECISION-005 (metadata source).
 
 Status:
-Green for the Go backend and the Velocity plugin. Launcher: CMake defines 23
-CTest targets (including the new `main_window`); the C++/Qt GUI changes of the
-latest task are source-reviewed only because this cloud environment has no Qt 6
-toolchain.
+GREEN everywhere, verified on a real Windows 11 machine on 2026-11-16: the Go
+backend builds, vets and tests clean, and the C++/Qt6 launcher builds with
+Qt 6.6.3 and passes its full CTest suite (23/23). The verified launcher
+toolchain is Qt 6.6.3 `mingw_64` + MinGW GCC 13.1, because MSVC 2022 is not
+installed on that machine; the MSVC `/W4 /WX` build is therefore still
+unverified.
 
 Branch:
 master (all task branches fast-forward merged and pushed).
@@ -43,7 +45,10 @@ Current step:
 - Documentation: AI-generated-code disclaimer added to README.md and docs/AI_CONTEXT.md; CHANGELOG.md, PROGRESS.md and WORK_STATE.md updated.
 
 Next step:
-Compile the launcher on a Qt 6.6.3 + MSVC 2022 machine and run the CTest suite (including `main_window`); resolve the Velocity token transport. T11 Velocity remains BLOCKED on DECISION-004/005.
+Decide the cross-account read policy of `GET /api/v1/skin-files/{id}`, ship an
+OpenSSL 3 TLS backend with the launcher package (HTTPS backends currently fail
+without it), repeat the build with MSVC 2022 (`/W4 /WX`), and resolve the
+Velocity token transport. T11 Velocity remains BLOCKED on DECISION-004/005.
 
 Repository facts:
 - default branch: master
@@ -301,3 +306,111 @@ Velocity token transport with DECISION-level review.
 Branch:
 feat/launcher-gui-login-backend-url (merged into `master` and pushed by the
 agent as the final git step of this task, per AGENTS.md rule 26).
+
+## 2026-11-16 - WINDOWS QT 6.6.3 BUILD, FULL CTEST RUN AND BACKEND END-TO-END VERIFICATION
+
+Toolchain installed for this task (all portable, no administrator rights):
+- CMake 3.30.5 and Ninja 1.12.1 (portable zips)
+- Go 1.23.4 as a bootstrap; `go.mod` selects toolchain go1.26.5
+- Python 3.12.7 (embeddable) + pip + aqtinstall 3.3.0
+- Qt 6.6.3 `mingw_64` and MinGW GCC 13.1 (Qt's `tools_mingw1310` package)
+- installed under `C:\Users\Try.APAPC\Qt` and `C:\Users\Try.APAPC\devtools`;
+  build directory `C:\Users\Try.APAPC\build-mcl` (Ninja, Release)
+- MSVC 2022 is NOT installed on the machine, so Qt's MSVC binaries could not be
+  used; the verified compiler is GCC 13.1
+
+Result:
+- `cmake -S launcher -B <build> -G Ninja -DCMAKE_PREFIX_PATH=<qt>/6.6.3/mingw_64` OK
+- build OK: `MinecraftLauncher.exe` plus 23 test executables
+- `ctest` 23/23 pass (~2.7 s), including `backend_contract`, `update_manager`,
+  `main_window`, `login_dialog` and the widget tests
+- launcher smoke test: the GUI starts and stays alive; on a fresh install it
+  creates `instances/` and keeps running
+- Go on Windows: `go build ./...`, `go vet ./...`, `go test ./... -count=1` all pass
+- backend and launcher-client end-to-end runs against a real local server
+
+Build/compile defects found and fixed (all real, none environment noise):
+1. `launcher/CMakeLists.txt`: `Qt6::Test` was linked but not requested in
+   `find_package` -> configure failed.
+2. 12 test targets include `<QtTest>` but linked only `Qt6::Core` -> `Qt6::Test`
+   added to each.
+3. `updates/UpdateManifest.cpp`: invalid char literal `QLatin1Char('\')` ->
+   `'\'`.
+4. `updates/UpdateManifest.cpp`: `fail(u"...%1").arg(...)` called `.arg()` on a
+   `ParseResult` -> formatted before the call.
+5. `updates/UpdateManifest.cpp`: `QFile file(QString(path));` most-vexing-parse
+   -> `QFile file{path.toString()};`.
+6. `updates/UpdateManifest.cpp` (SECURITY): the path-traversal regex `[/\]` was
+   invalid, so `QString::split()` returned the input unchanged and
+   `../../etc/passwd` was accepted as a safe path. Now `[/\]`; the
+   `pathTraversal` test passes.
+7. 10 tests declared `class X : public QTest` (`QTest` is a namespace) -> `QObject`.
+8. `tests/test_settings.cpp`: `QJsonObject::isObject()` does not exist ->
+   key-presence check.
+9. `ui/SkinPreviewWidget.cpp`: the avatar lambda did not capture `skinId`.
+10. `core/HWIDExtractor.cpp`: MSVC-only `#pragma comment(lib, ...)` is now
+    guarded with `_MSC_VER`.
+11. `core/SkinClient.cpp`: `static_cast<const unsigned char>` -> plain
+    `unsigned char`; `m_client->net()` did not exist -> new
+    `BackendAuthClient::networkAccessManager()`.
+12. `tests/test_update_manifest.cpp`: the helper `validManifest()` was shadowed
+    by the test slot of the same name (returned void) -> `makeValidManifest()`.
+13. `tests/test_update_checker.cpp`: parenthesised aggregate initialisation of
+    `ManifestComponent` -> explicit field assignment.
+14. 4 widget tests: `QStandardPaths::setTestMode()` -> `setTestModeEnabled()`.
+15. `core/UpdateManager.cpp`: the definition took `QStringView` while the header
+    declares `QString`; `UpdateManagerHMAC.h` was not included.
+16. CMake: `auth/BackendAuthClient.cpp` was compiled into the executable and
+    into `launcher_auth` -> duplicate MOC symbols at link; removed from
+    `target_sources`.
+17. CMake: `test_download_queue` missed `core/FileIntegrity.cpp` -> undefined
+    reference.
+18. CMake: only `qwindows.dll` was staged, so Qt used a partial `platforms/`
+    directory and the GUI tests aborted inside a blocking Qt error dialog (the
+    CTest timeouts). The whole `plugins/platforms` directory is copied now.
+19. CMake: `Qt6Gui.dll` was not staged although `Qt6Widgets` depends on it.
+20. `main.cpp`: a missing `instances/` directory made the launcher exit with
+    code 1 right after showing the window; it now creates the directory and
+    continues with an empty list.
+21. `tests/test_editor_config.cpp`: the empty-JSON case reused a `QFile` still
+    bound to `bad.json`, so `empty.json` was never written.
+22. `tests/test_skin_client.cpp`: the "no backend" case ran with a backend URL
+    already configured (the actual error was "not logged in").
+23. `tests/test_backend_contract.cpp`: `QTEST_APPLESS_MAIN` creates no
+    `QCoreApplication`, so `QEventLoop`/`QTimer` never ran and the test hung
+    until the CTest timeout -> `QTEST_GUILESS_MAIN`.
+24. `tests/test_update_manager.cpp`: the signing key was never passed to
+    `UpdateManager`, so every manifest was rejected as unverified.
+
+Backend end-to-end results (real server on 127.0.0.1:8099, SQLite + disk skin
+storage, driven with curl):
+- `GET /readyz` 200; register 201; login 200 (43-character access and refresh
+  tokens); wrong password 401; `GET /api/v1/account/me` 200
+- skin upload without a token 401; 32x32 PNG 400 "unsupported skin dimensions
+  32x32 (allowed: 64x64, 64x32)"; 64x64 upload 200 with `skin_id` and `avatar_url`
+- `GET /api/v1/skin-files/{id}` 200 `image/png` 64x64; `.../avatar` 200
+  `image/png` 64x64; owner DELETE 200 and the following GET 404
+- refresh 200 with rotated tokens; logout 200; Pterodactyl webhook without a
+  secret 401 (fails closed)
+- launcher client path (`BackendAuthClient` + `SkinClient` compiled against the
+  repository sources, run against the live backend): login ok, upload returned a
+  `skin_id`, avatar decoded into a real 64x64 `QPixmap`
+
+Open issues (documented, deliberately not changed):
+1. The MSVC 2022 build and its `/W4 /WX` warnings-as-errors are still unverified.
+2. The installed Qt has no TLS backend: HTTPS backends fail with "No functional
+   TLS backend was found" until OpenSSL 3 (`libssl-3-x64.dll`,
+   `libcrypto-3-x64.dll`) ships with the launcher package.
+3. Qt's bundled MinGW 11.2 runtime DLLs must not be shipped with a GCC 13.1
+   build (load-time failure / fail-fast); ship the compiler's
+   `libstdc++-6.dll` and `libgcc_s_seh-1.dll` or match the toolchain version.
+4. `GET /api/v1/skin-files/{id}` returns 200 for another authenticated account;
+   only delete/activate are owner-scoped. Needs a DECISION.
+5. `/api/v1/skins` (named skins) stays empty after a `/api/v1/skin-files`
+   upload; the two APIs are independent by design but easy to confuse.
+6. Velocity token transport, the `ResolveLibraries`/`ResolveAssets` stubs and the
+   auto-update wiring remain open as before.
+
+Branch:
+fix/windows-build-and-e2e-verification (created from `master` for this task; the
+agent commits and pushes it as the final Git step).

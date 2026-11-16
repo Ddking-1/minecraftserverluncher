@@ -35,8 +35,11 @@ The account-scoped named-skin API stays under `/api/v1/skins`.
 See `docs/DECISIONS.md` DECISION-006 and `docs/WORK_STATE.md`.
 
 The C++/Qt6 launcher core is implemented on `master` and the build baseline is
-GREEN: CMake configure and a Release build with Qt 6.6.3 MSVC 2022 succeed and
-produce `MinecraftLauncher.exe`. The CTest suite (hwid, settings,
+GREEN on Windows 11, verified 2026-11-16: CMake configure and a Release build
+with Qt 6.6.3 succeed, `MinecraftLauncher.exe` and all 23 CTest binaries are
+produced, and `ctest` reports 23/23 passing. The verified toolchain is the Qt
+6.6.3 `mingw_64` package with MinGW GCC 13.1; MSVC 2022 is not installed on
+that machine, so the MSVC `/W4 /WX` build remains unverified. The CTest suite (hwid, settings,
 update_manifest, skin_model, backend_contract, settings_store, mod_scanner,
 skin_cache, rotating_logger, update_checker, file_integrity, editor_config,
 skin_client, download_asset, download_queue, java_detector, game_paths,
@@ -55,9 +58,14 @@ and the last username in `launcher.json`, opens `LoginDialog`, calls
 access token into the client, and logout clears it. The remote-backend policy
 is HTTPS-only; plain HTTP is accepted just for `localhost`/`127.0.0.1`/`::1`
 so the local development backend can be used. `SkinClient` then reaches the
-authenticated `/api/v1/skin-files` endpoints. The C++ tree could not be
-compiled in the current cloud environment (no Qt 6 toolchain); only the Go and
-Velocity builds are verified there.
+authenticated `/api/v1/skin-files` endpoints. That path was verified end to end
+on 2026-11-16 against a locally running Go backend: login returned an access
+token, the upload returned a `skin_id`, and the avatar decoded into a real
+64x64 `QPixmap`. Known limitations: the installed Qt has no TLS backend (no
+OpenSSL 3 DLLs), so HTTPS backends currently fail with "No functional TLS
+backend was found" until `libssl-3-x64.dll`/`libcrypto-3-x64.dll` are shipped;
+and `GET /api/v1/skin-files/{id}` is readable by any authenticated account
+(only delete/activate are owner-scoped).
 
 The Velocity plugin builds against `velocity-api:4.2.0` with JDK 25
 (`./gradlew build` produces `build/libs/minecraftserverlauncher-velocity-0.1.0.jar`).

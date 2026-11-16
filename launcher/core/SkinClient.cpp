@@ -48,10 +48,10 @@ bool isValidSkinByteSize(const QByteArray &data)
            data.at(1) == 'P' &&
            data.at(2) == 'N' &&
            data.at(3) == 'G' &&
-           static_cast<const unsigned char>(data.at(4)) == 0x0DU &&
-           static_cast<const unsigned char>(data.at(5)) == 0x0AU &&
-           static_cast<const unsigned char>(data.at(6)) == 0x1AU &&
-           static_cast<const unsigned char>(data.at(7)) == 0x0AU;
+           static_cast<unsigned char>(data.at(4)) == 0x0DU &&
+           static_cast<unsigned char>(data.at(5)) == 0x0AU &&
+           static_cast<unsigned char>(data.at(6)) == 0x1AU &&
+           static_cast<unsigned char>(data.at(7)) == 0x0AU;
 }
 
 void logNetworkError(QNetworkReply *reply)
@@ -128,7 +128,7 @@ void SkinClient::uploadSkin(
     skinPart.setBody(data);
     multiPart->append(skinPart);
 
-    QNetworkReply *reply = m_client->net()->post(request, multiPart);
+    QNetworkReply *reply = m_client->networkAccessManager()->post(request, multiPart);
     if (reply == nullptr) {
         delete multiPart;
         invokeCallback(std::move(callback), false, QString(),
@@ -209,7 +209,7 @@ void SkinClient::downloadAvatar(
                                  QStringLiteral("/avatar")));
     request.setRawHeader("Authorization", "Bearer " + token.toUtf8());
 
-    QNetworkReply *reply = m_client->net()->get(request);
+    QNetworkReply *reply = m_client->networkAccessManager()->get(request);
     if (reply == nullptr) {
         invokeCallback(std::move(callback), false, QPixmap());
         return;

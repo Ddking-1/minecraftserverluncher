@@ -1,6 +1,46 @@
 ﻿# CHANGELOG
 
 ## Unreleased
+### Launcher - real Windows build, CTest and backend end-to-end verification (2026-11-16)
+
+- The launcher was built for the first time in a real Qt 6.6.3 toolchain
+  (`mingw_64` + MinGW GCC 13.1, Ninja, CMake 3.30.5) and the full CTest suite
+  passes 23/23. `MinecraftLauncher.exe` starts and stays alive; a fresh install
+  previously exited with code 1 immediately because `instances/` did not exist.
+- `launcher/CMakeLists.txt`: `Qt6::Test` is now a requested component and is
+  linked by every test target that includes `<QtTest>`; the duplicate
+  `auth/BackendAuthClient.cpp` source was removed from the executable (duplicate
+  MOC symbols broke the link); `core/FileIntegrity.cpp` was added to
+  `test_download_queue`; the whole Qt `plugins/platforms` directory is staged
+  (offscreen was missing, which made the GUI tests hang in a Qt error dialog)
+  and `Qt6Gui.dll` is staged next to `Qt6Widgets.dll`.
+- Security fix: the manifest path-traversal check used the invalid regular
+  expression `[/\]`, so `QString::split()` returned the input unchanged and
+  `../../etc/passwd` was treated as a safe path. The pattern is now `[/\\]` and
+  `TestUpdateManifest::pathTraversal` passes.
+- `updates/UpdateManifest.cpp` also built `fail(...).arg(...)` on a
+  `ParseResult`, used an invalid `QLatin1Char('\')` literal and parsed
+  `QFile file(QString(path));` as a function declaration; `UpdateManager`
+  declared `setEndpoints(QString, QString)` but defined it with `QStringView`,
+  and did not include `UpdateManagerHMAC.h`.
+- Test defects fixed: ten classes derived from `QTest` instead of `QObject`,
+  `QJsonObject::isObject()` misuse, a helper shadowed by a same-named test slot,
+  parenthesised aggregate initialisation, `setTestMode()` instead of
+  `setTestModeEnabled()`, a reused `QFile` that never wrote `empty.json`, a
+  "no backend" case that ran with a backend URL configured, a
+  `QTEST_APPLESS_MAIN` test that needed a `QCoreApplication` (it hung until the
+  CTest timeout) and an `UpdateManager` test that never set the signing key.
+- End-to-end verification against a real local backend: registration, login,
+  wrong-password 401, account profile, unauthenticated upload 401, 32x32 skin
+  rejection with 400, 64x64 upload with `skin_id`, raw PNG and 64x64 avatar
+  fetch, owner delete followed by 404, token refresh rotation, logout, and the
+  Pterodactyl webhook failing closed with 401. The launcher's own
+  `BackendAuthClient` + `SkinClient` completed the same login/upload/avatar flow.
+- Known limitations recorded: HTTPS backends need an OpenSSL 3 TLS backend that
+  the tested Qt installation does not have; the MSVC 2022 `/W4 /WX` build is
+  still unverified; `GET /api/v1/skin-files/{id}` is readable by any
+  authenticated account.
+
 
 ### Launcher - GUI login, backend URL configuration and session restore (2026-11-15)
 

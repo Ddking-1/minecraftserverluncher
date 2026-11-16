@@ -4,7 +4,7 @@
 
 #include "updates/UpdateChecker.h"
 
-class TestUpdateChecker : public QTest
+class TestUpdateChecker : public QObject
 {
     Q_OBJECT
 
@@ -23,8 +23,10 @@ void TestUpdateChecker::compareVersions()
 
 void TestUpdateChecker::checkUpdate()
 {
-    UpdateManifest::ManifestComponent component(QStringLiteral("0.2.0"), QStringLiteral("0.1.0"));
+    UpdateManifest::ManifestComponent component;
     component.name = QStringLiteral("launcher");
+    component.version = QStringLiteral("0.2.0");
+    component.minLauncher = QStringLiteral("0.1.0");
 
     QCOMPARE(UpdateChecker::check(QStringLiteral("0.1.0"), component),
              UpdateChecker::Decision::UpdateAvailable);
@@ -32,13 +34,16 @@ void TestUpdateChecker::checkUpdate()
     QCOMPARE(UpdateChecker::check(QStringLiteral("0.2.0"), component),
              UpdateChecker::Decision::UpToDate);
 
-    UpdateManifest::ManifestComponent incompatible(QStringLiteral("0.3.0"), QStringLiteral("0.2.0"));
+    UpdateManifest::ManifestComponent incompatible;
     incompatible.name = QStringLiteral("launcher");
+    incompatible.version = QStringLiteral("0.3.0");
+    incompatible.minLauncher = QStringLiteral("0.2.0");
     QCOMPARE(UpdateChecker::check(QStringLiteral("0.1.0"), incompatible),
              UpdateChecker::Decision::Incompatible);
 
-    UpdateManifest::ManifestComponent emptyMin(QStringLiteral("0.1.0"), QString());
+    UpdateManifest::ManifestComponent emptyMin;
     emptyMin.name = QStringLiteral("launcher");
+    emptyMin.version = QStringLiteral("0.1.0");
     QCOMPARE(UpdateChecker::check(QStringLiteral("0.1.0"), emptyMin),
              UpdateChecker::Decision::UpToDate);
 }

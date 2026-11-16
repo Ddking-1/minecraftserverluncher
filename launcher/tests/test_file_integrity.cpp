@@ -7,7 +7,7 @@
 
 #include "core/FileIntegrity.h"
 
-class TestFileIntegrity : public QTest
+class TestFileIntegrity : public QObject
 {
     Q_OBJECT
 

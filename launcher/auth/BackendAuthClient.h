@@ -46,6 +46,11 @@ public:
     QString accessToken() const;
     void setAccessToken(const QString &token);
 
+    // Shared network manager, so API clients (SkinClient) reuse the same
+    // connection pool / proxy settings as the auth requests.
+    [[nodiscard]]
+    QNetworkAccessManager *networkAccessManager() const;
+
     void registerAccount(const QString &username, const QString &password,
                          const QString &deviceId, const QString &deviceName, Callback cb);
     void login(const QString &username, const QString &password,

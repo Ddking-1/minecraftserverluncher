@@ -46,6 +46,7 @@ int main(int argc, char **argv)
     QString error;
 
     // No backend configured: fail fast without a network call.
+    backend.setBackendUrl(QString());
     client.uploadSkin(dir.path() + QStringLiteral("/missing.png"),
                       [&called, &success, &error](bool ok, QString, QString err) {
                           called = true;

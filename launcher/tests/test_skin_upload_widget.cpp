@@ -11,7 +11,7 @@ class TestSkinUploadWidget : public QObject
 private slots:
     void initTestCase()
     {
-        QStandardPaths::setTestMode(true);
+        QStandardPaths::setTestModeEnabled(true);
     }
 
     void testAccessToken()

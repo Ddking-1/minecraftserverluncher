@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 #include "UpdateManager.h"
 
+#include "UpdateManagerHMAC.h"
+
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QNetworkReply>
@@ -13,12 +15,12 @@ UpdateManager::UpdateManager(QObject *parent)
     m_nam->setTransferTimeout(10000);
 }
 
-void UpdateManager::setEndpoints(QStringView backendBase, QStringView currentVersion)
+void UpdateManager::setEndpoints(const QString &backendBase, const QString &currentVersion)
 {
-    m_backend = backendBase.toString();
+    m_backend = backendBase;
     if (m_backend.endsWith(QLatin1Char('/')))
         m_backend.chop(1);
-    m_current = currentVersion.toString();
+    m_current = currentVersion;
 }
 
 void UpdateManager::setSigningKey(QStringView key)

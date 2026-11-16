@@ -7,7 +7,7 @@
 
 #include "core/RotatingFileLogger.h"
 
-class TestRotatingLogger : public QTest
+class TestRotatingLogger : public QObject
 {
     Q_OBJECT
 

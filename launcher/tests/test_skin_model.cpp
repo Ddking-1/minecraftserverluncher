@@ -4,7 +4,7 @@
 
 #include "core/SkinModel.h"
 
-class TestSkinModel : public QTest
+class TestSkinModel : public QObject
 {
     Q_OBJECT
 

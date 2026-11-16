@@ -62,7 +62,7 @@ void SkinPreviewWidget::onUploadClicked()
             return;
         }
 
-        client->downloadAvatar(skinId, [this, client](bool success, const QPixmap &avatar) {
+        client->downloadAvatar(skinId, [this, client, skinId](bool success, const QPixmap &avatar) {
             client->deleteLater();
             if (!success || avatar.isNull()) {
                 m_statusLabel->setText(tr("Avatár betöltése sikertelen."));

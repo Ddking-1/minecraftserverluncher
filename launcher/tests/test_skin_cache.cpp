@@ -8,7 +8,7 @@
 
 #include "core/SkinCache.h"
 
-class TestSkinCache : public QTest
+class TestSkinCache : public QObject
 {
     Q_OBJECT
 

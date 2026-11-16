@@ -82,8 +82,11 @@ int main(int argc, char *argv[])
     list.setInstanceFactory(&makeInstance);
 
     if (!list.loadList()) {
-        qWarning() << "Could not load instances from" << options.instancesDir;
-        return 1;
+        // First run on a fresh machine: the instances directory does not exist
+        // yet. Create it and continue with an empty list - exiting here closed
+        // the launcher right after the window appeared.
+        if (!QDir().mkpath(options.instancesDir) || !list.loadList())
+            qWarning() << "Could not load instances from" << options.instancesDir;
     }
 
     int shown = 0;

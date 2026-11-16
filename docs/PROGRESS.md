@@ -709,3 +709,64 @@ resolve the Velocity token transport.
 Manual user action:
 A Windows machine with Qt 6.6.3 and MSVC 2022 is required to build the launcher
 and run its CTest suite. Git operations are handled by the agent.
+
+## 2026-11-16 — WINDOWS QT 6.6.3 BUILD + FULL CTEST + BACKEND E2E VERIFICATION
+
+Agent/model: Buffy (Codebuff) - code agent
+Branch: fix/windows-build-and-e2e-verification
+Task: Verify the launcher on a real Windows machine, installing the missing
+  toolchain (CMake, Ninja, Go, Python, Qt 6.6.3, MinGW), fix every defect the
+  real build and the CTest run exposed, and verify login + skin upload end to
+  end against a running backend.
+Started: 2026-11-16
+Completed: 2026-11-16
+
+Files:
+- launcher/CMakeLists.txt (Qt6::Test component, Qt6::Test on 12 targets,
+  duplicate BackendAuthClient source removed, FileIntegrity added to
+  test_download_queue, whole platforms plugin directory staged, Qt6Gui.dll
+  staged)
+- launcher/main.cpp (missing instances/ directory no longer aborts startup)
+- launcher/updates/UpdateManifest.cpp (char literal, fail() formatting,
+  QFile brace init, path-traversal regex)
+- launcher/core/UpdateManager.cpp (QString signature, HMAC header include)
+- launcher/core/SkinClient.cpp (unsigned char casts, networkAccessManager())
+- launcher/auth/BackendAuthClient.h/.cpp (networkAccessManager() accessor)
+- launcher/core/HWIDExtractor.cpp (_MSC_VER guard around #pragma comment)
+- launcher/ui/SkinPreviewWidget.cpp (skinId capture)
+- launcher/tests/*.cpp (QObject base class, Qt6::Test usage, update_manifest
+  helper rename, update_checker aggregate init, setTestModeEnabled,
+  editor_config QFile, skin_client backend reset, backend_contract GUILESS main,
+  update_manager signing key)
+- docs/WORK_STATE.md, docs/PROGRESS.md, docs/CHANGELOG.md, docs/AI_CONTEXT.md
+
+Tests:
+- Toolchain installed: CMake 3.30.5, Ninja 1.12.1, Go 1.23.4/bootstrap 1.26.5,
+  Python 3.12.7 embeddable, aqtinstall 3.3.0, Qt 6.6.3 mingw_64, MinGW GCC 13.1
+  (MSVC 2022 is not installed on the machine).
+- cmake configure + Ninja Release build -> OK, MinecraftLauncher.exe + 23 test
+  executables.
+- ctest --timeout 60 -> 23/23 pass (~2.7 s).
+- Launcher smoke run (offscreen): stays alive; creates instances/ on a fresh
+  install.
+- cd server && go build ./... && go vet ./... && go test ./... -count=1 -> all
+  pass on Windows.
+- Backend E2E (real server 127.0.0.1:8099 + curl): register/login/account,
+  401s for missing token and wrong password, 400 for a 32x32 PNG, 200 upload
+  with skin_id, raw PNG and 64x64 avatar fetches, owner delete -> 404, refresh
+  rotation, logout, webhook 401 without secret.
+- Launcher client E2E: BackendAuthClient + SkinClient against the live backend
+  -> login ok, upload ok, avatar decoded 64x64.
+
+Current status:
+Launcher verified building and testing GREEN on Windows with Qt 6.6.3
+(mingw_64/GCC 13.1). 24 real defects fixed; see docs/WORK_STATE.md for the list.
+
+Next:
+Decide the cross-account skin-file read policy, ship an OpenSSL TLS backend,
+repeat with MSVC 2022 (/W4 /WX), and resolve the Velocity token transport.
+
+Manual user action:
+None for Git (agent handles branch/commit/push). The user should decide the
+skin-file read policy and confirm that OpenSSL 3 DLLs will ship with the
+launcher.
