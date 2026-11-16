@@ -143,28 +143,56 @@ This is a proposal for discussion, not a decision:
 
 ---
 
-## 5. Open questions for the owner
+## 5. Owner decisions (2026-11-16 discussion) — ANSWERED
 
-Please answer these so I can size the work correctly. Short answers are fine.
-
-1. **Scope of v1:** Do you want the Velocity plugin + join authorization in v1, or is "launcher + backend + skin manager" enough for the first test release? (Velocity is the biggest gap.)
-2. **Auto-update hosting:** Where should the update manifest and files be hosted? (A simple static host / GitHub Releases / the backend itself?) This decides DECISION-005 and the update wiring.
-3. **Metadata source (DECISION-005):** Should the launcher fetch Minecraft/Fabric version metadata from Mojang/Meta (online) or use a bundled/offline list? Online is simpler but needs network; offline is safer for a small team.
-4. **Distribution/legal (DECISION-004):** Are you OK publishing the launcher source publicly (required by Prism's GPLv3), or do you want to keep it private and accept the licensing risk? This gates any public release.
-5. **Windows CI:** Should I move `launcher.yml`/`backend.yml` to GitHub-hosted `windows-latest` runners (free minutes, no maintenance) instead of registering a Windows self-hosted runner? Recommended.
-6. **Test team size and "beta" notice:** How many users, and do you want an in-launcher "beta / may be unstable / not always available" banner? (Affects whether forgot-password and admin UI are needed now.)
-7. **Anything else you want in v1 that I missed?** (e.g., Bedrock/Geyser support, skin editor, multi-server.)
+1. **Scope of v1 — Velocity included.** v1 needs the Velocity plugin WITH join authorization/permission management. (DECISION-level: proxy auth is in scope.)
+2. **Auto-update hosting — GitHub Releases + backend redirect.** Update files live on GitHub Releases of the public launcher repo (free, versioned, CDN). The client checks BOTH the backend and GitHub; the backend can tell the client the update host moved (DNS/URL change), and the client refreshes its stored location. This gives a primary + backup path. Recorded as **DECISION-007**.
+3. **Metadata source (DECISION-005) — not yet understood.** Owner asked for clarification (see §8). Pending.
+4. **Distribution/legal — publish only what is legally required.** Keep private by default; publish publicly only what a license (Prism GPLv3) requires, and prefer publishing slightly more than the bare minimum when that reduces legal risk. Recorded as **DECISION-008**. (DECISION-004 still needs counsel confirmation of exact GPLv3 obligations.)
+5. **Windows CI — owner asked "why change it?"** See §9. Recommendation stands: move to GitHub-hosted `windows-latest` (no maintenance) OR register a Windows self-hosted runner. Pending owner choice.
+6. **Beta & access control.** Beta/alpha labels everywhere. Registration is **invite-only by email allowlist** (admin pre-approves tester emails; registration with an unlisted email is rejected with "not a beta tester"). Target capacity: ~200 users at beta launch. Full admin permission system with granular, per-user permissions (e.g. Minecraft ban but not system ban; approve username-change requests; approve skin requests). User data isolation: the server must only return data belonging to the requesting account; admin panel must not even be referenced in HTML for non-admins (even in dev). Skin uploads must be format-validated (magic bytes + dimensions + size) to prevent malware. Anti-bot + ban handling. Modular, independently testable builds with emulated/mock backends.
+7. **Modpack delivery — mrpack-like.** An instruction file lists mods to download (from Modrinth/Forge/etc.) plus the project's own configs. Must be tamper-protected (signed manifest + hash verification, already in UpdateManager) and any tampering attempt logged + silently reported (what was tried, by whom).
 
 ---
 
-## 6. Suggested next steps (after your answers)
+## 6. New requirements captured from the discussion (not in TASKS_40 yet)
 
-1. Resolve DECISION-004 and DECISION-005 (owner).
-2. Implement `ResolveLibraries`/`ResolveAssets` once DECISION-005 is set.
-3. Wire auto-update into launcher startup.
-4. Implement Velocity proxy auth (N15–N20) if in v1.
-5. Move Windows CI to `windows-latest` (or register a Windows runner).
-6. Write a short `docs/INSTALL.md` / release checklist and a beta notice.
+These must be added to the roadmap (TASKS_40 or a new phase) before implementation:
+
+- **Invite-only registration (allowlist by email).** New table `allowed_emails` (or `invites`); registration checks the allowlist; unlisted emails rejected with a clear "not a beta tester" message; admin can add/remove invites. (Backend + web + admin.)
+- **Granular admin permission system.** Per-user permission flags (e.g. `ban.minecraft`, `ban.system`, `approve.username_change`, `approve.skin`, `manage.invites`, `manage.updates`), enforced server-side on every admin endpoint; admin UI only rendered for accounts holding the relevant permission (hidden even in dev builds).
+- **User data isolation audit.** Server-side review that every endpoint only returns data owned by the requesting account (or covered by a permission). Admin endpoints gated by permission, not by "is admin".
+- **Skin upload hardening.** Magic-byte MIME sniffing, dimension check (64x64 / 64x32), size cap, image-decode validation (no malformed/crafted images), rate limit per user. (T-A, T-B, T-C extended.)
+- **Anti-bot.** Rate limiting (exists) + CAPTCHA or proof-of-work on registration/login (new).
+- **Beta labeling.** "BETA/ALPHA" banner in launcher, web and admin; version string includes beta tag.
+- **Capacity for ~200 concurrent users.** SQLite + Go is fine for 200; verify connection pool, indexes, and rate-limit memory; load test before beta.
+- **Modpack delivery (mrpack-like).** Signed instruction manifest listing mods (Modrinth/Forge URLs + hashes) + project configs; client downloads/verifies each; tamper attempts logged + silently reported (what/who). Reuses UpdateManager's signed-manifest machinery.
+- **Modular, emulated test builds.** Each subsystem runnable in isolation with mocked backends (e.g. launcher with a fake auth that accepts any registration; server with an in-memory DB) for fast, debuggable testing.
+- **Update host design (DECISION-007).** Client checks backend + GitHub; backend can redirect update host.
+
+## 7. Suggested next steps (after your answers)
+
+1. Clarify question 3 (metadata source) — see §8.
+2. Decide Windows CI approach — see §9.
+3. Resolve DECISION-004 with counsel (legal).
+4. Add the new requirements above to `docs/TASKS_40.md` as a new phase.
+5. Implement in order: (a) Velocity proxy auth (N15–N20), (b) invite-only registration + admin permissions, (c) modpack/update wiring, (d) skin hardening, (e) beta labeling + capacity test.
+
+## 8. Clarification: question 3 (metadata source)
+
+"Metadata" = the list of Minecraft versions and Fabric loader versions the launcher offers when creating an instance. Two options:
+- **Online:** the launcher downloads the version list from Mojang (and Fabric's meta server) at runtime. Simpler to implement, always up to date, but requires internet and trusts those servers.
+- **Offline/bundled:** ship a fixed list inside the launcher. Works without network and is safer, but goes stale and must be updated with every release.
+
+Recommendation for a small beta team: **online with a bundled fallback cache** (fetch once, cache locally, use cache if offline). This needs DECISION-005 to be recorded.
+
+## 9. Clarification: Windows CI
+
+Right now `launcher.yml` and `backend.yml` say "run on a self-hosted Windows runner", but **no Windows runner is registered** in this repo — only the Debian one. So whenever `launcher/` or `server/` changes, those jobs sit in the queue forever and never run. Two fixes:
+- **Option A (recommended):** change `runs-on` to `windows-latest` (GitHub's own Windows machines). Free minutes, zero maintenance, Qt is installable there. Downside: uses GitHub Actions minutes (2000/month free for private repos).
+- **Option B:** register a Windows PC as a self-hosted runner (like the Debian one). No minute limits, but that PC must stay on and maintained.
+
+Pick A or B.
 
 ---
 

@@ -290,3 +290,80 @@ Affected files:
 Reversible: yes
 
 Legal review required: no
+
+### DECISION-007 — Update host: GitHub Releases primary, backend as redirect/backup
+
+Date: 2026-11-16
+
+Status: APPROVED (owner decision, 2026-11-16 discussion)
+
+Decision:
+Update artifacts (manifest + files) are published on GitHub Releases of the
+public launcher repository. The client checks BOTH the backend and the GitHub
+host; the backend may tell the client that the update host moved (DNS/URL
+change), and the client refreshes its stored update location from that
+response. This gives a primary (GitHub) and a backup (backend-directed) path,
+so a lost domain or moved repository does not brick installed clients.
+
+Reason:
+The repository is already public for legal reasons (DECISION-004/008), so
+GitHub Releases is free, versioned and CDN-backed. The backend redirect keeps
+clients recoverable if the GitHub URL ever changes.
+
+Alternatives:
+- backend-only hosting (rejected: single point of failure, bandwidth cost)
+- client-only GitHub URL (rejected: no recovery path if the URL changes)
+
+Consequences:
+- The launcher needs an "update host" setting that can be overwritten by a
+  backend response, with signature verification on the manifest (already
+  implemented in UpdateManager).
+- Update host changes must be authenticated (admin-only) on the backend.
+- The manifest format (docs/UPDATE_SPEC.md) stays the contract.
+
+Affected files:
+`launcher/updates/UpdateManager.{h,cpp}`, `docs/UPDATE_SPEC.md`,
+`server/api/*` (new redirect endpoint), `docs/AI_CONTEXT.md`
+
+Reversible: yes
+
+Legal review required: no
+
+### DECISION-008 — Legal publication scope: publish only what is legally required
+
+Date: 2026-11-16
+
+Status: APPROVED (owner decision, 2026-11-16 discussion)
+
+Decision:
+Keep the repository private by default. Publish publicly ONLY the components
+that a license (notably Prism's GPLv3 for the launcher) legally requires to be
+public, and prefer publishing slightly more than the bare minimum when that
+reduces legal risk. Do not publish the backend, the website, secrets, or
+internal tooling unless a license requires it.
+
+Reason:
+The owner wants to minimise public exposure while staying legally safe; when in
+doubt, err on the side of publishing a little more rather than risking a
+license violation.
+
+Alternatives:
+- fully public repository (rejected by owner: unnecessary exposure)
+- fully private with no public source (rejected: violates GPLv3 for the
+  Prism-derived launcher)
+
+Consequences:
+- The launcher source (and its Prism-derived parts) must be published; the
+  backend and website need not be.
+- Update artifacts (manifest + files) are published on GitHub Releases of the
+  public launcher repository (DECISION-007).
+- A public-repository split may be needed later; document the boundary in
+  docs/LICENSE_AUDIT.md.
+
+Affected files:
+`docs/LICENSE_AUDIT.md`, `docs/THIRD_PARTY_COMPONENTS.md`,
+`docs/PRISM_MINIMAL_CORE.md`, `docs/PRISM_ARCHITECTURE_REVIEW.md`
+
+Reversible: yes, before the first public release
+
+Legal review required: YES (confirm exact GPLv3 obligations with counsel)

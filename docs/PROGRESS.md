@@ -956,8 +956,9 @@ Files:
 - docs/WORK_STATE.md, docs/PROGRESS.md, docs/CHANGELOG.md, docs/AI_CONTEXT.md
 
 Tests:
-- `docs/PROJECT_STATUS.md` added as a draft owner-facing gap analysis; no code
-  change, so no build/test impact.
+- `docs/PROJECT_STATUS.md` updated with owner decisions and new requirements;
+  DECISION-007 and DECISION-008 added to `docs/DECISIONS.md`. No code change,
+  so no build/test impact.
 - `runner.env` (git-ignored, repo root) sources cleanly in bash and holds the
   SSH/root logins, host facts, runner metadata and the run commands.
 - `git check-ignore -v runner.env` -> `.gitignore:34:*.env`; `git status` stays

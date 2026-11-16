@@ -619,3 +619,7 @@ ci/linux-runner-tests (linux-ci workflow) and ci/drop-redundant-workflow
 
 docs/project-status-overview: adds docs/PROJECT_STATUS.md, an owner-facing gap
 analysis and minimum publishable baseline (draft).
+docs/project-status-update2: records owner decisions (Velocity in v1,
+GitHub Releases updates with backend redirect, legal publication scope,
+invite-only registration, granular admin permissions, ~200 users, mrpack-like
+modpack, beta labeling) as DECISION-007/008 and updates PROJECT_STATUS.

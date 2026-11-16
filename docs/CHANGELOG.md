@@ -24,6 +24,15 @@
 - Added `docs/PROJECT_STATUS.md`: an owner-facing gap analysis and a proposed
   minimum publishable baseline (v1), plus the blocking decisions and open
   questions. Documentation only.
+- Recorded owner decisions from the 2026-11-16 discussion in
+  `docs/PROJECT_STATUS.md` and `docs/DECISIONS.md` (DECISION-007 update host:
+  GitHub Releases primary + backend redirect/backup; DECISION-008 legal
+  publication scope: publish only what is legally required). New requirements
+  captured: invite-only registration by email allowlist, granular per-user admin
+  permissions, user data isolation, skin upload hardening, anti-bot, beta
+  labeling, ~200-user capacity, mrpack-like modpack delivery, modular emulated
+  test builds. DECISION-005 (metadata source) and the Windows CI choice remain
+  open.
 
 ### Launcher - warnings-as-errors for the test targets (2026-11-16)
 
