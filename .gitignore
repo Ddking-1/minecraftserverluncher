@@ -32,6 +32,10 @@ reference/
 # Environment & Secret files
 .env
 *.env
+.dev.vars
+*.secret
+*.pem
+*.key
 
 # Local one-click testing / demo (built artifacts and scripts; not source)
 _local_test/
@@ -49,6 +53,7 @@ working/
 *.dir/
 build-new/
 build-vs/
+build-local/
 
 # Local one-click testing / demo (built artifacts and scripts; not source)
 _local_test/

@@ -496,3 +496,11 @@ No production functionality is claimed at this stage.
 - Cloudflare Turnstile verification on register/login (env-gated).
 - Admin dashboard (web/static/admin.html) wired to real endpoints.
 - skin-manager.html now uses real bearer-token auth + Turnstile widget.
+
+### Security audit pass 2 (2026-11-16)
+
+- Admin dashboard renders API data via safe DOM (no innerHTML).
+- PNG decompression-bomb guard in skin processor (header-first decode).
+- CSP header added to security headers middleware.
+- .gitignore: .dev.vars, secret/key/pem, build-local.
+- docs/SECURITY.md and docs/BACKLOG.md added.

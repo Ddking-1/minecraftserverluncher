@@ -252,3 +252,8 @@ linux-ci green.
 Batch (2026-11-16): Cloudflare Turnstile CAPTCHA (config-gated, dev mode when
 unset), admin dashboard HTML (web/static/admin.html), skin-manager rewired with
 Turnstile widget. linux-ci green.
+
+Batch (2026-11-16b): security audit pass 2 — XSS-safe admin UI, PNG
+decompression-bomb guard, CSP header, .gitignore secret/build artifacts,
+docs/SECURITY.md, docs/BACKLOG.md (feature candidates pending approval).
+linux-ci green.
