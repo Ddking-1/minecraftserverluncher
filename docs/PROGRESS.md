@@ -1071,3 +1071,6 @@ security audit of whole codebase.
 Tests: linux-ci green (go vet/test/build); launcher workflow green incl.
 windeployqt + upload-artifact.
 Current status: DONE.
+
+2026-11-16b: security hardening pass 2 (XSS, PNG bomb guard, CSP, gitignore),
+docs/SECURITY.md, docs/BACKLOG.md (feature candidates). linux-ci green.

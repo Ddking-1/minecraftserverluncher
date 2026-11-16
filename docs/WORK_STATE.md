@@ -651,3 +651,5 @@ Batch (2026-11-16): tripwire + RBAC admin + admin web UI + security fixes
 landed on master; CI green.
 
 Batch (2026-11-16): Turnstile CAPTCHA + admin dashboard landed; master green.
+
+Batch (2026-11-16b): security audit pass 2 + backlog. master green (9cb48d6).
