@@ -321,11 +321,10 @@ func TestWebhookHandler_PayloadTooLarge(t *testing.T) {
 	require.NoError(t, err)
 	defer resp.Body.Close()
 
-	// The handler verifies the signature before checking the payload size,
-	// because it needs the full body to compute the HMAC. When a legitimate
-	// signature is present but the body exceeds the limit, the handler returns
-	// 401 Unauthorized.
-	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+	// An oversized body is rejected before signature verification, so the
+	// handler returns 413 Payload Too Large even when a (truncated) signature
+	// is present. This prevents silent truncation of attacker-controlled data.
+	assert.Equal(t, http.StatusRequestEntityTooLarge, resp.StatusCode)
 }
 
 func TestServerStatusResponse_JSON(t *testing.T) {
