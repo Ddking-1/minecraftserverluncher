@@ -184,29 +184,25 @@ Decision: **online fetch + local cache + bundled fallback list** (cache-first, n
 
 Recorded as DECISION-009 in `docs/DECISIONS.md`.
 
-## 9. Windows CI — can it run on the Debian runner? NO
+## 9. Windows CI — RESOLVED: Option A (GitHub-hosted `windows-latest`)
 
-**Short answer: no, not for the launcher build.** The launcher is a Windows
-binary (Qt6 + MSVC/MinGW Windows toolchain), and Linux cannot build Windows
-Qt applications without a full cross-compilation toolchain (MXE etc.), which
-is heavy and fragile. So the Windows build cannot run on the Debian runner.
+**Decision (owner, 2026-11-16):** both `launcher.yml` and `backend.yml` now use
+`runs-on: windows-latest` (GitHub's own Windows machines). Free minutes
+(2000/month for private repos), zero maintenance, Qt installable there.
 
-Right now `launcher.yml` and `backend.yml` say "run on a self-hosted Windows
-runner", but **no Windows runner is registered** — only the Debian one. So
-whenever `launcher/` or `server/` changes, those jobs sit in the queue forever.
+Why not the Debian runner: the launcher is a Windows binary (Qt6 + MSVC/MinGW
+Windows toolchain) and Linux cannot build it without a heavy cross-compilation
+toolchain. So the Windows build cannot run on Debian. The backend (Go) could,
+but keeping both on `windows-latest` is simpler and still within the free tier.
 
-Two fixes (still open, owner's choice):
-- **Option A (recommended):** change `runs-on` to `windows-latest` (GitHub's own
-  Windows machines). Free minutes (2000/month for private repos), zero
-  maintenance, Qt is installable there.
-- **Option B:** register the owner's Windows PC as a self-hosted runner (like
-  the Debian one). No minute limits, but that PC must stay on and maintained.
+Note: Windows builds are also verified locally by the agent (MSVC + MinGW,
+23/23 tests), so even if CI minutes run out the builds are known to work.
 
-Note: Windows builds are already verified locally by the agent (MSVC + MinGW,
-23/23 tests) on the owner's machine, so even without Windows CI the builds are
-known to work — CI would only add automatic verification on every push.
-
-Pick A or B.
+**Manual action for the owner:** set a billing/usage alert in GitHub →
+Settings → Billing → Actions spending limit, so you are notified before the
+2000 free minutes run out. If they do run out, switch to Option B (register
+your Windows PC as a self-hosted runner) — see git history / §9 of earlier
+versions of this file for the steps.
 
 ---
 

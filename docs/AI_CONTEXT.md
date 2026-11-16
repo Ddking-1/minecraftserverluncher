@@ -69,10 +69,10 @@ required, preferring slightly more (DECISION-008); metadata source is online
 fetch + local cache + bundled fallback (DECISION-009); registration is
 invite-only by email allowlist with a granular per-user admin permission
 system; target ~200 beta users; modpack delivery is mrpack-like with signed,
-tamper-checked manifests; beta labels everywhere. The only remaining open item
-is the Windows CI choice (PROJECT_STATUS §9): the Windows build cannot run on
-the Debian runner, so it is either GitHub-hosted `windows-latest` (A) or a
-self-hosted Windows runner (B). The CTest suite (hwid, settings,
+tamper-checked manifests; beta labels everywhere. Windows CI now uses GitHub-hosted `windows-latest` for both `launcher.yml` and
+`backend.yml` (Option A, PROJECT_STATUS §9); the owner will be alerted if the
+2000 free minutes/month run out, and can switch to a self-hosted Windows runner
+(Option B) at that point. The CTest suite (hwid, settings,
 update_manifest, skin_model, backend_contract, settings_store, mod_scanner,
 skin_cache, rotating_logger, update_checker, file_integrity, editor_config,
 skin_client, download_asset, download_queue, java_detector, game_paths,

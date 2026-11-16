@@ -626,3 +626,6 @@ modpack, beta labeling) as DECISION-007/008 and updates PROJECT_STATUS.
 docs/decision-009-and-ci-answer: DECISION-009 (metadata: online + local cache)
 recorded; PROJECT_STATUS §9 clarified that the Windows build cannot run on the
 Debian runner (Option A/B remain open).
+ci/windows-latest-runners: `launcher.yml` and `backend.yml` now run on
+GitHub-hosted `windows-latest` (Option A, owner decision). Remaining watch item:
+the 2000 free Actions minutes/month for private repos.

@@ -956,9 +956,11 @@ Files:
 - docs/WORK_STATE.md, docs/PROGRESS.md, docs/CHANGELOG.md, docs/AI_CONTEXT.md
 
 Tests:
+- Windows workflows switched to `runs-on: windows-latest`: the next push that
+touches `launcher/**` or `server/**` is the real check (a GitHub-hosted Windows
+run). The Debian `linux-ci` run on this push validates the repo state.
 - `docs/PROJECT_STATUS.md` updated: DECISION-005 resolved as DECISION-009
-  (online + local cache); Windows CI §9 clarified (Windows build cannot run on
-  Debian). No code change, so no build/test impact.
+  (online + local cache); Windows CI §9 resolved as Option A.
 - `runner.env` (git-ignored, repo root) sources cleanly in bash and holds the
   SSH/root logins, host facts, runner metadata and the run commands.
 - `git check-ignore -v runner.env` -> `.gitignore:34:*.env`; `git status` stays

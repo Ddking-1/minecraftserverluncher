@@ -13,7 +13,7 @@ on:
 
 jobs:
   build-and-test:
-    runs-on: [self-hosted, windows]
+    runs-on: windows-latest  # Option A (docs/PROJECT_STATUS.md §9): GitHub-hosted Windows. Monitor Actions minutes; switch to a self-hosted Windows runner if exhausted.
     # Minimal, least-privilege token: contents read is all this job needs.
     permissions:
       contents: read

@@ -32,8 +32,10 @@
   requirements captured: invite-only registration by email allowlist, granular
   per-user admin permissions, user data isolation, skin upload hardening,
   anti-bot, beta labeling, ~200-user capacity, mrpack-like modpack delivery,
-  modular emulated test builds. The Windows CI choice remains open (the Windows
-  build cannot run on the Debian runner).
+  modular emulated   test builds. Windows CI switched to GitHub-hosted `windows-latest` for both
+  `launcher.yml` and `backend.yml` (Option A): the Windows build cannot run on
+  the Debian runner, so the choice was between hosted (A) and a self-hosted
+  Windows runner (B); the owner picked A with a minute-usage alert.
 
 ### Launcher - warnings-as-errors for the test targets (2026-11-16)
 
