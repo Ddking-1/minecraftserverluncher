@@ -1127,6 +1127,55 @@ Plain-language errors (2026-11-17): every launch/download failure now surfaces a
 short Hungarian explanation via `core/FriendlyError`, with technical detail kept
 in the log. New test: launcher `friendly_error`.
 
+## 2026-11-17 — MASTER MERGE OF THE OUTSTANDING TASK BRANCHES
+
+Agent/model: Buffy (Freebuff) - code agent
+Branch: master (integration merges; no feature code written)
+Task: Merge the completed task branches that were still open on GitHub and
+bring `master` up to date.
+Started: 2026-11-17
+Completed: 2026-11-17
+
+Files:
+launcher/core/FriendlyError.cpp, launcher/core/GameLauncher.cpp,
+launcher/core/UpdateManager.cpp, launcher/game/MinecraftLauncher.cpp,
+launcher/gui/CrashReportDialog.cpp, launcher/gui/LoginDialog.cpp,
+launcher/gui/MainWindow.cpp, launcher/ui/SkinPreviewWidget.cpp,
+launcher/tests/test_friendly_error.cpp, launcher/tests/test_friendly_error_paths.cpp,
+launcher/tests/test_main_window.cpp, launcher/CMakeLists.txt,
+.github/workflows/{backend,launcher,linux-ci}.yml, .github/workflows/runner-fallback.yml
+(merged from fix/friendly-errors-coverage);
+launcher/gui/SplashScreen.{h,cpp} deleted (merged from cleanup/remove-unused-splashscreen);
+docs/AI_CONTEXT.md, docs/WORK_STATE.md, docs/PROGRESS.md, docs/CHANGELOG.md
+(conflict resolution + state sync)
+
+Merges:
+- `fix/friendly-errors-coverage` (11 commits): complete plain-language error
+  coverage plus the self-hosted Windows runner and its hosted fallback
+  workflow.
+- `cleanup/remove-unused-splashscreen`: removes the orphaned SplashScreen
+  component.
+- Not merged: `fix/web-xss-and-skin-upload-cleanup`. Its skin upload change
+  (raw binary PUT) predates the current server, which now requires a multipart
+  `skin` field, so merging it as-is would break uploads. Its `escapeHTML` work
+  is still relevant and should be re-applied on top of the current client.
+
+Conflict resolution:
+- docs/AI_CONTEXT.md, docs/CHANGELOG.md, docs/PROGRESS.md, docs/WORK_STATE.md
+  were resolved by keeping both histories: the branch descriptions plus the
+  2026-11-17 toolchain verification entry. Live status now reports 28 tests.
+
+Verification (Windows 11, Qt 6.6.3 `msvc2019_64`, MSVC 14.52, CMake 3.30.5, Ninja):
+- Configure + build after the merges: 229/229 steps, exit 0.
+- `ctest --test-dir launcher/build-ninja --output-on-failure` -> **28/28 passed**,
+  0 failed (the merged branch adds the `friendly_error_paths` target).
+
+Next:
+Re-apply the XSS escaping of `server/web/static/app.js` and
+`skin-manager.html` on top of the multipart upload; then the existing open
+items (OpenSSL 3 runtime, cross-account skin-file read policy, Velocity token
+transport).
+
 ## 2026-11-17 — LOCAL TOOLCHAIN INSTALL AND FULL CTEST VERIFICATION
 
 Agent/model: Buffy (Freebuff) - code agent

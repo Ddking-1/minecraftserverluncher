@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+### Master merge: friendly-error coverage and SplashScreen cleanup (2026-11-17)
+
+- Merged `fix/friendly-errors-coverage` (11 commits) into `master`: complete
+  plain-language error coverage on every GUI surface, `GameLauncher` and
+  `UpdateManager`, plus the self-hosted Windows runner and the scheduled
+  `runner-fallback.yml` that re-dispatches a stuck launcher run to
+  `windows-latest`.
+- Merged `cleanup/remove-unused-splashscreen`: the orphaned
+  `launcher/gui/SplashScreen.{h,cpp}` pair is deleted (nothing referenced it).
+- Documentation conflicts were resolved by keeping both histories; the live
+  state now reports the 28-target CTest suite.
+- Re-verified after the merges on the owner's machine (Qt 6.6.3 `msvc2019_64`,
+  MSVC 14.52, CMake 3.30.5, Ninja): full build and CTest **28/28 passing**.
+- `fix/web-xss-and-skin-upload-cleanup` was left unmerged: its raw-binary skin
+  upload predates the current multipart API, so it would regress uploads; its
+  HTML escaping still needs to be re-applied separately.
+
 ### Local MSVC toolchain verified: full CTest suite green (2026-11-17)
 
 - Recorded the verified local build configuration: Qt 6.6.3 `msvc2019_64`, MSVC 14.52 (Visual Studio 18 Insiders via `vcvars64.bat`), CMake 3.30.5 and Ninja, with `-DCMAKE_PREFIX_PATH=C:/Qt/6.6.3/msvc2019_64`.
