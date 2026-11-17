@@ -34,3 +34,11 @@ jobs:
         run: go test ./... -count=1
       - name: Build
         run: go build ./...
+      - name: Build server binary
+        run: go build -o auth-server.exe .
+      - name: Upload server artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: auth-server-windows
+          path: server/auth-server.exe
+          if-no-files-found: error
