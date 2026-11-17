@@ -1,6 +1,17 @@
 ﻿# CHANGELOG
 
 ## Unreleased
+### Launcher GUI features F2/F3/F5/F6/F7/F10 (2026-11-17)
+
+- Added CrashReportDialog (Close/Send/View logs) posting to /api/v1/crash-reports with machine info and optional bearer token.
+- Modpack import now extracts archives via Expand-Archive into appData/modpacks/imported (no longer selection-only).
+- RAM slider persists to global settings and overrides instance memory at launch (affects -Xmx).
+- Offline mode persisted in SettingsStore; skips session restore, blocks login, disables auth UI.
+- Crash log viewer opens a file and displays its contents.
+- News panel fetches /api/v1/news and displays items.
+- Added offline_mode to SettingsStore (load/save).
+- Verified: launcher CI build + ctest SUCCESS; backend CI SUCCESS.
+
 ### CI - Windows workflows actually build on hosted `windows-latest` (2026-11-16)
 
 - `launcher.yml` and `backend.yml` now use `runs-on: windows-latest` (Option A,

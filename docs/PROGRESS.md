@@ -1078,3 +1078,32 @@ docs/SECURITY.md, docs/BACKLOG.md (feature candidates). linux-ci green.
 2026-11-16 (rev3): security fail-closed gates, HWID device_id, webhook cleanup, image guard, feature flags + capabilities endpoint.
 
 2026-11-17: API/DB/auth security audit (no critical findings).
+
+## 2026-11-17 — LAUNCHER GUI FEATURES F2/F3/F5/F6/F7/F10
+
+Agent/model: Buffy (Codebuff) - code agent
+Branch: docs/launcher-gui-features (merged to master)
+Task: Implement and verify the six remaining launcher GUI features: crash popup (F2), modpack import with real extraction (F3), RAM slider (F5), offline mode (F6), crash log viewer (F7), news panel (F10).
+Started: 2026-11-17
+Completed: 2026-11-17
+
+Files:
+- launcher/gui/CrashReportDialog.h/.cpp (new crash popup + log viewer)
+- launcher/gui/MainWindow.h/.cpp (RAM slider, offline checkbox, news/crash/modpack buttons, handlers)
+- launcher/core/SettingsStore.h/.cpp (offline_mode persistence)
+- launcher/minecraft/MinecraftInstance.cpp (global RAM default honored at launch)
+- launcher/CMakeLists.txt (new dialog compiled in both targets)
+- server/api/router.go (crash-reports stays protected; bearer token sent from launcher)
+
+Tests:
+- launcher CI (MSVC, Qt 6.6.3): build + ctest SUCCESS on commit 383ec9e.
+- backend CI: SUCCESS.
+
+Current status:
+All six features have functional, non-stub code paths. Modpack import extracts via Expand-Archive; crash logs viewable; RAM slider affects -Xmx; offline mode affects auth; news/crash use configured backend URL.
+
+Next:
+Cross-platform modpack extraction; anonymous crash reports (currently require auth).
+
+Manual user action:
+None for Git.

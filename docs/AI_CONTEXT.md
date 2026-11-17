@@ -261,3 +261,12 @@ linux-ci green.
 Batch (rev3 build): S1 fail-closed approval/invite gates, S2 HWID device_id requirement (config-gated), S3 webhook cleanup (dead branch removed, oversized body 413), S4 image dimension guard in SniffImage, S8 feature flags + GET /api/v1/capabilities endpoint. linux-ci pending.
 
 Audit (2026-11-17): API/DB/auth audit completed; no test bypasses, no leaked keys, no IDOR beyond intended public skins/admin scope. See SECURITY_AUDIT.md.
+
+Batch (2026-11-17): launcher GUI features F2/F3/F5/F6/F7/F10 implemented and verified.
+- F2 crash popup posts to /api/v1/crash-reports (bearer when session available).
+- F3 modpack import extracts zip via Expand-Archive.
+- F5 RAM slider persists global settings and overrides instance memory at launch.
+- F6 offline mode persisted; affects session restore/login/auth UI.
+- F7 crash log viewer opens and displays a log file.
+- F10 news panel fetches and displays /api/v1/news.
+- launcher CI (build + ctest) SUCCESS; backend CI SUCCESS.

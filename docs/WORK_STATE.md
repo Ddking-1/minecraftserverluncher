@@ -657,3 +657,9 @@ Batch (2026-11-16b): security audit pass 2 + backlog. master green (9cb48d6).
 Batch (rev3 build): S1-S4 + S8 applied; master push pending CI.
 
 Audit (2026-11-17): API/DB/auth audit done; findings documented in SECURITY_AUDIT.md.
+
+## 2026-11-17 — LAUNCHER GUI FEATURES COMPLETE
+
+All six features (F2, F3, F5, F6, F7, F10) now have functional, non-stub code paths.
+Launcher CI and backend CI green on master (latest commit 383ec9e).
+Open items: cross-platform modpack extraction; anonymous crash reports.
