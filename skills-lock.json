@@ -22,20 +22,6 @@
       "skillPath": "skills/ci-cd-and-automation/SKILL.md",
       "computedHash": "fbffe27b3bc3df30ba2895a71b87b2f032bb7b163de762bc8900f2673631c96d"
     },
-    "golang-continuous-integration": {
-      "source": "samber/cc-skills-golang",
-      "commit": "d68d80aec298e1b74b37c2a472c002b5217248b3",
-      "sourceType": "github",
-      "skillPath": "skills/golang-continuous-integration/SKILL.md",
-      "computedHash": "9fbae059833a865d905f6341498fc26b9e50f9b782fffb3bbb68b87ce48ff53c"
-    },
-    "golang-testing": {
-      "source": "samber/cc-skills-golang",
-      "commit": "d68d80aec298e1b74b37c2a472c002b5217248b3",
-      "sourceType": "github",
-      "skillPath": "skills/golang-testing/SKILL.md",
-      "computedHash": "adfaf95d45383e8e579de1770ea0f25d0729b3e94e0b003ea08d1646646f7247"
-    },
     "skill-inspector": {
       "source": "NVIDIA/SkillSpector",
       "commit": "a09091e0ebf6c96ff327457529d7b0d372125884",
