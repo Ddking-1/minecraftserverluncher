@@ -46,7 +46,7 @@ jobs:
           dir: ${{ github.workspace }}
           cache: true
       - name: Configure
-        shell: pwsh
+        shell: powershell  # Windows PowerShell 5.1: the self-hosted runner has no pwsh 7
         env:
           QT_PREFIX: ${{ vars.QT_PREFIX }}
         run: |
@@ -76,7 +76,7 @@ jobs:
       - name: Test
         run: ctest --test-dir launcher/build -C Release --output-on-failure
       - name: Deploy Qt (windeployqt)
-        shell: pwsh
+        shell: powershell  # Windows PowerShell 5.1: the self-hosted runner has no pwsh 7
         env:
           QT_PREFIX: ${{ vars.QT_PREFIX }}
         run: |
