@@ -65,6 +65,19 @@ int main(int argc, char **argv)
         // process should START (gameStarted) even if it exits quickly.
         bool ok = real.start(good);
         check(ok, "real java starts process");
+
+        // Unsafe JVM args must be rejected (S5).
+        GameLauncher unsafe;
+        LaunchRequest bad = good;
+        bad.extraJvmArgs = QStringList() << QStringLiteral("-javaagent:evil.jar");
+        check(!unsafe.start(bad), "unsafe jvm arg rejected");
+
+        // Memory range validation (S5).
+        GameLauncher mem;
+        LaunchRequest badmem = good;
+        badmem.minMemoryMb = 8000;
+        badmem.maxMemoryMb = 1024;
+        check(!mem.start(badmem), "min>max memory rejected");
     }
 
     if (failures == 0)
