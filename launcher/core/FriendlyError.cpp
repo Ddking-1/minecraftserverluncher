@@ -52,6 +52,12 @@ QString explain(const QString &raw)
 
     const QString lower = raw.toLower();
 
+    // Failed start (checked before the generic memory branch, because that
+    // message also contains "memory").
+    if (lower.contains(QStringLiteral("did not start"))) {
+        return QStringLiteral("A játék nem indult el. Csökkentsd a RAM beállítást, vagy zárj be más programokat, majd próbáld újra.");
+    }
+
     // Memory.
     if (lower.contains(QStringLiteral("memory")) || lower.contains(QStringLiteral("ram")) ||
         lower.contains(QStringLiteral("heap")) || lower.contains(QStringLiteral("memóri"))) {
@@ -119,10 +125,6 @@ QString explain(const QString &raw)
             return QStringLiteral("A játék váratlanul leállt (kód %1). Részletek a naplóban.").arg(code);
         }
     }
-    if (lower.contains(QStringLiteral("did not start"))) {
-        return QStringLiteral("A játék nem indult el. Csökkentsd a RAM beállítást, vagy zárj be más programokat, majd próbáld újra.");
-    }
-
     // Fallback: keep a short snippet so the user still has something to search for.
     QString snippet = raw.trimmed();
     if (snippet.length() > 80)
