@@ -43,8 +43,8 @@ void LauncherPartLaunch::executeTask()
         : QStringLiteral("at most %1 MB allowed").arg(allowedMb);
 
     if (requestedMb > allowedMb) {
-        emit failed(QStringLiteral("not enough memory: this instance is set to %1 MB, but %2. "
-                                   "Lower the RAM setting and try again.")
+        emit failed(QStringLiteral("Nincs elég memória: ez a példány %1 MB-ra van állítva, de %2. "
+                                   "Csökkentsd a RAM csúszkát, majd próbáld újra.")
                         .arg(requestedMb)
                         .arg(memoryHint));
         return;
@@ -74,8 +74,8 @@ void LauncherPartLaunch::executeTask()
     m_process->start(javaPath, args);
 
     if (!m_process->waitForStarted(10000)) {
-        emit failed(QStringLiteral("the game did not start with %1 MB of memory (%2). "
-                                   "Lower the RAM setting or close other programs, then try again.")
+        emit failed(QStringLiteral("A játék nem indult el %1 MB memóriával (%2). "
+                                   "Csökkentsd a RAM beállítást, vagy zárj be más programokat, majd próbáld újra.")
                         .arg(requestedMb)
                         .arg(memoryHint));
         return;
@@ -118,16 +118,13 @@ void LauncherPartLaunch::reportProcessExit(int exitCode, QProcess::ExitStatus st
     const QString memoryMessage = GameExitDiagnostics::diagnoseExit(
         exitCode, m_outputTail, m_requestedMb, m_totalMb, m_allowedMb);
     if (!memoryMessage.isEmpty()) {
-        // Same wording and numbers as the RAM panel, instead of a raw JVM trace.
-        emit logLine(memoryMessage);
+        // Already in Hungarian with the RAM panel's numbers; passes through.
         emit failed(memoryMessage);
         return;
     }
 
-    emit logLine(QStringLiteral("The game process exited (code %1)%2")
-                     .arg(exitCode)
-                     .arg(status == QProcess::CrashExit ? QStringLiteral(" after a crash")
-                                                        : QString()));
+    // Raw technical reason; LaunchTask translates it to a friendly message.
+    emit failed(QStringLiteral("game process exited (code %1)").arg(exitCode));
 }
 
 QStringList LauncherPartLaunch::buildJvmArgs() const

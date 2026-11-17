@@ -688,3 +688,10 @@ failures, exit 137) report the RAM panel's numbers in Hungarian; other crashes
 keep the generic "process exited (code N)" path; `abort()` stays silent.
 `LaunchTask` now surfaces a late step failure instead of dropping it after the
 pipeline finished. Tests: `game_exit_diagnostics`.
+
+## 2026-11-17 — PLAIN-LANGUAGE ERRORS
+
+`core/FriendlyError::explain` maps technical errors to user-friendly Hungarian
+messages (Java, login, memory, instance, directories, downloads, game exit).
+`LaunchTask` and `DownloadAsset` use it; unknown errors get a generic fallback
+plus a snippet. Tests: `friendly_error`.

@@ -1122,3 +1122,7 @@ Runs-out-of-memory feedback (2026-11-17): the started game process is watched, i
 output tail diagnosed, and memory deaths report the requested/installed/allowed
 figures with an action; ordinary crashes keep the generic path. New test:
 launcher `game_exit_diagnostics`.
+
+Plain-language errors (2026-11-17): every launch/download failure now surfaces a
+short Hungarian explanation via `core/FriendlyError`, with technical detail kept
+in the log. New test: launcher `friendly_error`.

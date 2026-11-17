@@ -214,6 +214,12 @@ target_include_directories(test_game_exit_diagnostics PRIVATE ${CMAKE_CURRENT_SO
 target_link_libraries(test_game_exit_diagnostics PRIVATE launcher_minecraft Qt6::Core)
 add_test(NAME game_exit_diagnostics COMMAND test_game_exit_diagnostics)
 
+# Every kind of launch/download error must become a plain-language message.
+add_executable(test_friendly_error tests/test_friendly_error.cpp)
+target_include_directories(test_friendly_error PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(test_friendly_error PRIVATE launcher_core Qt6::Core)
+add_test(NAME friendly_error COMMAND test_friendly_error)
+
 add_executable(MinecraftLauncher
     main.cpp
     gui/MainWindow.cpp

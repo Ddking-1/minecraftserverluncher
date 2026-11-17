@@ -601,3 +601,18 @@ Owner: hostile-tester review of F2, F3, F5, F6, F7, F10.
   (`succeeded()` = the game started, a later `failed()` = it then died).
 - New test `game_exit_diagnostics` (pure classification + message + late-failure
   forwarding, no real OOM).
+
+### Plain-language explanations for every error (2026-11-17)
+
+- New `core/FriendlyError` maps any technical launch/download error to a short
+  Hungarian sentence a basic user understands (missing Java, login, memory,
+  missing instance, directory creation, download/HTTP/network/checksum, game
+  crash exit code, failed start). Unknown errors fall back to a generic
+  message plus a short snippet; already-friendly messages pass through, so the
+  conversion is idempotent.
+- `LaunchTask::onStepFailed` now logs the technical detail and emits the
+  friendly text, including failures that arrive after the pipeline finished.
+- `DownloadAsset` reports friendly messages for every failure path.
+- The generic game-exit message is now a plain Hungarian sentence with the
+  exit code instead of an English trace.
+- New test `friendly_error`.
