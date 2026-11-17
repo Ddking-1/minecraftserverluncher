@@ -10,10 +10,21 @@ on:
     paths:
       - 'launcher/**'
       - '.github/workflows/launcher.yml'
+  # The runner-fallback workflow re-dispatches a stuck run with runner: hosted.
+  workflow_dispatch:
+    inputs:
+      runner:
+        description: 'auto = self-hosted Windows runner, hosted = GitHub-hosted fallback'
+        type: choice
+        options: [auto, hosted]
+        default: auto
 
 jobs:
   build:
-    runs-on: windows-latest  # Option A (docs/PROJECT_STATUS.md §9): GitHub-hosted Windows. Monitor Actions minutes (2000/month free for private repos); switch to a self-hosted Windows runner if exhausted.
+    # Self-hosted Windows runner first (fast, has Qt and the MSVC toolset
+    # installed); runner-fallback.yml dispatches runner: hosted when it is
+    # offline or wedged.
+    runs-on: ${{ inputs.runner == 'hosted' && 'windows-latest' || fromJSON('["self-hosted","windows","x64","launcher"]') }}
     # Least privilege: only read contents.
     permissions:
       contents: read
@@ -22,6 +33,9 @@ jobs:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - name: Install Qt
         id: install_qt
+        # Skipped on the self-hosted runner: QT_PREFIX (repository variable)
+        # points at the Qt that is already installed there.
+        if: ${{ vars.QT_PREFIX == '' || inputs.runner == 'hosted' }}
         uses: jurplel/install-qt-action@a9c63c7c123f3069cff414e7e482d95dfa9d8125 # v4
         with:
           version: '6.6.3'
@@ -33,6 +47,8 @@ jobs:
           cache: true
       - name: Configure
         shell: pwsh
+        env:
+          QT_PREFIX: ${{ vars.QT_PREFIX }}
         run: |
           # windows-latest now ships Visual Studio 2026 (generator "Visual Studio 18 2026"),
           # so pick the newest generator the image actually has instead of pinning VS 17.
@@ -41,7 +57,11 @@ jobs:
           foreach ($g in @('Visual Studio 18 2026', 'Visual Studio 17 2022')) {
             if ($help -match [regex]::Escape($g)) { $generator = $g; break }
           }
-          $prefix = Join-Path $env:GITHUB_WORKSPACE 'Qt/6.6.3/msvc2019_64'
+          # Self-hosted runner: use the Qt that is already installed there.
+          $prefix = $env:QT_PREFIX
+          if (-not $prefix -or -not (Test-Path $prefix)) {
+            $prefix = Join-Path $env:GITHUB_WORKSPACE 'Qt/6.6.3/msvc2019_64'
+          }
           if (-not (Test-Path $prefix)) { throw "Qt prefix not found: $prefix" }
           if ($generator) {
             Write-Host "Using generator: $generator"
@@ -57,8 +77,14 @@ jobs:
         run: ctest --test-dir launcher/build -C Release --output-on-failure
       - name: Deploy Qt (windeployqt)
         shell: pwsh
+        env:
+          QT_PREFIX: ${{ vars.QT_PREFIX }}
         run: |
-          $qtBin = Join-Path $env:GITHUB_WORKSPACE 'Qt/6.6.3/msvc2019_64/bin'
+          $prefix = $env:QT_PREFIX
+          if (-not $prefix -or -not (Test-Path $prefix)) {
+            $prefix = Join-Path $env:GITHUB_WORKSPACE 'Qt/6.6.3/msvc2019_64'
+          }
+          $qtBin = Join-Path $prefix 'bin'
           $exe = Join-Path $env:GITHUB_WORKSPACE 'launcher/build/Release/MinecraftLauncher.exe'
           if (-not (Test-Path $exe)) { throw "launcher exe not found: $exe" }
 

@@ -28,6 +28,15 @@ end to end: fresh clone of the pushed branch, fresh build directory, MSVC 2022
 + Qt 6.6.3 configure + Release build, CTest 28/28 passing, and the GUI was
 still running 8 s after an offscreen start with an empty log.
 
+CI runners (2026-11-17): `launcher.yml` targets a new self-hosted Windows
+runner on the development machine (`windows-local-<host>`, labels
+`self-hosted, windows, x64, launcher`), which has Qt 6.6.3 and the MSVC toolset
+installed locally - the `QT_PREFIX` repository variable points there so the Qt
+download is skipped. `runner-fallback.yml` (scheduled, on `windows-latest`)
+cancels a `launcher` run that stays queued >15 minutes and re-dispatches it with
+`runner: hosted`, so CI always finishes when the local machine is off. The
+listener autostarts from `HKCU\...\Run` (`GitHubRunner`).
+
 CI (2026-11-17): the recent runs are green, and the warning sweep fixed the
 only real defect - the launcher artifact was uploaded without the VC++ runtime
 because `windeployqt` ran without `VCINSTALLDIR`; the step now uses `vswhere` +

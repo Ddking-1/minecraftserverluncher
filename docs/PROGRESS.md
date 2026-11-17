@@ -1172,6 +1172,16 @@ Hírek against `http://127.0.0.1:1` and requires a Hungarian instruction with no
 `Connection refused` / URL text. Verified locally: full Release build and CTest
 28/28 passing with MSVC 2022 + Qt 6.6.3.
 
+Self-hosted Windows runner (2026-11-17): the launcher build now runs on a
+runner installed on the development machine (`windows-local-<host>`, labels
+`self-hosted, windows, x64, launcher`), using the Qt 6.6.3 and MSVC toolset that
+are already there (`QT_PREFIX` repository variable skips the Qt download).
+`launcher.yml` keeps a `workflow_dispatch` input so the same job can run on
+`windows-latest`, and the new scheduled `runner-fallback.yml` cancels a
+`launcher` run that stays queued longer than 15 minutes and re-dispatches it
+there - a dead local runner can no longer block a PR. The listener autostarts
+at logon (`HKCU\Software\Microsoft\Windows\CurrentVersion\Run`).
+
 CI warning sweep (2026-11-17): every job log of the recent runs was read. The
 only real defect was in `launcher.yml` - `windeployqt` ran outside the Visual
 Studio developer shell, printed `Cannot find Visual Studio installation

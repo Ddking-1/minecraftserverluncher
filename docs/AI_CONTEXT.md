@@ -223,8 +223,11 @@ configure and `cmake --build ... --config Release` succeed with Qt 6.6.3 under
 both MinGW GCC 13.1 and MSVC 2022; CTest runs 23/23 passing tests under both,
 including the `/W4 /WX` gate on the MSVC launcher target. Library/asset download steps
 remain stubs pending DECISION-005. The CI workflow
-(`.github/workflows/launcher.yml`) runs on GitHub-hosted `windows-latest`, where
-Qt 6.6.3 is installed by `jurplel/install-qt-action`; the artifact deploy step
+(`.github/workflows/launcher.yml`) runs on the self-hosted Windows runner
+(labels `self-hosted, windows, x64, launcher`) when one is available and on
+GitHub-hosted `windows-latest` otherwise: `runner-fallback.yml` re-dispatches a
+run that stays queued (`runner: hosted`) and the job skips `install-qt-action`
+when the `QT_PREFIX` repository variable points at a local Qt; the artifact deploy step
 locates the toolset with `vswhere` and runs
 `windeployqt --compiler-runtime` inside `vcvars64` (without that the uploaded
 launcher lacked the MSVC runtime), and the actions are on their Node 24

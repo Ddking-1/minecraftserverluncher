@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+### CI - self-hosted Windows runner with automatic hosted fallback (2026-11-17)
+
+- Registered a self-hosted Windows runner on the development machine
+  (`windows-local-<host>`, labels `self-hosted, windows, x64, launcher`), so
+  `launcher.yml` builds and tests on the machine that already has Qt 6.6.3 and
+  the MSVC toolset instead of waiting for a hosted runner.
+- `launcher.yml` now resolves `runs-on` from a dispatch input: pushes and pull
+  requests use `[self-hosted, windows, x64, launcher]`, while
+  `workflow_dispatch` with `runner: hosted` uses `windows-latest`.
+- The `Install Qt` step is skipped when the `QT_PREFIX` repository variable
+  points at an existing Qt installation (set to the local
+  `Qt/6.6.3/msvc2019_64`), and the Configure/Deploy steps resolve the prefix the
+  same way, falling back to the downloaded Qt on the hosted runner.
+- New `runner-fallback.yml` (every 10 minutes on `windows-latest`) watches for
+  `launcher` runs that stayed `queued` longer than 15 minutes - i.e. the
+  self-hosted runner is offline - cancels them and re-dispatches the build on
+  `windows-latest`. It runs from `master` and can also be started by hand with a
+  custom `stale_minutes`.
+- Runner persistence on the machine: `HKCU\...\Run` entry
+  `GitHubRunner` -> `C:\GITHUB\actions-runner\run.cmd`, so the listener starts
+  with the user session after a reboot.
+
 ### CI - deprecated Node 20 actions and a launcher artifact without the VC++ runtime (2026-11-17)
 
 - `windeployqt` printed `Warning: Cannot find Visual Studio installation
