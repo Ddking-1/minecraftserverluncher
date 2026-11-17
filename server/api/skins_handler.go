@@ -139,6 +139,24 @@ func ownsSkinFile(r *http.Request, id string) bool {
 	return ok && owner == accountID
 }
 
+// skinApprovedForRead enforces the skin approval workflow for non-owners.
+// Returns true when read is allowed. Fail-closed: a DB error denies read.
+func (h *SkinHandler) skinApprovedForRead(w http.ResponseWriter, r *http.Request, id string) bool {
+	if h.DB == nil || ownsSkinFile(r, id) {
+		return true
+	}
+	approved, err := h.DB.IsSkinFileApproved(id)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal error")
+		return false
+	}
+	if !approved {
+		writeError(w, http.StatusForbidden, "skin pending approval")
+		return false
+	}
+	return true
+}
+
 func (h *SkinHandler) handleGetSkin(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id == "" {
@@ -146,18 +164,8 @@ func (h *SkinHandler) handleGetSkin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Skin approval workflow: non-owners may only read approved skins.
-	// Fail-closed: a database error denies read rather than silently
-	// bypassing the approval gate.
-	if h.DB != nil && !ownsSkinFile(r, id) {
-		approved, err := h.DB.IsSkinFileApproved(id)
-		if err != nil {
-			writeError(w, http.StatusInternalServerError, "internal error")
-			return
-		}
-		if !approved {
-			writeError(w, http.StatusForbidden, "skin pending approval")
-			return
-		}
+	if !h.skinApprovedForRead(w, r, id) {
+		return
 	}
 	data, err := h.Storage.GetSkin(id)
 	if err != nil {
@@ -183,18 +191,8 @@ func (h *SkinHandler) handleGetAvatar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Skin approval workflow: non-owners may only read approved skins.
-	// Fail-closed: a database error denies read rather than silently
-	// bypassing the approval gate.
-	if h.DB != nil && !ownsSkinFile(r, id) {
-		approved, err := h.DB.IsSkinFileApproved(id)
-		if err != nil {
-			writeError(w, http.StatusInternalServerError, "internal error")
-			return
-		}
-		if !approved {
-			writeError(w, http.StatusForbidden, "skin pending approval")
-			return
-		}
+	if !h.skinApprovedForRead(w, r, id) {
+		return
 	}
 	avatarID := id + "-avatar"
 	data, err := h.Storage.GetSkin(avatarID)

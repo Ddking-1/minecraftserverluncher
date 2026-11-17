@@ -512,3 +512,12 @@ No production functionality is claimed at this stage.
 - Webhook: removed dead signature branch, oversized body now 413 (S3).
 - Image dimension guard in SniffImage (S4).
 - Feature flags (AUTH_FEATURE_*) + GET /api/v1/capabilities (S8).
+
+### Security/extensibility batch 2 (S5-S7 + F* backend, 2026-11-17)
+
+- S5: JVM arg validation in GameLauncher (memory ranges, dangerous agent/error-hook switches, unsafe chars).
+- S6: removed import hack from server/api/handlers.go (unused os/exec/sync/config/devices/web/sql imports + hack block).
+- S7: consolidated skin-approval checks into SkinHandler.skinApprovedForRead.
+- F2/F10 backend: crash report endpoint POST /api/v1/crash-reports; news endpoint GET /api/v1/news.
+- F8/F9: per-instance Java override already present; added InstanceList::duplicateInstance.
+- F1: FileIntegrity primitive already present; capabilities endpoint exposes feature flags.

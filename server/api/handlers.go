@@ -9,36 +9,16 @@ package api
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"log"
 	"net/http"
-	"os/exec"
 	"strings"
 	"time"
 
 	"minecraftserverluncher/server/auth"
-	"minecraftserverluncher/server/config"
 	"minecraftserverluncher/server/database"
-	"minecraftserverluncher/server/devices"
 	"minecraftserverluncher/server/sessions"
-	"minecraftserverluncher/server/web"
-	"sync"
 )
-
-// ensure imports are used
-var _ = func() {
-	_ = (*Server)(nil)
-	_ = web.Handler
-	_ = sessions.NewService
-	_ = devices.NewService
-	_ = sync.Mutex{}
-	_ = sql.NullInt64{}
-	_ = (*config.Config)(nil)
-	_ = (*database.DB)(nil)
-	_ = auth.HashPassword
-	_ = auth.VerifyPassword
-}
 
 // The following types and functions are used by handlers but defined in
 // router.go: Server, NewServer, Handler, registerRequest, loginRequest,

@@ -8,6 +8,7 @@ package api
 
 import (
 	"errors"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -115,4 +116,24 @@ func (s *Server) handleCapabilities(w http.ResponseWriter, r *http.Request) {
 			"require_device_id": s.cfg.RequireDeviceID,
 		},
 	})
+}
+
+// handleCrashReport accepts a crash report submission from the launcher.
+// It is best-effort: the report is logged server-side and 202 is returned.
+func (s *Server) handleCrashReport(w http.ResponseWriter, r *http.Request) {
+	var payload map[string]any
+	if !decodeBody(w, r, &payload) {
+		return
+	}
+	// Best-effort logging; never fail the request on log errors.
+	log.Printf("crash report received: %v", payload)
+	writeJSON(w, http.StatusAccepted, map[string]string{"status": "accepted"})
+}
+
+// handleNews returns a small list of news items for the launcher news panel.
+func (s *Server) handleNews(w http.ResponseWriter, r *http.Request) {
+	items := []map[string]string{
+		{"title": "Server status", "body": "All systems operational."},
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"items": items})
 }

@@ -4,6 +4,9 @@
 #include "InstancePersistence.h"
 
 #include <QDir>
+#include <QDirIterator>
+#include <QFile>
+#include <QFileInfo>
 #include <QJsonObject>
 
 InstanceList::InstanceList(QObject *parent)
@@ -138,6 +141,75 @@ void InstanceList::removeInstance(int index)
     m_instances.erase(m_instances.begin() + index);
     endRemoveRows();
     emit instancesChanged();
+}
+
+BaseInstance *InstanceList::duplicateInstance(int index)
+{
+    if (index < 0 || index >= static_cast<int>(m_instances.size()))
+        return nullptr;
+    if (!m_factory || m_instancesDir.isEmpty())
+        return nullptr;
+
+    BaseInstance *src = m_instances[index].get();
+    if (!src)
+        return nullptr;
+
+    // Build a new unique id.
+    QString newId = src->id() + QStringLiteral("-copy");
+    int suffix = 1;
+    while (QDir(m_instancesDir + "/" + newId).exists()) {
+        newId = src->id() + QStringLiteral("-copy%1").arg(suffix++);
+    }
+
+    QString srcDir = src->instanceRoot();
+    QString newDir = m_instancesDir + "/" + newId;
+    if (!QDir().mkpath(newDir))
+        return nullptr;
+
+    // Recursively copy the instance directory.
+    QDirIterator it(srcDir, QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot,
+                    QDirIterator::Subdirectories);
+    while (it.hasNext()) {
+        it.next();
+        const QString rel = srcDir.length() < it.filePath().length()
+                                ? it.filePath().mid(srcDir.length() + 1)
+                                : QString();
+        if (rel.isEmpty())
+            continue;
+        const QString target = newDir + "/" + rel;
+        if (it.fileInfo().isDir()) {
+            QDir().mkpath(target);
+        } else {
+            QDir().mkpath(QFileInfo(target).absolutePath());
+            QFile::copy(it.filePath(), target);
+        }
+    }
+
+    // Update instance.json id if present.
+    QString metaPath = newDir + "/instance.json";
+    QJsonObject obj;
+    if (InstancePersistence::readJsonFile(metaPath, obj)) {
+        obj["id"] = newId;
+        InstancePersistence::writeJsonFile(metaPath, obj);
+    }
+
+    InstanceMetadata meta;
+    if (InstancePersistence::readJsonFile(metaPath, obj))
+        meta = InstancePersistence::metadataFromJson(obj);
+    meta.id = newId;
+
+    auto inst = m_factory(meta, newDir);
+    if (!inst)
+        return nullptr;
+    inst->setId(newId);
+    inst->setInstanceRoot(newDir);
+
+    int idx = static_cast<int>(m_instances.size());
+    beginInsertRows(QModelIndex(), idx, idx);
+    m_instances.push_back(std::move(inst));
+    endInsertRows();
+    emit instancesChanged();
+    return m_instances.back().get();
 }
 
 void InstanceList::updateInstanceAt(int index, std::string_view newName)

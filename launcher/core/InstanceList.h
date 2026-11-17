@@ -49,6 +49,10 @@ public:
     void addInstance(std::unique_ptr<BaseInstance> instance);
     void removeInstance(int index);
 
+    // Duplicate the instance at the given index into a new instance directory
+    // and append it to the list. Returns the new instance pointer or nullptr.
+    BaseInstance *duplicateInstance(int index);
+
 signals:
     void instancesChanged();
 

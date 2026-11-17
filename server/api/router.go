@@ -146,6 +146,7 @@ func (s *Server) Handler() http.Handler {
 	public.HandleFunc("POST /api/v1/auth/reset", s.handleResetPassword)
 	public.HandleFunc("GET /api/v1/updates/manifest", s.handleUpdatesManifest)
 	public.HandleFunc("GET /api/v1/capabilities", s.handleCapabilities)
+	public.HandleFunc("GET /api/v1/news", s.handleNews)
 	public.HandleFunc("GET /readyz", s.handleReadyz)
 	public.HandleFunc("POST /api/v1/proxy/auth", s.handleProxyAuth)
 	if s.PterodactylWebhook != nil {
@@ -172,6 +173,7 @@ func (s *Server) Handler() http.Handler {
 
 	// Processing tasks for async uploads.
 	protected.HandleFunc("GET /api/v1/tasks/{id}", s.handleTaskStatus)
+	protected.HandleFunc("POST /api/v1/crash-reports", s.handleCrashReport)
 
 	// ID-addressed processed skin files (upload -> immutable image + avatar).
 	// They live under a separate prefix because "{id}" would collide with the
@@ -219,6 +221,7 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("/api/v1/auth/", wrap(publicGroup))
 	mux.Handle("/api/v1/updates/", wrap(publicGroup))
 	mux.Handle("/api/v1/capabilities", wrap(publicGroup))
+	mux.Handle("/api/v1/news", wrap(publicGroup))
 	mux.Handle("/api/v1/proxy/", wrap(publicGroup))
 	mux.Handle("/api/v1/webhooks/", wrap(publicGroup))
 	mux.Handle("/api/v1/account/", wrap(protectedGroup))
@@ -230,6 +233,7 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("/api/v1/skin-files", wrap(protectedGroup))
 	mux.Handle("/api/v1/skin-files/", wrap(protectedGroup))
 	mux.Handle("/api/v1/tasks/", wrap(protectedGroup))
+	mux.Handle("/api/v1/crash-reports", wrap(protectedGroup))
 	mux.Handle("/api/admin/", wrap(adminGroup))
 	// The server-control endpoint lives under /api/server/, not /api/admin/,
 	// and must be mounted on the admin group or it is unreachable.

@@ -7,6 +7,28 @@
 
 namespace {
 const char *const kTokenEnv = "MCSERVER_SESSION_TOKEN";
+
+// Reject JVM/game arguments that could be used for injection: embedded
+// newlines/NULs or dangerous agent/error-hook switches.
+bool isSafeArg(const QString &arg)
+{
+    if (arg.isEmpty())
+        return false;
+    if (arg.contains(QChar('\n')) || arg.contains(QChar('\r')) || arg.contains(QChar('\0')))
+        return false;
+    const QString lower = arg.toLower();
+    static const QStringList dangerous = {
+        QStringLiteral("-javaagent"),
+        QStringLiteral("-agentlib"),
+        QStringLiteral("-agentpath"),
+        QStringLiteral("-xx:onerror"),
+        QStringLiteral("-xx:onoutofmemoryerror"),
+    };
+    for (const QString &d : dangerous)
+        if (lower.startsWith(d))
+            return false;
+    return true;
+}
 } // namespace
 
 GameLauncher::GameLauncher(QObject *parent)
@@ -45,6 +67,35 @@ QProcessEnvironment GameLauncher::preparedEnvironment(const LaunchRequest &req) 
 
 bool GameLauncher::start(const LaunchRequest &req)
 {
+    // JVM arg / injection validation.
+    if (req.minMemoryMb < 0 || req.maxMemoryMb < 0 || req.minMemoryMb > 65536 || req.maxMemoryMb > 65536) {
+        emit launchFailed(QStringLiteral("implausible memory settings"));
+        return false;
+    }
+    if (req.minMemoryMb > 0 && req.maxMemoryMb > 0 && req.minMemoryMb > req.maxMemoryMb) {
+        emit launchFailed(QStringLiteral("min memory exceeds max memory"));
+        return false;
+    }
+    if (req.mainClass.contains(QChar('\n')) || req.mainClass.contains(QChar('\r')) || req.mainClass.contains(QChar('\0'))) {
+        emit launchFailed(QStringLiteral("unsafe main class"));
+        return false;
+    }
+    if (req.classpath.contains(QChar('\n')) || req.classpath.contains(QChar('\r')) || req.classpath.contains(QChar('\0'))) {
+        emit launchFailed(QStringLiteral("unsafe classpath"));
+        return false;
+    }
+    for (const QString &a : req.extraJvmArgs) {
+        if (!isSafeArg(a)) {
+            emit launchFailed(QStringLiteral("unsafe jvm argument"));
+            return false;
+        }
+    }
+    for (const QString &a : req.gameArgs) {
+        if (!isSafeArg(a)) {
+            emit launchFailed(QStringLiteral("unsafe game argument"));
+            return false;
+        }
+    }
     if (req.javaPath.isEmpty() || !JavaDetector::isPlausibleJava(req.javaPath)) {
         emit launchFailed(QStringLiteral("invalid or implausible java executable"));
         return false;
