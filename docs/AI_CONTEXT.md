@@ -270,3 +270,7 @@ Batch (2026-11-17): launcher GUI features F2/F3/F5/F6/F7/F10 implemented and ver
 - F7 crash log viewer opens and displays a log file.
 - F10 news panel fetches and displays /api/v1/news.
 - launcher CI (build + ctest) SUCCESS; backend CI SUCCESS.
+
+- Adversarial hardening pass on F2/F3/F5/F6/F7/F10: input validation, timeouts,
+  reentrancy guards, payload caps, zip pre-checks, memory clamping, and
+  crash-report log sanitization on the backend.

@@ -11,9 +11,11 @@
 #include <QCheckBox>
 #include <QFileDialog>
 #include <QFile>
+#include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QJsonParseError>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QMessageBox>
@@ -23,6 +25,7 @@
 #include <QSysInfo>
 
 #include <QDir>
+#include <QDirIterator>
 #include <QGroupBox>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -117,13 +120,19 @@ void MainWindow::buildUi()
     m_offlineModeCheckBox->setObjectName(QStringLiteral("offlineModeCheckBox"));
     layout->addWidget(m_offlineModeCheckBox);
     connect(m_offlineModeCheckBox, &QCheckBox::toggled, this, [this](bool on) {
+        if (m_busy)
+            return; // never flip transport/auth state mid-request
         m_settings.offlineMode = on;
         (void)saveSettings();
         updateAuthUi();
-        if (on)
-            showStatus(tr("Offline mód bekapcsolva: hálózati funkciók letiltva."));
-        else
+        if (on) {
+            const bool hadSession = m_sessions != nullptr && m_sessions->currentSession() != nullptr;
+            showStatus(hadSession
+                           ? tr("Offline mód bekapcsolva: a meglévő munkamenet inaktív, hálózati funkciók letiltva.")
+                           : tr("Offline mód bekapcsolva: hálózati funkciók letiltva."));
+        } else {
             showStatus(tr("Offline mód kikapcsolva."));
+        }
     });
 
     // Action buttons (F2, F3, F10)
@@ -219,7 +228,11 @@ void MainWindow::updateAuthUi()
     m_saveBackendButton->setEnabled(!loggedIn && !m_busy && !offline);
     m_loginButton->setEnabled(!loggedIn && !m_busy && hasBackend && !offline);
     m_logoutButton->setEnabled(loggedIn && !m_busy);
-    m_skinPreview->setEnabled(loggedIn);
+    // Offline mode must actually disable network-backed features, not just the
+    // login button: skin upload requires a live backend session.
+    m_skinPreview->setEnabled(loggedIn && !offline);
+    if (m_offlineModeCheckBox != nullptr)
+        m_offlineModeCheckBox->setEnabled(!m_busy);
 }
 
 void MainWindow::setBusy(bool busy)
@@ -357,33 +370,66 @@ void MainWindow::onRamSliderChanged(int value)
 
 void MainWindow::onNewsClicked()
 {
+    if (m_settings.offlineMode) {
+        showStatus(tr("Offline módban a hírek nem tölthetők be."));
+        return;
+    }
     if (m_authClient == nullptr || m_authClient->backendUrl().isEmpty()) {
         showStatus(tr("Előbb add meg a backend URL-t."));
         return;
     }
+    // Reentrancy guard.
+    if (m_newsButton != nullptr && !m_newsButton->isEnabled())
+        return;
+    if (m_newsButton != nullptr)
+        m_newsButton->setEnabled(false);
+
     auto *nam = new QNetworkAccessManager(this);
     QNetworkRequest req(QUrl(m_authClient->backendUrl() + QStringLiteral("/api/v1/news")));
+    req.setTransferTimeout(15000);
     QNetworkReply *reply = nam->get(req);
     connect(reply, &QNetworkReply::finished, this, [this, reply, nam]() {
         if (reply->error() == QNetworkReply::NoError) {
-            const QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
+            // Bound the response so a hostile/huge payload cannot hang the UI.
+            constexpr qint64 kMaxNewsBytes = 512 * 1024;
+            constexpr int kMaxItems = 20;
+            constexpr int kMaxFieldChars = 500;
+            const QByteArray payload = reply->read(kMaxNewsBytes);
+            QJsonParseError parseError{};
+            const QJsonDocument doc = QJsonDocument::fromJson(payload, &parseError);
+            if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
+                showStatus(tr("Hírek betöltése sikertelen: érvénytelen válasz."));
+                if (m_newsButton != nullptr)
+                    m_newsButton->setEnabled(true);
+                reply->deleteLater();
+                nam->deleteLater();
+                return;
+            }
             QString text;
-            if (doc.isObject()) {
-                const QJsonArray items = doc.object().value(QStringLiteral("items")).toArray();
-                for (const QJsonValue &v : items) {
-                    const QJsonObject o = v.toObject();
-                    text += QStringLiteral("• %1\n%2\n\n")
-                                .arg(o.value(QStringLiteral("title")).toString(),
-                                     o.value(QStringLiteral("body")).toString());
-                }
+            const QJsonArray items = doc.object().value(QStringLiteral("items")).toArray();
+            for (const QJsonValue &v : items) {
+                if (text.size() > kMaxNewsBytes || text.count(QChar('\n')) > kMaxItems * 3)
+                    break;
+                const QJsonObject o = v.toObject();
+                QString title = o.value(QStringLiteral("title")).toString();
+                QString body = o.value(QStringLiteral("body")).toString();
+                title.truncate(kMaxFieldChars);
+                body.truncate(kMaxFieldChars);
+                text += QStringLiteral("• %1\n%2\n\n").arg(title, body);
             }
             if (text.isEmpty())
                 text = tr("Nincs új hír.");
-            QMessageBox::information(this, tr("Hírek"), text);
+            // Render as plain text: a hostile title must not be interpreted as HTML.
+            QMessageBox box(QMessageBox::Information, tr("Hírek"), text,
+                            QMessageBox::Ok, this);
+            box.setTextFormat(Qt::PlainText);
+            (void)box.exec();
             showStatus(tr("Hírek betöltve."));
         } else {
             showStatus(tr("Hírek betöltése sikertelen: %1").arg(reply->errorString()));
         }
+        if (m_newsButton != nullptr)
+            m_newsButton->setEnabled(true);
         reply->deleteLater();
         nam->deleteLater();
     });
@@ -391,25 +437,47 @@ void MainWindow::onNewsClicked()
 
 void MainWindow::onCrashReportClicked()
 {
+    // Reentrancy guard.
+    if (m_crashButton != nullptr && !m_crashButton->isEnabled())
+        return;
+    if (m_crashButton != nullptr)
+        m_crashButton->setEnabled(false);
+
     CrashReportDialog dlg(m_authClient ? m_authClient->backendUrl() : QString(), this);
-    // Best-effort: read a local crash log if present.
+    // Best-effort: read a local crash log if present (bounded read).
     QString logPath = appDataDirectory() + QStringLiteral("/crash.log");
     QFile f(logPath);
+    constexpr qint64 kMaxCrashLogBytes = 8 * 1024 * 1024;
     if (f.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        dlg.setLogText(QString::fromUtf8(f.readAll()));
+        dlg.setLogText(QString::fromUtf8(f.read(kMaxCrashLogBytes)));
         f.close();
     }
     connect(&dlg, &CrashReportDialog::sendRequested, this, [this](const QString &msg, const QString &logs) {
-        if (m_authClient == nullptr || m_authClient->backendUrl().isEmpty())
+        if (m_settings.offlineMode) {
+            showStatus(tr("Offline módban a crash jelentés nem küldhető el."));
             return;
+        }
+        if (m_authClient == nullptr || m_authClient->backendUrl().isEmpty()) {
+            showStatus(tr("Crash jelentés nem küldhető el: nincs backend URL."));
+            return;
+        }
+        if (m_sessions == nullptr || m_sessions->currentSession() == nullptr) {
+            // The endpoint is authenticated by design; fail fast with a clear
+            // message instead of a bare 401 from the backend.
+            showStatus(tr("Crash jelentés küldéséhez jelentkezz be."));
+            return;
+        }
         auto *nam = new QNetworkAccessManager(this);
         QNetworkRequest req(QUrl(m_authClient->backendUrl() + QStringLiteral("/api/v1/crash-reports")));
         req.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
-        if (m_sessions != nullptr && m_sessions->currentSession() != nullptr)
-            req.setRawHeader("Authorization", ("Bearer " + m_sessions->currentSession()->access_token).toUtf8());
+        req.setTransferTimeout(15000);
+        req.setRawHeader("Authorization",
+                         ("Bearer " + m_sessions->currentSession()->access_token).toUtf8());
         QJsonObject obj;
-        obj[QStringLiteral("message")] = msg;
-        obj[QStringLiteral("logs")] = logs;
+        // Truncate so a hostile/pasted blob cannot exceed the backend's 1 MiB
+        // request limit (which would turn into an opaque 400).
+        obj[QStringLiteral("message")] = msg.left(4000);
+        obj[QStringLiteral("logs")] = logs.left(256 * 1024);
         obj[QStringLiteral("machine")] = QSysInfo::machineHostName();
         obj[QStringLiteral("os")] = QSysInfo::prettyProductName();
         QJsonDocument doc(obj);
@@ -419,37 +487,150 @@ void MainWindow::onCrashReportClicked()
                 showStatus(tr("Crash jelentés elküldve."));
             else
                 showStatus(tr("Crash jelentés küldése sikertelen: %1").arg(reply->errorString()));
+            if (m_crashButton != nullptr)
+                m_crashButton->setEnabled(true);
             reply->deleteLater();
             nam->deleteLater();
         });
     });
     (void)dlg.exec();
+    // Re-enable after dialog closes (covers cancel/no-send path).
+    if (m_crashButton != nullptr)
+        m_crashButton->setEnabled(true);
 }
 
 void MainWindow::onImportModpackClicked()
 {
-    QString file = QFileDialog::getOpenFileName(this, tr("Modpack importálása"), QString(), tr("Zip fájlok (*.zip)"));
-    if (file.isEmpty())
+    // Reentrancy guard: prevent double-click launching two extractions.
+    if (m_importModpackButton != nullptr && !m_importModpackButton->isEnabled())
         return;
+    if (m_importModpackButton != nullptr)
+        m_importModpackButton->setEnabled(false);
+
+    // Single exit path: report the outcome and always re-enable the button so
+    // an error cannot permanently lock the feature out.
+    const auto finish = [this](const QString &message) {
+        showStatus(message);
+        if (m_importModpackButton != nullptr)
+            m_importModpackButton->setEnabled(true);
+    };
+
+    QString file = QFileDialog::getOpenFileName(this, tr("Modpack importálása"), QString(), tr("Zip fájlok (*.zip)"));
+    if (file.isEmpty()) {
+        if (m_importModpackButton != nullptr)
+            m_importModpackButton->setEnabled(true);
+        return;
+    }
+
+    // Validate input file (empty data / missing file).
+    QFileInfo fi(file);
+    if (!fi.exists() || !fi.isFile() || fi.size() <= 0) {
+        finish(tr("Modpack import sikertelen: üres vagy nem létező fájl."));
+        return;
+    }
+
+    // Guard against path injection: reject paths containing quotes/newlines.
+    if (file.contains(QChar('\'')) || file.contains(QChar('"')) || file.contains(QChar('\n')) ||
+        file.contains(QChar('\r'))) {
+        finish(tr("Modpack import sikertelen: érvénytelen fájlnév."));
+        return;
+    }
 
     // Choose a destination directory under the app data location.
     QString dest = appDataDirectory() + QStringLiteral("/modpacks/imported");
     QDir().mkpath(dest);
+    if (dest.contains(QChar('\'')) || dest.contains(QChar('"')) || dest.contains(QChar('\n')) ||
+        dest.contains(QChar('\r'))) {
+        finish(tr("Modpack import sikertelen: érvénytelen célkönyvtár."));
+        return;
+    }
 
-    // Extract using PowerShell Expand-Archive (Windows). Run synchronously.
+    // Pre-check the archive before extracting: path traversal (zip slip),
+    // absurd uncompressed size (disk-fill DoS), entry-count bomb, and
+    // unreadable/corrupt zips get distinct diagnostics.
+    {
+        const QString script = QStringLiteral(
+                                   "$ErrorActionPreference='Stop';"
+                                   "try {"
+                                   "Add-Type -AssemblyName System.IO.Compression.FileSystem;"
+                                   "$z=[System.IO.Compression.ZipFile]::OpenRead('%1');"
+                                   "$e=$z.Entries;"
+                                   "$bad=@($e | Where-Object {"
+                                   "$_.FullName -match '\\.\\.' -or $_.FullName -match '^[/\\\\]' });"
+                                   "$size=($e | Measure-Object -Property Length -Sum).Sum;"
+                                   "$count=$e.Count;"
+                                   "$z.Dispose();"
+                                   "if ($bad.Count -gt 0) { exit 1 };"
+                                   "if ($size -gt 4294967296) { exit 2 };"
+                                   "if ($count -gt 200000) { exit 3 };"
+                                   "exit 0"
+                                   "} catch { exit 4 }")
+                                   .arg(file);
+        QProcess chk;
+        chk.start(QStringLiteral("powershell"),
+                  {QStringLiteral("-NoProfile"), QStringLiteral("-Command"), script});
+        if (!chk.waitForFinished(30000)) {
+            chk.kill();
+            chk.waitForFinished(5000);
+            finish(tr("Modpack ellenőrzés időtúllépés."));
+            return;
+        }
+        switch (chk.exitCode()) {
+        case 0:
+            break;
+        case 1:
+            finish(tr("Modpack import sikertelen: gyanús (path traversal) bejegyzés a zipben."));
+            return;
+        case 2:
+            finish(tr("Modpack import sikertelen: a kicsomagolt méret meghaladja a 4 GB-os limitet."));
+            return;
+        case 3:
+            finish(tr("Modpack import sikertelen: túl sok fájl a zipben."));
+            return;
+        default:
+            finish(tr("Modpack import sikertelen: a zip nem olvasható vagy sérült."));
+            return;
+        }
+    }
+
+    // Extract using PowerShell Expand-Archive (Windows). Run synchronously with
+    // an argument list (no shell string interpolation) to avoid injection.
+    const auto countFiles = [](const QString &dirPath) {
+        int count = 0;
+        QDirIterator it(dirPath, QDir::Files | QDir::Hidden, QDirIterator::Subdirectories);
+        while (it.hasNext()) {
+            it.next();
+            ++count;
+        }
+        return count;
+    };
+    const int filesBefore = countFiles(dest);
+
     QProcess proc;
-    const QString ps = QStringLiteral("powershell -NoProfile -Command \"Expand-Archive -Path '%1' -DestinationPath '%2' -Force\"")
-                           .arg(file, dest);
-    proc.startCommand(ps);
+    QStringList args;
+    args << QStringLiteral("-NoProfile")
+         << QStringLiteral("-Command")
+         << QStringLiteral("Expand-Archive -LiteralPath '%1' -DestinationPath '%2' -Force")
+                .arg(file, dest);
+    proc.start(QStringLiteral("powershell"), args);
     if (!proc.waitForFinished(120000)) {
-        showStatus(tr("Modpack import időtúllépés."));
+        proc.kill();
+        proc.waitForFinished(5000);
+        finish(tr("Modpack import időtúllépés."));
         return;
     }
     if (proc.exitCode() != 0) {
-        showStatus(tr("Modpack import sikertelen: %1").arg(QString::fromLocal8Bit(proc.readAllStandardError())));
+        finish(tr("Modpack import sikertelen: %1").arg(QString::fromLocal8Bit(proc.readAllStandardError())));
         return;
     }
-    showStatus(tr("Modpack importálva: %1").arg(dest));
+
+    // An archive with no entries "succeeds" silently; report it instead of
+    // claiming a completed import.
+    if (countFiles(dest) <= filesBefore) {
+        finish(tr("Modpack import befejezve, de nem lett fájl kicsomagolva: %1").arg(dest));
+        return;
+    }
+    finish(tr("Modpack importálva: %1").arg(dest));
 }
 
 void MainWindow::showStatus(const QString &message)

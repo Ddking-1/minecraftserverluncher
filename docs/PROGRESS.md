@@ -1107,3 +1107,8 @@ Cross-platform modpack extraction; anonymous crash reports (currently require au
 
 Manual user action:
 None for Git.
+
+Adversarial hardening (2026-11-17): hostile-tester cases (empty input, slow network,
+double click, odd characters, unauthorized access) fixed for F2/F3/F5/F6/F7/F10 and
+for the backend crash-report logging path. New tests: launcher `memory_clamp`,
+backend `TestSanitizeLogFieldStripsControlChars`.

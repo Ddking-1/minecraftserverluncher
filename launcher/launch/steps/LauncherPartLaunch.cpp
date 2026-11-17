@@ -3,6 +3,7 @@
 
 #include <QDir>
 #include <QProcess>
+#include <QtGlobal>
 
 #include "minecraft/MinecraftInstance.h"
 
@@ -50,9 +51,16 @@ void LauncherPartLaunch::abort()
 
 QStringList LauncherPartLaunch::buildJvmArgs() const
 {
+    // Defensive clamping: the JVM refuses to start when -Xms is larger than
+    // -Xmx or when a heap value is zero/negative, so never pass raw values.
+    int maxMb = m_instance->maxMemoryMb();
+    int minMb = m_instance->minMemoryMb();
+    maxMb = qBound(512, maxMb, 65536);
+    minMb = qBound(256, minMb, maxMb);
+
     QStringList args;
-    args << QStringLiteral("-Xmx%1M").arg(m_instance->maxMemoryMb());
-    args << QStringLiteral("-Xms%1M").arg(m_instance->minMemoryMb());
+    args << QStringLiteral("-Xmx%1M").arg(maxMb);
+    args << QStringLiteral("-Xms%1M").arg(minMb);
     args << QStringLiteral("-XX:+UseG1GC");
     args << QStringLiteral("-Djava.library.path=%1").arg(QDir::toNativeSeparators(m_instance->nativesDir()));
     return args;

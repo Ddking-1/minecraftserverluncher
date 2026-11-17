@@ -8,10 +8,13 @@ package api
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
+	"unicode"
 
 	"minecraftserverluncher/server/auth"
 	"minecraftserverluncher/server/database"
@@ -118,6 +121,32 @@ func (s *Server) handleCapabilities(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// maxCrashFieldLen bounds how much of a single crash-report field is logged.
+const maxCrashFieldLen = 2048
+
+// sanitizeLogField makes client-supplied text safe to write into a single log
+// line: control characters are replaced so a malicious report cannot forge
+// log entries or inject terminal sequences, and the length is bounded.
+func sanitizeLogField(v any) string {
+	text := strings.TrimSpace(fmt.Sprint(v))
+	text = strings.Map(func(r rune) rune {
+		switch r {
+		case '\n', '\r', '\t':
+			return ' '
+		}
+		if unicode.IsControl(r) {
+			return -1
+		}
+		return r
+	}, text)
+	// Truncate on a rune boundary so the log line stays valid UTF-8.
+	runes := []rune(text)
+	if len(runes) > maxCrashFieldLen {
+		text = string(runes[:maxCrashFieldLen]) + "...(truncated)"
+	}
+	return text
+}
+
 // handleCrashReport accepts a crash report submission from the launcher.
 // It is best-effort: the report is logged server-side and 202 is returned.
 func (s *Server) handleCrashReport(w http.ResponseWriter, r *http.Request) {
@@ -125,9 +154,26 @@ func (s *Server) handleCrashReport(w http.ResponseWriter, r *http.Request) {
 	if !decodeBody(w, r, &payload) {
 		return
 	}
-	// Best-effort logging; never fail the request on log errors.
-	log.Printf("crash report received: %v", payload)
+	// Best-effort logging; never fail the request on log errors. Every field is
+	// sanitized and truncated: client input must not shape log structure.
+	if len(payload) == 0 {
+		log.Printf("crash report received: (empty)")
+	} else {
+		for _, key := range sortedKeys(payload) {
+			log.Printf("crash report %s=%s", key, sanitizeLogField(payload[key]))
+		}
+	}
 	writeJSON(w, http.StatusAccepted, map[string]string{"status": "accepted"})
+}
+
+// sortedKeys returns the map keys in a deterministic order for logging.
+func sortedKeys(m map[string]any) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
 }
 
 // handleNews returns a small list of news items for the launcher news panel.

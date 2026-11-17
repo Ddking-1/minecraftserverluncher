@@ -663,3 +663,12 @@ Audit (2026-11-17): API/DB/auth audit done; findings documented in SECURITY_AUDI
 All six features (F2, F3, F5, F6, F7, F10) now have functional, non-stub code paths.
 Launcher CI and backend CI green on master (latest commit 383ec9e).
 Open items: cross-platform modpack extraction; anonymous crash reports.
+
+## 2026-11-17 — ADVERSARIAL HARDENING (GUI features)
+
+Hostile-tester pass on F2, F3, F5, F6, F7, F10.
+Fixed: double-submit/double-extract reentrancy, empty/invalid inputs, path injection
+in the PowerShell call, zip-slip/huge-zip bombs, unbounded log and news payloads,
+offline mode not disabling network features, unclamped memory values reaching
+-Xmx/-Xms, crash-report log forging.
+Tests: launcher `test_memory_clamp`; backend `TestSanitizeLogFieldStripsControlChars`.

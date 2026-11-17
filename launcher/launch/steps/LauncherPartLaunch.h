@@ -24,9 +24,10 @@ public:
     void executeTask() override;
     void abort() override;
 
-private:
-    QStringList buildJvmArgs() const;
-    QStringList buildGameArgs() const;
+    // Pure helpers: exposed so the assembled command line can be regression
+    // tested without starting a JVM.
+    [[nodiscard]] QStringList buildJvmArgs() const;
+    [[nodiscard]] QStringList buildGameArgs() const;
 
     MinecraftInstance *m_instance;
     AuthSessionPtr m_session;

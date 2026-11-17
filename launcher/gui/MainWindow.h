@@ -6,8 +6,6 @@
 
 #include <memory>
 
-#include <memory>
-
 #include "core/SettingsStore.h"
 
 class BackendAuthClient;
