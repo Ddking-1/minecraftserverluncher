@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Dev tooling: NVIDIA SkillSpector skill scan (2026-11-17)
+
+- Installed Node.js LTS (winget) providing npx; added agent skills autonomous-execution, autonomous-loops, ci-cd-and-automation, golang-continuous-integration, golang-testing, skill-inspector; installed NVIDIA SkillSpector v2.12.0.
+- Scanned all 16 installed skills (static, --no-llm). golang-continuous-integration scored 94/100 CRITICAL and golang-testing 51/100 HIGH (both DO NOT INSTALL); remaining skills LOW/MEDIUM. See docs/SKILL_SCAN_REPORT.md.
+
 ### PR #8 ported: library/asset resolution is implemented (2026-11-17)
 
 - Merged the still-relevant half of PR #8 through the task branch

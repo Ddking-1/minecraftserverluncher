@@ -1,0 +1,47 @@
+{
+  "version": 2,
+  "skills": {
+    "autonomous-execution": {
+      "source": "hrdtbs/agent-skills",
+      "commit": "ea4863e6f7352c86e873b82803438454a9c50fc4",
+      "sourceType": "github",
+      "skillPath": "skills/autonomous-execution/SKILL.md",
+      "computedHash": "cdc5a86ece651dbc817ad092473ac8eeed82dd5d81beaf13789e2479d858e77f"
+    },
+    "autonomous-loops": {
+      "source": "affaan-m/ECC",
+      "commit": "3f14a103a8694e51c1df9a806217a6d0b5f7a6f7",
+      "sourceType": "github",
+      "skillPath": "skills/autonomous-loops/SKILL.md",
+      "computedHash": "9eaedd840fa533809b9d5ade3006558146f0d1e69c9178071752c2b49b329075"
+    },
+    "ci-cd-and-automation": {
+      "source": "addyosmani/agent-skills",
+      "commit": "39b723ceebf81474d0557c1fecd01eddab585563",
+      "sourceType": "github",
+      "skillPath": "skills/ci-cd-and-automation/SKILL.md",
+      "computedHash": "fbffe27b3bc3df30ba2895a71b87b2f032bb7b163de762bc8900f2673631c96d"
+    },
+    "golang-continuous-integration": {
+      "source": "samber/cc-skills-golang",
+      "commit": "d68d80aec298e1b74b37c2a472c002b5217248b3",
+      "sourceType": "github",
+      "skillPath": "skills/golang-continuous-integration/SKILL.md",
+      "computedHash": "9fbae059833a865d905f6341498fc26b9e50f9b782fffb3bbb68b87ce48ff53c"
+    },
+    "golang-testing": {
+      "source": "samber/cc-skills-golang",
+      "commit": "d68d80aec298e1b74b37c2a472c002b5217248b3",
+      "sourceType": "github",
+      "skillPath": "skills/golang-testing/SKILL.md",
+      "computedHash": "adfaf95d45383e8e579de1770ea0f25d0729b3e94e0b003ea08d1646646f7247"
+    },
+    "skill-inspector": {
+      "source": "NVIDIA/SkillSpector",
+      "commit": "a09091e0ebf6c96ff327457529d7b0d372125884",
+      "sourceType": "github",
+      "skillPath": "skills/skill-inspector/SKILL.md",
+      "computedHash": "5056fb112425b322e3fddbf6572c1c3d23650a1a9025515eabe865f16f865bd9"
+    }
+  }
+}

@@ -801,3 +801,5 @@ Remaining:
 ## 2026-11-17 — CLEANUP (SplashScreen)
 
 Removed unused `launcher/gui/SplashScreen.cpp/.h`. No references; build/tests unaffected.
+
+Skill scan (2026-11-17): NVIDIA SkillSpector v2.12.0 installed; scanned 16 skills. golang-continuous-integration CRITICAL (94/100) and golang-testing HIGH (51/100) flagged DO NOT INSTALL. Report: docs/SKILL_SCAN_REPORT.md. Branch: chore/nvidia-skillspector-scan.

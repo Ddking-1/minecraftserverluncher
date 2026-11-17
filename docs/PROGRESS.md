@@ -1332,3 +1332,5 @@ remains BLOCKED on DECISION-004/005.
 Manual user action:
 None for GitHub. Optional: add `C:\Program Files\GitHub CLI` to PATH so `gh`
 works from a plain shell.
+
+2026-11-17: Installed NVIDIA SkillSpector and scanned all agent skills. golang-continuous-integration (CRITICAL) and golang-testing (HIGH) flagged; see docs/SKILL_SCAN_REPORT.md. Branch chore/nvidia-skillspector-scan.

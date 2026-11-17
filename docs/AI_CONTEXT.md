@@ -318,3 +318,5 @@ Batch (2026-11-17): launcher GUI features F2/F3/F5/F6/F7/F10 implemented and ver
   and emits the friendly text.
 
 - Cleanup: removed unused SplashScreen component (no references); build/tests unaffected.
+
+- Dev tooling: installed Node.js LTS (winget, v26.13.1) providing npx; installed 6 agent skills (autonomous-execution, autonomous-loops, ci-cd-and-automation, golang-continuous-integration, golang-testing, skill-inspector) plus NVIDIA SkillSpector v2.12.0 scanner. Scanned all 16 installed skills with SkillSpector (static, --no-llm): golang-continuous-integration CRITICAL (94), golang-testing HIGH (51) flagged DO NOT INSTALL; details in docs/SKILL_SCAN_REPORT.md.
