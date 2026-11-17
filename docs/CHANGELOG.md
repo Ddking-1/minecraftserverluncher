@@ -13,7 +13,7 @@
   next to the exe.
 - Bumped the actions that the runners reported as Node 20 deprecated:
   `actions/checkout` v4 -> v5 (still pinned by commit SHA in the Windows
-  workflows), `actions/upload-artifact` v4 -> v5, `actions/setup-java` v4 -> v5.
+  workflows), `actions/upload-artifact` v4 -> v6 (v5 still ran on Node 20), `actions/setup-java` v4 -> v5.
   The `##[warning] Node.js 20 is deprecated` annotation is gone, and the
   `setup-java v4 is deprecated` warning with it.
 - Audited every job log of the recent runs: the launcher build/CTest, Go

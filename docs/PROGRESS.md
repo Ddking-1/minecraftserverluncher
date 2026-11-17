@@ -1178,7 +1178,7 @@ Studio developer shell, printed `Cannot find Visual Studio installation
 directory, VCINSTALLDIR is not set` and left the VC++ runtime out of the
 uploaded artifact; the step now uses `vswhere` + `vcvars64` and
 `--compiler-runtime`, and asserts `msvcp140.dll`/`vcruntime140.dll` exist.
-`actions/checkout` (v4->v5), `actions/upload-artifact` (v4->v5) and
+`actions/checkout` (v4->v5), `actions/upload-artifact` (v4->v6: v5 still ran on Node 20) and
 `actions/setup-java` (v4->v5) were the Node 20 deprecated actions reported by
 the runners. No compiler or test warnings were found in the launcher, Go or
 Velocity jobs. All three workflows pass `actionlint` 1.7.12.

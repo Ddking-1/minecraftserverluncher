@@ -228,7 +228,7 @@ Qt 6.6.3 is installed by `jurplel/install-qt-action`; the artifact deploy step
 locates the toolset with `vswhere` and runs
 `windeployqt --compiler-runtime` inside `vcvars64` (without that the uploaded
 launcher lacked the MSVC runtime), and the actions are on their Node 24
-releases (`checkout` v5, `upload-artifact` v5, `setup-java` v5); a failing install now fails
+releases (`checkout` v5, `upload-artifact` v6, `setup-java` v5); a failing install now fails
 the job instead of skipping Configure/Build/Test.
 
 The Velocity plugin builds against `velocity-api:4.2.0` with JDK 25
