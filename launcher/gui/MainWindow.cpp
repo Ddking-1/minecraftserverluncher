@@ -328,7 +328,7 @@ void MainWindow::onRamSliderChanged(int value)
     m_settings.maxMemoryMb = value;
     if (m_ramLabel != nullptr)
         m_ramLabel->setText(QString::number(value));
-    saveSettings();
+    (void)saveSettings();
 }
 
 void MainWindow::onNewsClicked()
@@ -377,7 +377,7 @@ void MainWindow::onCrashReportClicked()
             nam->deleteLater();
         });
     });
-    dlg.exec();
+    (void)dlg.exec();
 }
 
 void MainWindow::onImportModpackClicked()
