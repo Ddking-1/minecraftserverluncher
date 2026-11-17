@@ -722,3 +722,6 @@ Owner: hostile-tester review of F2, F3, F5, F6, F7, F10.
 - The generic game-exit message is now a plain Hungarian sentence with the
   exit code instead of an English trace.
 - New test `friendly_error`.
+### Cleanup (2026-11-17)
+
+- Removed completely unused `launcher/gui/SplashScreen.cpp` and `SplashScreen.h` (no references anywhere in code or tests).

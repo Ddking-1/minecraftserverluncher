@@ -1224,3 +1224,4 @@ uploaded artifact; the step now uses `vswhere` + `vcvars64` and
 `actions/setup-java` (v4->v5) were the Node 20 deprecated actions reported by
 the runners. No compiler or test warnings were found in the launcher, Go or
 Velocity jobs. All three workflows pass `actionlint` 1.7.12.
+Cleanup: removed unused SplashScreen component; build/tests unaffected.

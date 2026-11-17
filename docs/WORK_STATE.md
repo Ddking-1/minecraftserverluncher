@@ -791,3 +791,7 @@ Remaining:
   no rule still falls back to the generic "unexpected error" sentence plus the
   technical snippet, so extend the table when a new backend error is added.
 - Velocity/T11 still BLOCKED on DECISION-004/005 (untouched by this work).
+
+## 2026-11-17 — CLEANUP (SplashScreen)
+
+Removed unused `launcher/gui/SplashScreen.cpp/.h`. No references; build/tests unaffected.
