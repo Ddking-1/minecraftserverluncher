@@ -39,7 +39,8 @@ void SkinPreviewWidget::setAuthClient(BackendAuthClient *client)
 void SkinPreviewWidget::onUploadClicked()
 {
     if (m_authClient == nullptr || m_authClient->accessToken().isEmpty()) {
-        const QString error = tr("Bejelentkezés szükséges a skin feltöltéséhez.");
+        const QString error = tr("Bejelentkezés szükséges a skin feltöltéséhez. Jelentkezz be, "
+                                 "majd próbáld újra.");
         m_statusLabel->setText(error);
         emit skinUploadFinished(false, QString(), error);
         return;
@@ -56,8 +57,11 @@ void SkinPreviewWidget::onUploadClicked()
     client->uploadSkin(fileName, [this, client](bool success, const QString &skinId, const QString &error) {
         if (!success) {
             const QString msg = FriendlyError::explain(error);
-            m_statusLabel->setText(error.isEmpty() ? tr("Skin feltöltés sikertelen.")
-                                                   : tr("Skin feltöltés sikertelen: %1").arg(msg));
+            m_statusLabel->setText(tr("Skin feltöltés sikertelen: %1")
+                                       .arg(error.isEmpty()
+                                                ? FriendlyError::explain(
+                                                      QStringLiteral("skin upload failed"))
+                                                : msg));
             emit skinUploadFinished(false, QString(), error);
             client->deleteLater();
             return;
@@ -66,8 +70,12 @@ void SkinPreviewWidget::onUploadClicked()
         client->downloadAvatar(skinId, [this, client, skinId](bool success, const QPixmap &avatar) {
             client->deleteLater();
             if (!success || avatar.isNull()) {
-                m_statusLabel->setText(tr("Avatár betöltése sikertelen."));
-                emit skinUploadFinished(false, skinId, tr("Avatár betöltése sikertelen."));
+                // The upload itself worked; only the preview is missing, and the
+                // message must say so with an action.
+                const QString avatarError =
+                    FriendlyError::explain(QStringLiteral("avatar download failed"));
+                m_statusLabel->setText(avatarError);
+                emit skinUploadFinished(false, skinId, avatarError);
                 return;
             }
 

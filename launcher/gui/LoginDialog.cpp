@@ -75,11 +75,12 @@ void LoginDialog::tryAccept()
     };
 
     if (!isValidUsername(username)) {
-        fail(tr("A felhasználónév 3-32 karakter lehet (betű, szám, '-' vagy '_')."));
+        fail(tr("A felhasználónév 3-32 karakter lehet (betű, szám, '-' vagy '_'). "
+                "Válassz ilyen nevet."));
         return;
     }
     if (m_password->text().size() < 8) {
-        fail(tr("A jelszó legalább 8 karakter."));
+        fail(tr("A jelszó legalább 8 karakter legyen. Adj meg hosszabbat."));
         return;
     }
 

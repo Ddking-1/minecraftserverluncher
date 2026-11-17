@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-only
 #include "CrashReportDialog.h"
 
+#include "core/FriendlyError.h"
+
+#include <QDebug>
 #include <QFileDialog>
 #include <QFile>
 #include <QFileInfo>
@@ -93,24 +96,31 @@ void CrashReportDialog::onViewLogs()
         return;
     QFileInfo info(path);
     if (!info.exists() || !info.isFile()) {
-        QMessageBox::warning(this, tr("Hiba"), tr("A fájl nem található."));
+        QMessageBox::warning(
+            this, tr("Hiba"),
+            FriendlyError::explain(QStringLiteral("could not read log file: file not found")));
         return;
     }
     if (info.size() <= 0) {
-        QMessageBox::warning(this, tr("Hiba"), tr("A fájl üres."));
+        QMessageBox::warning(this, tr("Hiba"),
+                             FriendlyError::explain(QStringLiteral("log file is empty")));
         return;
     }
     // Read at most 8 MB; the viewer itself trims further.
     constexpr qint64 kMaxReadBytes = 8 * 1024 * 1024;
     QFile f(path);
     if (!f.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        QMessageBox::warning(this, tr("Hiba"), tr("A fájl nem nyitható meg."));
+        qWarning() << "Crash log open failed:" << path << f.errorString();
+        QMessageBox::warning(this, tr("Hiba"),
+                             FriendlyError::explain(QStringLiteral("could not open log file")));
         return;
     }
     const QByteArray logBytes = f.read(kMaxReadBytes);
     f.close();
     if (logBytes.isEmpty()) {
-        QMessageBox::warning(this, tr("Hiba"), tr("A fájl nem olvasható."));
+        qWarning() << "Crash log is empty:" << path;
+        QMessageBox::warning(this, tr("Hiba"),
+                             FriendlyError::explain(QStringLiteral("could not read log file")));
         return;
     }
     setLogText(QString::fromUtf8(logBytes));

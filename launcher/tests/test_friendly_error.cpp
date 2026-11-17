@@ -108,7 +108,9 @@ int main(int argc, char **argv)
     // Fallback.
     const QString fb = FriendlyError::explain(QStringLiteral("totally unknown xyz 123"));
     check(fb.contains(QStringLiteral("Váratlan hiba")), "unknown error gets a generic fallback");
-    check(fb.contains(QStringLiteral("totally unknown")), "fallback keeps a snippet");
+    // The raw text belongs in the log, not on the screen; the player needs an action.
+    check(!fb.contains(QStringLiteral("totally unknown")), "fallback hides the raw text");
+    check(fb.contains(QStringLiteral("Indítsd újra")), "fallback tells the player what to do");
 
     // Empty.
     check(FriendlyError::explain(QString()).contains(QStringLiteral("Váratlan hiba")),
@@ -220,6 +222,26 @@ int main(int argc, char **argv)
         {"HTTP 403", "Jelentkezz be", "HTTP 403"},
         {"HTTP 409", "foglalt", "HTTP 409"},
         {"HTTP 429", "Túl sok próbálkozás", "HTTP 429"},
+
+        // news panel (MainWindow)
+        {"invalid response", "Próbáld újra", "news body is not JSON"},
+
+        // skin upload (SkinPreviewWidget / MainWindow)
+        {"skin upload failed", "Ellenőrizd", "skin upload without detail"},
+        {"avatar download failed", "előnézet", "avatar preview download"},
+        {"Avatar betöltése sikertelen.", "előnézet", "legacy avatar message"},
+
+        // crash report log viewer (CrashReportDialog)
+        {"could not read log file: file not found", "Válassz másik naplófájlt",
+         "missing crash log"},
+        {"log file is empty", "Válassz másik fájlt", "empty crash log"},
+        {"could not open log file", "Zárd be a játékot", "locked crash log"},
+        {"could not read log file", "Válassz másik naplófájlt", "unreadable crash log"},
+
+        // modpack import (MainWindow): PowerShell stderr must never be shown raw
+        {"Expand-Archive : The archive entry was compressed using an unsupported "
+         "compression method.",
+         "Indítsd újra", "modpack extract failure"},
     };
 
     for (const Case &c : cases) {
@@ -252,6 +274,36 @@ int main(int argc, char **argv)
             }
         }
         check(clean, c.label);
+    }
+
+    // The point of the whole module: a basic user must be told what to DO, not
+    // only that something failed. Every message for an error case has to carry
+    // an action, and every message shown by the GUI surfaces (news, skin, login,
+    // session restore, crash report) goes through this table.
+    static const char *const kActions[] = {
+        "próbáld",  "ellenőrizd", "indítsd",  "válassz", "jelentkezz",
+        "csökkentsd", "frissítsd", "zárd",    "telepíts", "add meg",
+        "várd",     "szólj",      "töltsd",  "nyisd",   "adj meg",
+        "nézd meg", "várj",       "indíts újra",
+    };
+    for (const Case &c : cases) {
+        const QString raw = QString::fromUtf8(c.raw);
+        // A clean exit is not an error and needs no instruction.
+        if (raw.contains(QStringLiteral("code 0")))
+            continue;
+        const QString out = FriendlyError::explain(raw);
+        bool hasAction = false;
+        const QString outLower = out.toLower();
+        for (const char *action : kActions) {
+            if (outLower.contains(QString::fromUtf8(action))) {
+                hasAction = true;
+                break;
+            }
+        }
+        if (!hasAction)
+            std::fprintf(stderr, "  raw=[%s] has no action: [%s]\n", c.raw,
+                         out.toUtf8().constData());
+        check(hasAction, c.label);
     }
 
     if (failures == 0)

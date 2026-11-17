@@ -151,10 +151,27 @@ const char *const kSkinUpload =
     QT_TRANSLATE_NOOP("FriendlyError",
                       "A skin feltöltése nem sikerült. Ellenőrizd, hogy be vagy jelentkezve, majd "
                       "próbáld újra.");
+const char *const kAvatarLoad =
+    QT_TRANSLATE_NOOP("FriendlyError",
+                      "A skin feltöltődött, de az előnézet (avatar) nem tölthető be. Ellenőrizd "
+                      "az internetkapcsolatot, majd nyisd meg újra a launchert.");
+const char *const kFileEmpty =
+    QT_TRANSLATE_NOOP("FriendlyError",
+                      "A kiválasztott fájl üres. Válassz másik fájlt, vagy indítsd újra a "
+                      "játékot, hogy új napló készüljön.");
+const char *const kLogOpen =
+    QT_TRANSLATE_NOOP("FriendlyError",
+                      "A naplófájl nem nyitható meg. Zárd be a játékot vagy azt a programot, "
+                      "amely használja, majd próbáld újra.");
+const char *const kLogRead =
+    QT_TRANSLATE_NOOP("FriendlyError",
+                      "A naplófájl tartalma nem olvasható (sérült vagy nem szöveges fájl). "
+                      "Válassz másik naplófájlt.");
 const char *const kSettingsMemory =
     QT_TRANSLATE_NOOP("FriendlyError",
                       "Érvénytelen memória-beállítás. A maximum nem lehet kevesebb a minimumnál, "
-                      "és legfeljebb 65536 MB lehet.");
+                      "és legfeljebb 65536 MB lehet. Válassz érvényes értékeket a "
+                      "Beállításokban.");
 const char *const kProcessCrash =
     QT_TRANSLATE_NOOP("FriendlyError",
                       "A játék összeomlott. Indítsd újra; ha rendszeresen előfordul, csökkentsd a "
@@ -182,7 +199,9 @@ const char *const kInvalidResponse =
     QT_TRANSLATE_NOOP("FriendlyError",
                       "Érvénytelen válasz érkezett a szerverről. Próbáld újra később.");
 const char *const kGeneric =
-    QT_TRANSLATE_NOOP("FriendlyError", "Váratlan hiba történt. Részletek a naplóban.");
+    QT_TRANSLATE_NOOP("FriendlyError",
+                      "Váratlan hiba történt. Indítsd újra a launchert, és ha újra előjön, "
+                      "nézd meg a naplót, majd jelezd a fejlesztőnek.");
 
 QString httpMessage(int code)
 {
@@ -284,6 +303,10 @@ QString explain(const QString &raw)
         return say(kNoInstance);
 
     // --- skin ---------------------------------------------------------------
+    // Before the skin rule: an avatar preview failure is not a bad skin file.
+    if (lower.contains(QLatin1String("avatar")) &&
+        anyOf(lower, {"download", "load", "failed", "could not", "sikertelen", "betölt"}))
+        return say(kAvatarLoad);
     if (anyOf(lower, {"no skin selected", "skin", "avatar"}))
         return raw.contains(QLatin1String("upload"), Qt::CaseInsensitive) ? say(kSkinUpload)
                                                                          : say(kSkinInvalid);
@@ -294,6 +317,14 @@ QString explain(const QString &raw)
         return say(kNoPermission);
     if (anyOf(lower, {"no space", "disk full", "not enough space", "quota exceeded"}))
         return say(kNoSpace);
+    // Log viewing has its own wording: telling the player to restart the
+    // launcher does not help when they picked an unreadable log file.
+    if (anyOf(lower, {"could not open log file"}))
+        return say(kLogOpen);
+    if (anyOf(lower, {"could not read log file"}))
+        return say(kLogRead);
+    if (anyOf(lower, {"file is empty", "empty file", "log file is empty"}))
+        return say(kFileEmpty);
     if (anyOf(lower, {"no such file", "file not found", "does not exist", "missing file",
                       "cannot open", "failed to open"}))
         return say(kFileMissing);
@@ -365,7 +396,8 @@ QString explain(const QString &raw)
                 return QCoreApplication::translate("FriendlyError", "A játék normálisan leállt.");
             return QCoreApplication::translate(
                        "FriendlyError",
-                       "A játék váratlanul leállt (kód %1). Részletek a naplóban.")
+                       "A játék váratlanul leállt (kód %1). Indítsd újra; ha újra előjön, "
+                       "nézd meg a naplót.")
                 .arg(code);
         }
     }
@@ -382,13 +414,9 @@ QString explain(const QString &raw)
     if (anyOf(lower, {"error", "failed", "failure", "unable"}))
         return say(kServerError);
 
-    // Fallback: keep a short snippet so the user still has something to report.
-    QString snippet = raw.trimmed();
-    if (snippet.length() > 80)
-        snippet = snippet.left(80) + QStringLiteral("…");
-    return QCoreApplication::translate("FriendlyError",
-                                       "Váratlan hiba történt: %1. Részletek a naplóban.")
-        .arg(snippet);
+    // Fallback: never echo the raw technical text (callers log it with qWarning),
+    // but still tell the player what they can do.
+    return say(kGeneric);
 }
 
 } // namespace FriendlyError
