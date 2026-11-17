@@ -107,11 +107,11 @@ void CrashReportDialog::onViewLogs()
         QMessageBox::warning(this, tr("Hiba"), tr("A fájl nem nyitható meg."));
         return;
     }
-    const QByteArray data = f.read(kMaxReadBytes);
+    const QByteArray logBytes = f.read(kMaxReadBytes);
     f.close();
-    if (data.isEmpty()) {
+    if (logBytes.isEmpty()) {
         QMessageBox::warning(this, tr("Hiba"), tr("A fájl nem olvasható."));
         return;
     }
-    setLogText(QString::fromUtf8(data));
+    setLogText(QString::fromUtf8(logBytes));
 }
