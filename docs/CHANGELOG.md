@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+### Launcher - friendly errors on the remaining GUI surfaces (2026-11-17)
+
+- Closed the last gaps on the GUI side: news loading (`MainWindow`), skin
+  upload and avatar preview (`SkinPreviewWidget`, `MainWindow`), login/logout,
+  session restore, settings persistence and the crash-log viewer now all pass
+  their raw error strings through `FriendlyError::explain` and log the
+  technical wording with `qWarning` instead of showing it.
+- New rules/messages: `kAvatarLoad` (avatar preview download/load failure),
+  `kFileEmpty`, `kLogOpen`, `kLogRead`, so picking an unreadable log file no
+  longer tells the player to restart the launcher.
+- `kGeneric` and the unexpected-exit-code message now carry an action too; the
+  generic fallback no longer echoes the raw snippet, because the raw text is in
+  the log anyway and the player needs an instruction instead.
+- `test_friendly_error` gained cases for news parse errors, skin upload, avatar
+  preview, crash-log failures and the modpack stderr path, plus a global
+  assertion that every produced message contains an action. New regression test
+  `newsFailureIsExplainedInHungarian` in `test_main_window` clicks Hírek against
+  a dead backend and asserts there is no English/Qt/URL text in the status line
+  but there is a Hungarian instruction.
+- Verified: full Release build and CTest 28/28 passing locally (MSVC 2022 +
+  Qt 6.6.3); commit pushed to `fix/friendly-errors-coverage`.
+
 ### Launcher - plain Hungarian explanation for every error (2026-11-17)
 
 - `core/FriendlyError` now covers every raw error the launcher can produce or
@@ -10,8 +32,8 @@
   URL, permission/disk/file errors, download failures, TLS/network/DNS, update
   manifest and signature failures, skin upload/format errors, invalid memory
   settings, process start/crash/timeout, HTTP 400/401/403/404/409/418/429/5xx,
-  game exit codes, and a fallback that still shows a short snippet. Every rule
-  also states what the player should do.
+  game exit codes, and a generic fallback. Every rule - including the fallback
+  - also states what the player should do.
 - `MainWindow` (session restore, login, logout, skin upload, news, crash
   report) and `SkinPreviewWidget` now pass raw backend/Qt error strings through
   `FriendlyError::explain`, so no English `QNetworkReply` text reaches the

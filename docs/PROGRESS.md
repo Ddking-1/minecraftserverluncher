@@ -1159,3 +1159,15 @@ Verification: fresh clone of `fix/friendly-errors-coverage` (commit db71c94),
 fresh build directory, MSVC 2022 + Qt 6.6.3, configure + Release build OK,
 CTest 28/28 passing, GUI starts with `QT_QPA_PLATFORM=offscreen` (no output on
 stderr). PR #15 (`launcher` + `linux-ci`) is green on that commit.
+
+Remaining GUI surfaces (2026-11-17, commit 56faab8): news loading, skin upload
+and avatar preview, login/logout, session restore, settings persistence and the
+crash-log viewer now go through `FriendlyError::explain` and log the raw text
+with `qWarning`; new messages `kAvatarLoad`, `kFileEmpty`, `kLogOpen`,
+`kLogRead`; `kGeneric` and the exit-code message carry an action; the generic
+fallback no longer echoes the raw snippet. `test_friendly_error` grew to cover
+these raw strings and now asserts every message contains an action, and
+`test_main_window` gained `newsFailureIsExplainedInHungarian`, which clicks
+Hírek against `http://127.0.0.1:1` and requires a Hungarian instruction with no
+`Connection refused` / URL text. Verified locally: full Release build and CTest
+28/28 passing with MSVC 2022 + Qt 6.6.3.

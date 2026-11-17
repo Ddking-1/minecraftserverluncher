@@ -18,7 +18,15 @@ installed on that machine; the MSVC `/W4 /WX` build is therefore still
 unverified.
 
 Branch:
-master (all task branches fast-forward merged and pushed).
+`fix/friendly-errors-coverage` (PR #15, open, CI green; merge is the owner's
+decision). `master` holds everything merged so far.
+
+Open task branch (2026-11-17): plain-language errors now cover the whole GUI
+(news, skin upload/preview, login/logout, session restore, settings save,
+crash-log viewer) - see `docs/CHANGELOG.md` and `docs/PROGRESS.md`. Verified
+end to end: fresh clone of the pushed branch, fresh build directory, MSVC 2022
++ Qt 6.6.3 configure + Release build, CTest 28/28 passing, and the GUI was
+still running 8 s after an offscreen start with an empty log.
 
 CI status (2026-11-16): `linux-ci` runs on the self-hosted Debian runner; the
 Windows workflows (`launcher.yml`, `backend.yml`) now run on GitHub-hosted

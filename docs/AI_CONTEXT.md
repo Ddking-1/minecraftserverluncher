@@ -213,7 +213,12 @@ UpdateChecker), `launcher/game` (JavaDetector, MinecraftLauncher) and
 error messages: every user-facing failure goes through
 `FriendlyError::explain`, and the build passes `/utf-8` on MSVC because all UI
 strings are UTF-8 Hungarian (without it the text is garbled on a machine whose
-ANSI codepage is not UTF-8). CMake
+ANSI codepage is not UTF-8). Coverage is complete on the GUI side as well:
+news loading, skin upload/preview, login/logout, session restore, settings
+persistence and the crash-log viewer all pass their raw error strings through
+`explain` and log the technical wording with `qWarning`, so the player only
+ever sees Hungarian text plus a concrete action (the generic fallback no
+longer echoes the raw snippet). CMake
 configure and `cmake --build ... --config Release` succeed with Qt 6.6.3 under
 both MinGW GCC 13.1 and MSVC 2022; CTest runs 23/23 passing tests under both,
 including the `/W4 /WX` gate on the MSVC launcher target. Library/asset download steps
