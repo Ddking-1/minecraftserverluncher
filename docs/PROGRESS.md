@@ -1141,3 +1141,21 @@ the UTF-8 sources with the ANSI codepage, so Hungarian text was garbled; the
 launcher build now uses `/utf-8`. Test `friendly_error` covers the concrete raw
 strings from the codebase (about 90 checks). Verified locally with MSVC 2022 +
 Qt 6.6.3: full build and CTest 27/27 passing; backend and Velocity untouched.
+
+Plain-language errors, component coverage + end-to-end proof (2026-11-17):
+`core/GameLauncher` and `core/UpdateManager` were the last components that still
+emitted raw English failures (`implausible memory settings`, `unsafe jvm
+argument`, `empty classpath`, `manifest signature verification failed`), so both
+now go through `FriendlyError::explain` and log the technical wording instead.
+Added the remaining real-world Qt/backend strings to the rule table (`Host x not
+found` - which used to be misread as a backend 404 - , `Connection refused`,
+`Error transferring ... server replied: ...`, `TLS initialization failed`) and a
+test assertion that no English wording survives in any produced message. New
+test `friendly_error_paths` drives `MinecraftLauncher` (missing parameters,
+missing game directory, unstartable Java) and `UpdateManager` (broken manifest,
+unverified signature) and asserts the emitted messages are Hungarian; both
+friendly-error tests joined the `/W4 /WX` gate.
+Verification: fresh clone of `fix/friendly-errors-coverage` (commit db71c94),
+fresh build directory, MSVC 2022 + Qt 6.6.3, configure + Release build OK,
+CTest 28/28 passing, GUI starts with `QT_QPA_PLATFORM=offscreen` (no output on
+stderr). PR #15 (`launcher` + `linux-ci`) is green on that commit.

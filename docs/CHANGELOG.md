@@ -16,14 +16,27 @@
   report) and `SkinPreviewWidget` now pass raw backend/Qt error strings through
   `FriendlyError::explain`, so no English `QNetworkReply` text reaches the
   status line any more.
+- `core/GameLauncher` (memory/classpath/main-class/argument validation, start
+  failure) and `core/UpdateManager` (manifest fetch/parse/signature) also route
+  their failures through `FriendlyError` and log the technical wording, so no
+  component can hand raw English text to the UI. Real Qt wordings such as
+  `Host x not found`, `Connection refused` and `Error transferring ... server
+  replied: Not Found` now map to the right explanation, and a DNS failure is no
+  longer mistaken for a backend 404.
 - Fixed the real cause of unreadable Hungarian text: MSVC compiled the UTF-8
   sources with the machine's ANSI codepage. `launcher/CMakeLists.txt` now adds
   `/utf-8`, so the plain-language messages are actually readable.
-- Test `friendly_error` grew from 24 to ~90 checks, including a table of the
-  concrete raw strings emitted by the launcher; it caught the `"ram"`-in-
-  `"parameters"` false match, the process-timeout/network ordering and the
-  charset problem. Verified locally: MSVC 2022 + Qt 6.6.3, full build,
-  CTest 27/27 passing.
+- Test `friendly_error` grew from 24 to ~110 checks, including a table of the
+  concrete raw strings emitted by the launcher and an assertion that no English
+  wording survives in any produced message; it caught the `"ram"`-in-
+  `"parameters"` false match, the process-timeout/network ordering, the DNS vs
+  404 confusion and the charset problem. New test `friendly_error_paths` drives
+  `MinecraftLauncher` and `UpdateManager` and asserts their emitted messages are
+  Hungarian. Both friendly-error tests run under the `/W4 /WX` gate.
+- Verified end to end: fresh clone of the branch, fresh build directory, MSVC
+  2022 + Qt 6.6.3 configure + Release build, CTest 28/28 passing, and the GUI
+  starts with `QT_QPA_PLATFORM=offscreen`. PR #15 CI: `launcher` and `linux-ci`
+  green.
 ### Launcher GUI features F2/F3/F5/F6/F7/F10 (2026-11-17)
 
 - Added CrashReportDialog (Close/Send/View logs) posting to /api/v1/crash-reports with machine info and optional bearer token.
