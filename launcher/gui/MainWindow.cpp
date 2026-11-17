@@ -4,6 +4,7 @@
 #include "auth/BackendAuthClient.h"
 #include "auth/SessionManager.h"
 #include "auth/TokenStorage.h"
+#include "core/FriendlyError.h"
 #include "core/SystemMemory.h"
 #include "gui/CrashReportDialog.h"
 #include "gui/LoginDialog.h"
@@ -297,7 +298,8 @@ void MainWindow::attemptSessionRestore()
 
     m_sessions->restore(m_settings.username, [this](bool ok, const QString &error) {
         if (!ok)
-            showStatus(tr("A munkamenet visszaállítása sikertelen: %1").arg(error));
+            showStatus(tr("A munkamenet visszaállítása sikertelen: %1")
+                           .arg(FriendlyError::explain(error)));
         else
             showStatus(tr("Munkamenet visszaállítva: %1").arg(m_settings.username));
         updateAuthUi();
@@ -359,7 +361,8 @@ void MainWindow::onLoginClicked()
                       [this, username](bool ok, const QString &error) {
                           setBusy(false);
                           if (!ok) {
-                              showStatus(tr("Bejelentkezés sikertelen: %1").arg(error));
+                              showStatus(tr("Bejelentkezés sikertelen: %1")
+                                             .arg(FriendlyError::explain(error)));
                               return;
                           }
                           m_settings.username = username;
@@ -382,7 +385,9 @@ void MainWindow::onLogoutClicked()
         else if (ok)
             showStatus(tr("Kijelentkezve."));
         else
-            showStatus(tr("A szerveroldali kijelentkezés nem sikerült; a helyi munkamenet törölve (%1).").arg(error));
+            showStatus(tr("A szerveroldali kijelentkezés nem sikerült; a helyi munkamenet "
+                          "törölve (%1).")
+                           .arg(FriendlyError::explain(error)));
         updateAuthUi();
     });
 }
@@ -397,7 +402,7 @@ void MainWindow::onSkinUploadFinished(bool success, const QString &skinId, const
 
     showStatus(error.isEmpty()
                    ? tr("Skin feltöltés sikertelen.")
-                   : tr("Skin feltöltés sikertelen: %1").arg(error));
+                   : tr("Skin feltöltés sikertelen: %1").arg(FriendlyError::explain(error)));
     statusBar()->showMessage(tr("Skin feltöltés sikertelen"), 5000);
 }
 
@@ -516,7 +521,8 @@ void MainWindow::onNewsClicked()
             (void)box.exec();
             showStatus(tr("Hírek betöltve."));
         } else {
-            showStatus(tr("Hírek betöltése sikertelen: %1").arg(reply->errorString()));
+            showStatus(tr("Hírek betöltése sikertelen: %1")
+                           .arg(FriendlyError::explain(reply->errorString())));
         }
         if (m_newsButton != nullptr)
             m_newsButton->setEnabled(true);
@@ -576,7 +582,8 @@ void MainWindow::onCrashReportClicked()
             if (reply->error() == QNetworkReply::NoError)
                 showStatus(tr("Crash jelentés elküldve."));
             else
-                showStatus(tr("Crash jelentés küldése sikertelen: %1").arg(reply->errorString()));
+                showStatus(tr("Crash jelentés küldése sikertelen: %1")
+                               .arg(FriendlyError::explain(reply->errorString())));
             if (m_crashButton != nullptr)
                 m_crashButton->setEnabled(true);
             reply->deleteLater();

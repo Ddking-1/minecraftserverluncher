@@ -1,6 +1,29 @@
 ﻿# CHANGELOG
 
 ## Unreleased
+
+### Launcher - plain Hungarian explanation for every error (2026-11-17)
+
+- `core/FriendlyError` now covers every raw error the launcher can produce or
+  receive: launch that never started, out-of-memory, missing/broken Java,
+  login and session problems, taken username, rate limiting, missing backend
+  URL, permission/disk/file errors, download failures, TLS/network/DNS, update
+  manifest and signature failures, skin upload/format errors, invalid memory
+  settings, process start/crash/timeout, HTTP 400/401/403/404/409/418/429/5xx,
+  game exit codes, and a fallback that still shows a short snippet. Every rule
+  also states what the player should do.
+- `MainWindow` (session restore, login, logout, skin upload, news, crash
+  report) and `SkinPreviewWidget` now pass raw backend/Qt error strings through
+  `FriendlyError::explain`, so no English `QNetworkReply` text reaches the
+  status line any more.
+- Fixed the real cause of unreadable Hungarian text: MSVC compiled the UTF-8
+  sources with the machine's ANSI codepage. `launcher/CMakeLists.txt` now adds
+  `/utf-8`, so the plain-language messages are actually readable.
+- Test `friendly_error` grew from 24 to ~90 checks, including a table of the
+  concrete raw strings emitted by the launcher; it caught the `"ram"`-in-
+  `"parameters"` false match, the process-timeout/network ordering and the
+  charset problem. Verified locally: MSVC 2022 + Qt 6.6.3, full build,
+  CTest 27/27 passing.
 ### Launcher GUI features F2/F3/F5/F6/F7/F10 (2026-11-17)
 
 - Added CrashReportDialog (Close/Send/View logs) posting to /api/v1/crash-reports with machine info and optional bearer token.

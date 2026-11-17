@@ -1126,3 +1126,18 @@ launcher `game_exit_diagnostics`.
 Plain-language errors (2026-11-17): every launch/download failure now surfaces a
 short Hungarian explanation via `core/FriendlyError`, with technical detail kept
 in the log. New test: launcher `friendly_error`.
+
+Plain-language errors, full coverage (2026-11-17): the previous pass only handled
+download and launch failures, so English backend/Qt strings (`Invalid or expired
+credentials`, `Server error, please try again later`, `Request timed out`) still
+reached the status line. `core/FriendlyError` now maps every raw error the
+launcher emits or receives - process start/crash/timeout, memory, Java, login and
+session, username taken, rate limiting, missing backend URL, permissions, disk
+and missing files, downloads, TLS/DNS/network, update manifest and signature,
+skin format/upload, invalid memory settings, HTTP 400/401/403/404/409/429/5xx and
+game exit codes - and `MainWindow`/`SkinPreviewWidget` route all their raw error
+strings through it. The same change fixed a real display bug: MSVC was compiling
+the UTF-8 sources with the ANSI codepage, so Hungarian text was garbled; the
+launcher build now uses `/utf-8`. Test `friendly_error` covers the concrete raw
+strings from the codebase (about 90 checks). Verified locally with MSVC 2022 +
+Qt 6.6.3: full build and CTest 27/27 passing; backend and Velocity untouched.

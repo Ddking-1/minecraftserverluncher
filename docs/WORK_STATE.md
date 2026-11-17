@@ -695,3 +695,43 @@ pipeline finished. Tests: `game_exit_diagnostics`.
 messages (Java, login, memory, instance, directories, downloads, game exit).
 `LaunchTask` and `DownloadAsset` use it; unknown errors get a generic fallback
 plus a snippet. Tests: `friendly_error`.
+
+## 2026-11-17 - PLAIN-LANGUAGE ERRORS FOR EVERY FAILURE, NOT JUST LAUNCH/DOWNLOAD
+
+Branch:
+fix/friendly-errors-coverage (pushed by the agent as the final git step).
+
+Status:
+DONE and verified locally. MSVC 2022 BuildTools + Qt 6.6.3 `msvc2019_64` +
+CMake 3.30.5: full `cmake --build ... --config Release` succeeds and CTest is
+27/27 passing. Backend (Go) and Velocity plugin are untouched.
+
+Reason:
+The first plain-language pass only wrapped launch steps and downloads, so any
+other failure still showed English Qt/backend text to the player, e.g.
+`Invalid or expired credentials`, `Server error, please try again later`,
+`Request timed out (5s)`, `upload failed (HTTP 413)`.
+
+DONE:
+- `core/FriendlyError` rewritten as an ordered rule set covering: launch that
+  did not start, memory/OOM, Java missing or unreadable, expired credentials,
+  not logged in, username taken, rate limiting, missing backend URL, no
+  instance, permissions, disk full, missing files, directory creation,
+  download busy/URL/write/checksum, TLS, DNS/network/timeout, update manifest
+  and signature, skin format/upload, invalid memory settings, process
+  start/crash/timeout, HTTP 400/401/403/404/409/429/5xx, game exit codes, and a
+  snippet fallback. Idempotent: an already-Hungarian message is passed through.
+- `MainWindow` uses `FriendlyError::explain` for session restore, login, logout,
+  skin upload, news and crash-report errors; `SkinPreviewWidget` does the same
+  for its upload status.
+- `launcher/CMakeLists.txt` compiles with `/utf-8` on MSVC. Without it MSVC used
+  the machine's ANSI codepage for the UTF-8 sources, which garbled every
+  Hungarian string at runtime (this was a real, user-visible bug).
+- `test_friendly_error` now also checks a table of the concrete raw strings the
+  launcher emits, verifies none is returned unchanged, and verifies that a
+  translated message is stable when explained again.
+
+Known issues / next step:
+`game/MinecraftLauncher` and `core/UpdateManager` emit raw English error
+strings but are not wired into the GUI yet; wrap them with
+`FriendlyError::explain` when they are connected.

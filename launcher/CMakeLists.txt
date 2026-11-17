@@ -5,6 +5,13 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 
+# Every UI string in this project is UTF-8 Hungarian. Without this MSVC reads
+# the sources with the machine's ANSI codepage, so the player would see garbled
+# text instead of a readable error message.
+if(MSVC)
+    add_compile_options(/utf-8)
+endif()
+
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Network Widgets Test)
 
 find_package(LibFuzzer QUIET)
@@ -152,6 +159,7 @@ add_executable(test_main_window
     core/SkinClient.cpp
     core/SettingsStore.cpp
     core/SystemMemory.cpp
+    core/FriendlyError.cpp
     auth/BackendAuthClient.cpp
     auth/SessionManager.cpp
     auth/TokenStorage.cpp

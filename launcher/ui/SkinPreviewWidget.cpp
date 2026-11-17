@@ -2,6 +2,7 @@
 #include "SkinPreviewWidget.h"
 
 #include "auth/BackendAuthClient.h"
+#include "core/FriendlyError.h"
 #include "core/SkinClient.h"
 
 #include <QDebug>
@@ -54,9 +55,9 @@ void SkinPreviewWidget::onUploadClicked()
     auto *client = new SkinClient(m_authClient, this);
     client->uploadSkin(fileName, [this, client](bool success, const QString &skinId, const QString &error) {
         if (!success) {
-            m_statusLabel->setText(error.isEmpty()
-                                       ? tr("Feltöltés sikertelen.")
-                                       : tr("Feltöltés sikertelen: %1").arg(error));
+            const QString msg = FriendlyError::explain(error);
+            m_statusLabel->setText(error.isEmpty() ? tr("Skin feltöltés sikertelen.")
+                                                   : tr("Skin feltöltés sikertelen: %1").arg(msg));
             emit skinUploadFinished(false, QString(), error);
             client->deleteLater();
             return;
