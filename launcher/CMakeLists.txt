@@ -187,6 +187,7 @@ add_test(NAME skin_upload_widget COMMAND test_skin_upload_widget)
 set_tests_properties(skin_upload_widget PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 
 add_executable(test_update_manager tests/test_update_manager.cpp core/UpdateManager.cpp core/UpdateManagerHMAC.cpp)
+target_sources(test_update_manager PRIVATE core/FriendlyError.cpp)
 target_include_directories(test_update_manager PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(test_update_manager PRIVATE Qt6::Core Qt6::Network)
 add_test(NAME update_manager COMMAND test_update_manager)
@@ -227,6 +228,19 @@ add_executable(test_friendly_error tests/test_friendly_error.cpp)
 target_include_directories(test_friendly_error PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(test_friendly_error PRIVATE launcher_core Qt6::Core)
 add_test(NAME friendly_error COMMAND test_friendly_error)
+
+# The game-process launcher and the update checker must also hand the UI a
+# plain Hungarian explanation instead of their raw English text.
+add_executable(test_friendly_error_paths
+    tests/test_friendly_error_paths.cpp
+    game/MinecraftLauncher.cpp
+    core/UpdateManager.cpp
+    core/UpdateManagerHMAC.cpp
+    core/FriendlyError.cpp
+)
+target_include_directories(test_friendly_error_paths PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(test_friendly_error_paths PRIVATE Qt6::Core Qt6::Network)
+add_test(NAME friendly_error_paths COMMAND test_friendly_error_paths)
 
 add_executable(MinecraftLauncher
     main.cpp
@@ -390,6 +404,8 @@ set(LAUNCHER_TEST_TARGETS
     test_main_window
     test_skin_upload_widget
     test_update_manager
+    test_friendly_error
+    test_friendly_error_paths
 )
 foreach(_test_target IN LISTS LAUNCHER_TEST_TARGETS)
     if(MSVC)
