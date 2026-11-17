@@ -6,7 +6,10 @@
 
 #include "PackProfile.h"
 #include "core/InstancePersistence.h"
+#include "core/SettingsStore.h"
 #include "launch/LaunchTask.h"
+
+#include <QStandardPaths>
 #include "launch/LaunchStep.h"
 #include "launch/steps/ClaimAuthSession.h"
 #include "launch/steps/ExtractNatives.h"
@@ -82,6 +85,25 @@ bool MinecraftInstance::load()
         m_javaPath = settings.javaPath;
         m_maxMemoryMb = settings.maxMemoryMb;
         m_minMemoryMb = settings.minMemoryMb;
+    }
+
+    // Honor the global RAM slider default (F5) when the instance has not set
+    // an explicit value. The global settings file lives in the app config dir.
+    QString globalPath = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
+    if (!globalPath.isEmpty()) {
+        globalPath += QStringLiteral("/launcher.json");
+        QJsonObject globalObj;
+        if (InstancePersistence::readJsonFile(globalPath, globalObj)) {
+            SettingsStore::Settings global;
+            // reuse InstancePersistence settings fields
+            LauncherSettings gs = InstancePersistence::settingsFromJson(globalObj);
+            if (gs.maxMemoryMb > 0)
+                m_maxMemoryMb = gs.maxMemoryMb;
+            if (gs.minMemoryMb > 0)
+                m_minMemoryMb = gs.minMemoryMb;
+            if (!gs.javaPath.isEmpty())
+                m_javaPath = gs.javaPath;
+        }
     }
 
     m_packProfile->load();

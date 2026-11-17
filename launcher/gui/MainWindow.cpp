@@ -15,7 +15,9 @@
 #include <QJsonObject>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
+#include <QMessageBox>
 #include <QNetworkRequest>
+#include <QProcess>
 #include <QSlider>
 
 #include <QDir>
@@ -112,6 +114,15 @@ void MainWindow::buildUi()
     m_offlineModeCheckBox = new QCheckBox(tr("Offline mód"), central);
     m_offlineModeCheckBox->setObjectName(QStringLiteral("offlineModeCheckBox"));
     layout->addWidget(m_offlineModeCheckBox);
+    connect(m_offlineModeCheckBox, &QCheckBox::toggled, this, [this](bool on) {
+        m_settings.offlineMode = on;
+        (void)saveSettings();
+        updateAuthUi();
+        if (on)
+            showStatus(tr("Offline mód bekapcsolva: hálózati funkciók letiltva."));
+        else
+            showStatus(tr("Offline mód kikapcsolva."));
+    });
 
     // Action buttons (F2, F3, F10)
     auto *actionLayout = new QHBoxLayout();
@@ -171,6 +182,8 @@ void MainWindow::loadSettings()
         m_ramSlider->setValue(m_settings.maxMemoryMb);
     if (m_ramLabel != nullptr)
         m_ramLabel->setText(QString::number(m_settings.maxMemoryMb));
+    if (m_offlineModeCheckBox != nullptr)
+        m_offlineModeCheckBox->setChecked(m_settings.offlineMode);
     if (m_settings.backendUrl.isEmpty())
         return;
 
@@ -199,9 +212,10 @@ void MainWindow::updateAuthUi()
         : tr("Nincs bejelentkezve"));
 
     const bool hasBackend = m_authClient != nullptr && !m_authClient->backendUrl().isEmpty();
-    m_backendUrlEdit->setEnabled(!loggedIn && !m_busy);
-    m_saveBackendButton->setEnabled(!loggedIn && !m_busy);
-    m_loginButton->setEnabled(!loggedIn && !m_busy && hasBackend);
+    const bool offline = m_settings.offlineMode;
+    m_backendUrlEdit->setEnabled(!loggedIn && !m_busy && !offline);
+    m_saveBackendButton->setEnabled(!loggedIn && !m_busy && !offline);
+    m_loginButton->setEnabled(!loggedIn && !m_busy && hasBackend && !offline);
     m_logoutButton->setEnabled(loggedIn && !m_busy);
     m_skinPreview->setEnabled(loggedIn);
 }
@@ -214,6 +228,10 @@ void MainWindow::setBusy(bool busy)
 
 void MainWindow::attemptSessionRestore()
 {
+    if (m_settings.offlineMode) {
+        showStatus(tr("Offline mód: munkamenet-visszaállítás kihagyva."));
+        return;
+    }
     if (m_settings.username.isEmpty())
         return;
     if (m_authClient->backendUrl().isEmpty()) {
@@ -261,6 +279,10 @@ void MainWindow::onSaveBackendUrl()
 
 void MainWindow::onLoginClicked()
 {
+    if (m_settings.offlineMode) {
+        showStatus(tr("Offline módban nem lehet bejelentkezni."));
+        return;
+    }
     if (m_authClient->backendUrl().isEmpty()) {
         showStatus(tr("Előbb add meg és mentsd a backend URL-t."));
         return;
@@ -342,6 +364,20 @@ void MainWindow::onNewsClicked()
     QNetworkReply *reply = nam->get(req);
     connect(reply, &QNetworkReply::finished, this, [this, reply, nam]() {
         if (reply->error() == QNetworkReply::NoError) {
+            const QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
+            QString text;
+            if (doc.isObject()) {
+                const QJsonArray items = doc.object().value(QStringLiteral("items")).toArray();
+                for (const QJsonValue &v : items) {
+                    const QJsonObject o = v.toObject();
+                    text += QStringLiteral("• %1\n%2\n\n")
+                                .arg(o.value(QStringLiteral("title")).toString(),
+                                     o.value(QStringLiteral("body")).toString());
+                }
+            }
+            if (text.isEmpty())
+                text = tr("Nincs új hír.");
+            QMessageBox::information(this, tr("Hírek"), text);
             showStatus(tr("Hírek betöltve."));
         } else {
             showStatus(tr("Hírek betöltése sikertelen: %1").arg(reply->errorString()));
@@ -370,9 +406,15 @@ void MainWindow::onCrashReportClicked()
         QJsonObject obj;
         obj[QStringLiteral("message")] = msg;
         obj[QStringLiteral("logs")] = logs;
+        obj[QStringLiteral("machine")] = QSysInfo::machineHostName();
+        obj[QStringLiteral("os")] = QSysInfo::prettyProductName();
         QJsonDocument doc(obj);
         QNetworkReply *reply = nam->post(req, doc.toJson());
-        connect(reply, &QNetworkReply::finished, this, [reply, nam]() {
+        connect(reply, &QNetworkReply::finished, this, [this, reply, nam]() {
+            if (reply->error() == QNetworkReply::NoError)
+                showStatus(tr("Crash jelentés elküldve."));
+            else
+                showStatus(tr("Crash jelentés küldése sikertelen: %1").arg(reply->errorString()));
             reply->deleteLater();
             nam->deleteLater();
         });
@@ -385,10 +427,25 @@ void MainWindow::onImportModpackClicked()
     QString file = QFileDialog::getOpenFileName(this, tr("Modpack importálása"), QString(), tr("Zip fájlok (*.zip)"));
     if (file.isEmpty())
         return;
-    showStatus(tr("Modpack kiválasztva: %1 (import folyamatban...)").arg(file));
-    // Extraction is intentionally left to the instance pipeline; here we only
-    // record the selection for the user.
-}
+
+    // Choose a destination directory under the app data location.
+    QString dest = appDataDirectory() + QStringLiteral("/modpacks/imported");
+    QDir().mkpath(dest);
+
+    // Extract using PowerShell Expand-Archive (Windows). Run synchronously.
+    QProcess proc;
+    const QString ps = QStringLiteral("powershell -NoProfile -Command \"Expand-Archive -Path '%1' -DestinationPath '%2' -Force\"")
+                           .arg(file, dest);
+    proc.startCommand(ps);
+    if (!proc.waitForFinished(120000)) {
+        showStatus(tr("Modpack import időtúllépés."));
+        return;
+    }
+    if (proc.exitCode() != 0) {
+        showStatus(tr("Modpack import sikertelen: %1").arg(QString::fromLocal8Bit(proc.readAllStandardError())));
+        return;
+    }
+    showStatus(tr("Modpack importálva: %1").arg(dest));
 
 void MainWindow::showStatus(const QString &message)
 {

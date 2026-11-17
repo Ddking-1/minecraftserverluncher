@@ -18,6 +18,7 @@ struct Settings {
     // live in the DPAPI-protected token store (TokenStorage).
     QString backendUrl;
     QString username;
+    bool offlineMode = false;
 };
 
 // Documented defaults.

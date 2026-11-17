@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-only
 #include "CrashReportDialog.h"
 
+#include <QFileDialog>
+#include <QFile>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QMessageBox>
 #include <QLineEdit>
 #include <QPushButton>
 #include <QTextEdit>
@@ -71,5 +74,15 @@ void CrashReportDialog::onSend()
 
 void CrashReportDialog::onViewLogs()
 {
-    // Placeholder: actual log loading wired by caller via setLogText.
+    QString path = QFileDialog::getOpenFileName(this, tr("Naplófájl megnyitása"), QString(),
+                                                tr("Naplók (*.log *.txt);;Minden fájl (*)"));
+    if (path.isEmpty())
+        return;
+    QFile f(path);
+    if (!f.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        QMessageBox::warning(this, tr("Hiba"), tr("A fájl nem nyitható meg."));
+        return;
+    }
+    setLogText(QString::fromUtf8(f.readAll()));
+    f.close();
 }

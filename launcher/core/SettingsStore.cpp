@@ -102,6 +102,7 @@ bool load(const QString &path, Settings &out)
     s.maxMemoryMb = obj.value(QStringLiteral("max_memory_mb")).toInt(4096);
     s.backendUrl = obj.value(QStringLiteral("backend_url")).toString();
     s.username = obj.value(QStringLiteral("username")).toString();
+    s.offlineMode = obj.value(QStringLiteral("offline_mode")).toBool(false);
 
     const QJsonArray args = obj.value(QStringLiteral("jvm_args")).toArray();
     for (const QJsonValue &v : args) {
@@ -128,6 +129,7 @@ bool save(const QString &path, const Settings &in)
     obj.insert(QStringLiteral("max_memory_mb"), s.maxMemoryMb);
     obj.insert(QStringLiteral("backend_url"), s.backendUrl);
     obj.insert(QStringLiteral("username"), s.username);
+    obj.insert(QStringLiteral("offline_mode"), s.offlineMode);
 
     QJsonArray args;
     for (const QString &a : s.jvmArgs)
