@@ -86,12 +86,21 @@ jobs:
           & cmd /c $bat
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-          # Fail loudly instead of uploading an artifact that cannot start.
+          # windeployqt only drops vc_redist.x64.exe here, so deploy the CRT
+          # app-local from the toolset's own redist folder (VC143, VC145, ...).
           $outDir = Split-Path $exe
-          $missing = @('msvcp140.dll', 'vcruntime140.dll') | Where-Object {
+          $crtDirs = Get-ChildItem -Path (Join-Path $vsPath 'VC/Redist/MSVC/*/x64/Microsoft.VC1*.CRT') -Directory -ErrorAction SilentlyContinue |
+            Sort-Object -Property FullName -Descending
+          if (-not $crtDirs) { throw "MSVC redist folder not found under $vsPath" }
+          Copy-Item -Path (Join-Path $crtDirs[0].FullName '*.dll') -Destination $outDir -Force
+          # The DLLs are now app-local; keep the 25 MB installer out of the artifact.
+          Remove-Item -Path (Join-Path $outDir 'vc_redist.x64.exe') -ErrorAction SilentlyContinue
+
+          # Fail loudly instead of uploading an artifact that cannot start.
+          $missing = @('msvcp140.dll', 'vcruntime140.dll', 'vcruntime140_1.dll') | Where-Object {
             -not (Test-Path (Join-Path $outDir $_))
           }
-          if ($missing) { throw "windeployqt did not deploy the VC++ runtime: $($missing -join ', ')" }
+          if ($missing) { throw "The VC++ runtime was not deployed: $($missing -join ', ')" }
           Write-Host 'VC++ runtime deployed next to the launcher.'
       - name: Upload runnable launcher artifact
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
