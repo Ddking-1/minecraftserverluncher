@@ -6,6 +6,8 @@
 
 #include <memory>
 
+#include <memory>
+
 #include "core/SettingsStore.h"
 
 class BackendAuthClient;
@@ -13,9 +15,11 @@ class SessionManager;
 class SkinPreviewWidget;
 class TokenStorage;
 
+class QCheckBox;
 class QLabel;
 class QLineEdit;
 class QPushButton;
+class QSlider;
 
 // MainWindow owns the launcher's backend session:
 //  - the backend URL is edited, validated and persisted here,
@@ -43,6 +47,10 @@ private slots:
     void onLoginClicked();
     void onLogoutClicked();
     void onSkinUploadFinished(bool success, const QString &skinId, const QString &error);
+    void onNewsClicked();
+    void onCrashReportClicked();
+    void onImportModpackClicked();
+    void onRamSliderChanged(int value);
 
 private:
     void buildUi();
@@ -62,6 +70,12 @@ private:
     SessionManager *m_sessions = nullptr;
 
     SkinPreviewWidget *m_skinPreview = nullptr;
+    QSlider *m_ramSlider = nullptr;
+    QLabel *m_ramLabel = nullptr;
+    QCheckBox *m_offlineModeCheckBox = nullptr;
+    QPushButton *m_newsButton = nullptr;
+    QPushButton *m_crashButton = nullptr;
+    QPushButton *m_importModpackButton = nullptr;
     QLineEdit *m_backendUrlEdit = nullptr;
     QPushButton *m_saveBackendButton = nullptr;
     QPushButton *m_loginButton = nullptr;

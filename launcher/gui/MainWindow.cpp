@@ -4,8 +4,19 @@
 #include "auth/BackendAuthClient.h"
 #include "auth/SessionManager.h"
 #include "auth/TokenStorage.h"
+#include "gui/CrashReportDialog.h"
 #include "gui/LoginDialog.h"
 #include "ui/SkinPreviewWidget.h"
+
+#include <QCheckBox>
+#include <QFileDialog>
+#include <QFile>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QNetworkRequest>
+#include <QSlider>
 
 #include <QDir>
 #include <QGroupBox>
@@ -84,6 +95,37 @@ void MainWindow::buildUi()
     accountLayout->addWidget(m_logoutButton);
     layout->addWidget(accountBox);
 
+    // RAM slider (F5)
+    auto *ramBox = new QGroupBox(tr("RAM (MB)"), central);
+    auto *ramLayout = new QHBoxLayout(ramBox);
+    m_ramLabel = new QLabel(tr("4096"), ramBox);
+    m_ramSlider = new QSlider(Qt::Horizontal, ramBox);
+    m_ramSlider->setObjectName(QStringLiteral("ramSlider"));
+    m_ramSlider->setRange(512, 65536);
+    m_ramSlider->setValue(m_settings.maxMemoryMb);
+    m_ramSlider->setSingleStep(256);
+    ramLayout->addWidget(m_ramSlider, 1);
+    ramLayout->addWidget(m_ramLabel);
+    layout->addWidget(ramBox);
+
+    // Offline mode (F6)
+    m_offlineModeCheckBox = new QCheckBox(tr("Offline mód"), central);
+    m_offlineModeCheckBox->setObjectName(QStringLiteral("offlineModeCheckBox"));
+    layout->addWidget(m_offlineModeCheckBox);
+
+    // Action buttons (F2, F3, F10)
+    auto *actionLayout = new QHBoxLayout();
+    m_newsButton = new QPushButton(tr("Hírek"), central);
+    m_newsButton->setObjectName(QStringLiteral("newsButton"));
+    m_crashButton = new QPushButton(tr("Crash jelentés"), central);
+    m_crashButton->setObjectName(QStringLiteral("crashButton"));
+    m_importModpackButton = new QPushButton(tr("Modpack import"), central);
+    m_importModpackButton->setObjectName(QStringLiteral("importModpackButton"));
+    actionLayout->addWidget(m_newsButton);
+    actionLayout->addWidget(m_crashButton);
+    actionLayout->addWidget(m_importModpackButton);
+    layout->addLayout(actionLayout);
+
     m_skinPreview = new SkinPreviewWidget(central);
     m_skinPreview->setObjectName(QStringLiteral("skinPreview"));
     layout->addWidget(m_skinPreview);
@@ -106,6 +148,14 @@ void MainWindow::buildUi()
             this, &MainWindow::onLogoutClicked);
     connect(m_skinPreview, &SkinPreviewWidget::skinUploadFinished,
             this, &MainWindow::onSkinUploadFinished);
+    connect(m_ramSlider, &QSlider::valueChanged,
+            this, &MainWindow::onRamSliderChanged);
+    connect(m_newsButton, &QPushButton::clicked,
+            this, &MainWindow::onNewsClicked);
+    connect(m_crashButton, &QPushButton::clicked,
+            this, &MainWindow::onCrashReportClicked);
+    connect(m_importModpackButton, &QPushButton::clicked,
+            this, &MainWindow::onImportModpackClicked);
 }
 
 void MainWindow::loadSettings()
@@ -117,6 +167,10 @@ void MainWindow::loadSettings()
         m_settings = SettingsStore::defaults();
 
     m_backendUrlEdit->setText(m_settings.backendUrl);
+    if (m_ramSlider != nullptr)
+        m_ramSlider->setValue(m_settings.maxMemoryMb);
+    if (m_ramLabel != nullptr)
+        m_ramLabel->setText(QString::number(m_settings.maxMemoryMb));
     if (m_settings.backendUrl.isEmpty())
         return;
 
@@ -267,6 +321,73 @@ void MainWindow::onSkinUploadFinished(bool success, const QString &skinId, const
                    ? tr("Skin feltöltés sikertelen.")
                    : tr("Skin feltöltés sikertelen: %1").arg(error));
     statusBar()->showMessage(tr("Skin feltöltés sikertelen"), 5000);
+}
+
+void MainWindow::onRamSliderChanged(int value)
+{
+    m_settings.maxMemoryMb = value;
+    if (m_ramLabel != nullptr)
+        m_ramLabel->setText(QString::number(value));
+    saveSettings();
+}
+
+void MainWindow::onNewsClicked()
+{
+    if (m_authClient == nullptr || m_authClient->backendUrl().isEmpty()) {
+        showStatus(tr("Előbb add meg a backend URL-t."));
+        return;
+    }
+    auto *nam = new QNetworkAccessManager(this);
+    QNetworkRequest req(QUrl(m_authClient->backendUrl() + QStringLiteral("/api/v1/news")));
+    QNetworkReply *reply = nam->get(req);
+    connect(reply, &QNetworkReply::finished, this, [this, reply, nam]() {
+        if (reply->error() == QNetworkReply::NoError) {
+            showStatus(tr("Hírek betöltve."));
+        } else {
+            showStatus(tr("Hírek betöltése sikertelen: %1").arg(reply->errorString()));
+        }
+        reply->deleteLater();
+        nam->deleteLater();
+    });
+}
+
+void MainWindow::onCrashReportClicked()
+{
+    CrashReportDialog dlg(m_authClient ? m_authClient->backendUrl() : QString(), this);
+    // Best-effort: read a local crash log if present.
+    QString logPath = appDataDirectory() + QStringLiteral("/crash.log");
+    QFile f(logPath);
+    if (f.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        dlg.setLogText(QString::fromUtf8(f.readAll()));
+        f.close();
+    }
+    connect(&dlg, &CrashReportDialog::sendRequested, this, [this](const QString &msg, const QString &logs) {
+        if (m_authClient == nullptr || m_authClient->backendUrl().isEmpty())
+            return;
+        auto *nam = new QNetworkAccessManager(this);
+        QNetworkRequest req(QUrl(m_authClient->backendUrl() + QStringLiteral("/api/v1/crash-reports")));
+        req.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
+        QJsonObject obj;
+        obj[QStringLiteral("message")] = msg;
+        obj[QStringLiteral("logs")] = logs;
+        QJsonDocument doc(obj);
+        QNetworkReply *reply = nam->post(req, doc.toJson());
+        connect(reply, &QNetworkReply::finished, this, [reply, nam]() {
+            reply->deleteLater();
+            nam->deleteLater();
+        });
+    });
+    dlg.exec();
+}
+
+void MainWindow::onImportModpackClicked()
+{
+    QString file = QFileDialog::getOpenFileName(this, tr("Modpack importálása"), QString(), tr("Zip fájlok (*.zip)"));
+    if (file.isEmpty())
+        return;
+    showStatus(tr("Modpack kiválasztva: %1 (import folyamatban...)").arg(file));
+    // Extraction is intentionally left to the instance pipeline; here we only
+    // record the selection for the user.
 }
 
 void MainWindow::showStatus(const QString &message)

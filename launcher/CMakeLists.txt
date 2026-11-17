@@ -143,6 +143,8 @@ add_executable(test_main_window
     tests/test_main_window.cpp
     gui/MainWindow.cpp
     gui/MainWindow.h
+    gui/CrashReportDialog.cpp
+    gui/CrashReportDialog.h
     gui/LoginDialog.cpp
     gui/LoginDialog.h
     ui/SkinPreviewWidget.cpp
@@ -194,6 +196,8 @@ add_executable(MinecraftLauncher
     main.cpp
     gui/MainWindow.cpp
     gui/MainWindow.h
+    gui/CrashReportDialog.cpp
+    gui/CrashReportDialog.h
     gui/LoginDialog.cpp
     gui/LoginDialog.h
     ui/SkinPreviewWidget.cpp
