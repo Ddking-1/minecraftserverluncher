@@ -521,3 +521,9 @@ No production functionality is claimed at this stage.
 - F2/F10 backend: crash report endpoint POST /api/v1/crash-reports; news endpoint GET /api/v1/news.
 - F8/F9: per-instance Java override already present; added InstanceList::duplicateInstance.
 - F1: FileIntegrity primitive already present; capabilities endpoint exposes feature flags.
+
+### API/DB/Auth audit (2026-11-17)
+
+- Audited all endpoints, DB queries, auth logic.
+- No test bypasses, no leaked keys, no IDOR beyond intended scopes.
+- Documented in docs/SECURITY_AUDIT.md.

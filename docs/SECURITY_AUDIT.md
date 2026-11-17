@@ -63,3 +63,28 @@ Scope: full backend (server/), launcher (launcher/), web static assets, CI workf
 - Admin dashboard and skin-manager rewired to real endpoints.
 - Remaining: migrate individual admin handlers to RequirePermission for
   finer-grained control; add CAPTCHA to frontend with a real site key.
+
+## API / DB / Auth Audit (2026-11-17)
+
+Scope: all API endpoints in server/api, all DB queries, auth/session logic.
+
+Findings:
+- Test bypasses in production code: NONE. No debug endpoints, no skip-auth flags, no hardcoded credentials in non-test code. Dev-mode CAPTCHA skip is config-gated (TurnstileSecret empty) and documented.
+- Leaked API keys / secrets: NONE in tracked files. Secrets are read from env (AUTH_ADMIN_TOKEN, AUTH_TURNSTILE_SECRET, AUTH_UPDATE_SIGNING_KEY, PTERODACTYL_WEBHOOK_SECRET). Web/static and launcher contain no keys. .env family is gitignored.
+- IDOR / cross-user data exposure:
+  - /api/v1/skins (upload/list/delete) scoped to authenticated accountID.
+  - /api/v1/skin-files delete/set-active require ownsSkinFile (ownership parsed from id prefix).
+  - /api/v1/skin-files/{id} read enforces skin-approval for non-owners (fail-closed).
+  - /api/v1/tasks/{id} checks res.AccountID == accountID.
+  - /api/v1/account/sessions/revoke checks srow.AccountID == accountID.
+  - /api/v1/account/* scoped to authenticated account.
+  - Admin endpoints require adminAuthorized (shared token or bearer with admin permission/role); intended to operate across users.
+  - /api/v1/skins/{account}/{variant} GET is intentionally public (any authenticated user may fetch a public skin).
+- SQL injection: all queries parameterized; no string concatenation in SQL found.
+- Auth: bearer token validation via sessions.ValidateAccess; admin uses constant-time compare for shared token; RBAC permission check for bearer admins.
+- Webhook: HMAC signature verified; oversized body rejected with 413 (no silent truncation).
+
+Residual recommendations:
+- Admin bearer path ignores DB errors in HasPermissionFast/AccountRoles (fail-closed would be stricter); low risk since errors default to deny.
+- Crash report endpoint logs full payload (may include user-provided data); acceptable for debugging but consider redaction.
+- No CORS configured (documented); IP-based rate limiting only (documented).

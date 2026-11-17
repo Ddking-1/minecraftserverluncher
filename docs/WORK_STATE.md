@@ -655,3 +655,5 @@ Batch (2026-11-16): Turnstile CAPTCHA + admin dashboard landed; master green.
 Batch (2026-11-16b): security audit pass 2 + backlog. master green (9cb48d6).
 
 Batch (rev3 build): S1-S4 + S8 applied; master push pending CI.
+
+Audit (2026-11-17): API/DB/auth audit done; findings documented in SECURITY_AUDIT.md.

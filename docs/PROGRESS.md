@@ -1076,3 +1076,5 @@ Current status: DONE.
 docs/SECURITY.md, docs/BACKLOG.md (feature candidates). linux-ci green.
 
 2026-11-16 (rev3): security fail-closed gates, HWID device_id, webhook cleanup, image guard, feature flags + capabilities endpoint.
+
+2026-11-17: API/DB/auth security audit (no critical findings).
