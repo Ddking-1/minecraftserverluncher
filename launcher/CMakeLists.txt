@@ -5,6 +5,13 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 
+# Every UI string in this project is UTF-8 Hungarian. Without this MSVC reads
+# the sources with the machine's ANSI codepage, so the player would see garbled
+# text instead of a readable error message.
+if(MSVC)
+    add_compile_options(/utf-8)
+endif()
+
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Network Widgets Test)
 
 find_package(LibFuzzer QUIET)
@@ -121,6 +128,7 @@ target_link_libraries(test_game_paths PRIVATE Qt6::Core)
 add_test(NAME game_paths COMMAND test_game_paths)
 
 add_executable(test_game_launcher tests/test_game_launcher.cpp core/GameLauncher.cpp game/JavaDetector.cpp)
+target_sources(test_game_launcher PRIVATE core/FriendlyError.cpp)
 target_include_directories(test_game_launcher PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(test_game_launcher PRIVATE Qt6::Core)
 add_test(NAME game_launcher COMMAND test_game_launcher)
@@ -152,6 +160,7 @@ add_executable(test_main_window
     core/SkinClient.cpp
     core/SettingsStore.cpp
     core/SystemMemory.cpp
+    core/FriendlyError.cpp
     auth/BackendAuthClient.cpp
     auth/SessionManager.cpp
     auth/TokenStorage.cpp
@@ -179,6 +188,7 @@ add_test(NAME skin_upload_widget COMMAND test_skin_upload_widget)
 set_tests_properties(skin_upload_widget PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 
 add_executable(test_update_manager tests/test_update_manager.cpp core/UpdateManager.cpp core/UpdateManagerHMAC.cpp)
+target_sources(test_update_manager PRIVATE core/FriendlyError.cpp)
 target_include_directories(test_update_manager PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(test_update_manager PRIVATE Qt6::Core Qt6::Network)
 add_test(NAME update_manager COMMAND test_update_manager)
@@ -219,6 +229,19 @@ add_executable(test_friendly_error tests/test_friendly_error.cpp)
 target_include_directories(test_friendly_error PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(test_friendly_error PRIVATE launcher_core Qt6::Core)
 add_test(NAME friendly_error COMMAND test_friendly_error)
+
+# The game-process launcher and the update checker must also hand the UI a
+# plain Hungarian explanation instead of their raw English text.
+add_executable(test_friendly_error_paths
+    tests/test_friendly_error_paths.cpp
+    game/MinecraftLauncher.cpp
+    core/UpdateManager.cpp
+    core/UpdateManagerHMAC.cpp
+    core/FriendlyError.cpp
+)
+target_include_directories(test_friendly_error_paths PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(test_friendly_error_paths PRIVATE Qt6::Core Qt6::Network)
+add_test(NAME friendly_error_paths COMMAND test_friendly_error_paths)
 
 add_executable(MinecraftLauncher
     main.cpp
@@ -382,6 +405,8 @@ set(LAUNCHER_TEST_TARGETS
     test_main_window
     test_skin_upload_widget
     test_update_manager
+    test_friendly_error
+    test_friendly_error_paths
 )
 foreach(_test_target IN LISTS LAUNCHER_TEST_TARGETS)
     if(MSVC)

@@ -1,6 +1,9 @@
 #include "MinecraftLauncher.h"
-#include <QDir>
+
+#include "core/FriendlyError.h"
+
 #include <QDebug>
+#include <QDir>
 
 MinecraftLauncher::MinecraftLauncher(QObject *parent)
     : QObject(parent),
@@ -14,13 +17,14 @@ MinecraftLauncher::MinecraftLauncher(QObject *parent)
 void MinecraftLauncher::launchGame(const QString &javaPath, const QString &username, const QString &uuid, const QString &accessToken, const QString &gameDir)
 {
     if (javaPath.isEmpty() || gameDir.isEmpty()) {
-        emit launchError("Invalid parameters");
+        emit launchError(FriendlyError::explain(QStringLiteral("Invalid parameters")));
         return;
     }
 
     QDir dir(gameDir);
     if (!dir.exists()) {
-        emit launchError("Game directory does not exist: " + gameDir);
+        emit launchError(FriendlyError::explain(QStringLiteral("Game directory does not exist: ") +
+                                                gameDir));
         return;
     }
 
@@ -36,7 +40,7 @@ void MinecraftLauncher::launchGame(const QString &javaPath, const QString &usern
 
     m_process->start();
     if (!m_process->waitForStarted(5000)) {
-        emit launchError("Failed to start process");
+        emit launchError(FriendlyError::explain(QStringLiteral("Failed to start process")));
         return;
     }
 }
@@ -57,21 +61,23 @@ void MinecraftLauncher::onProcessError(QProcess::ProcessError error)
     QString errorMsg;
     switch (error) {
     case QProcess::FailedToStart:
-        errorMsg = "Failed to start process";
+        errorMsg = QStringLiteral("Failed to start process");
         break;
     case QProcess::Crashed:
-        errorMsg = "Process crashed";
+        errorMsg = QStringLiteral("Process crashed");
         break;
     case QProcess::Timedout:
-        errorMsg = "Process timed out";
+        errorMsg = QStringLiteral("Process timed out");
         break;
     case QProcess::UnknownError:
-        errorMsg = "Unknown error occurred";
+        errorMsg = QStringLiteral("Unknown error occurred");
         break;
     default:
-        errorMsg = "Process error: " + QString::number(error);
+        errorMsg = QStringLiteral("Process error: %1").arg(int(error));
         break;
     }
-    
-    emit launchError(errorMsg);
+
+    // The technical wording goes to the log; the player gets a plain sentence.
+    qWarning() << "MinecraftLauncher process error:" << errorMsg;
+    emit launchError(FriendlyError::explain(errorMsg));
 }

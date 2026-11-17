@@ -10,17 +10,32 @@ on:
     paths:
       - 'launcher/**'
       - '.github/workflows/launcher.yml'
+  # The runner-fallback workflow re-dispatches a stuck run with runner: hosted.
+  workflow_dispatch:
+    inputs:
+      runner:
+        description: 'auto = self-hosted Windows runner, hosted = GitHub-hosted fallback'
+        type: choice
+        options: [auto, hosted]
+        default: auto
 
 jobs:
   build:
-    runs-on: windows-latest  # Option A (docs/PROJECT_STATUS.md §9): GitHub-hosted Windows. Monitor Actions minutes (2000/month free for private repos); switch to a self-hosted Windows runner if exhausted.
+    # Self-hosted Windows runner first (fast, has Qt and the MSVC toolset
+    # installed); runner-fallback.yml dispatches runner: hosted when it is
+    # offline or wedged.
+    runs-on: ${{ inputs.runner == 'hosted' && 'windows-latest' || fromJSON('["self-hosted","windows","x64","launcher"]') }}
     # Least privilege: only read contents.
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      # Node 20 actions are deprecated on the runners; v5 runs on Node 24.
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - name: Install Qt
         id: install_qt
+        # Skipped on the self-hosted runner: QT_PREFIX (repository variable)
+        # points at the Qt that is already installed there.
+        if: ${{ vars.QT_PREFIX == '' || inputs.runner == 'hosted' }}
         uses: jurplel/install-qt-action@a9c63c7c123f3069cff414e7e482d95dfa9d8125 # v4
         with:
           version: '6.6.3'
@@ -31,7 +46,9 @@ jobs:
           dir: ${{ github.workspace }}
           cache: true
       - name: Configure
-        shell: pwsh
+        shell: powershell  # Windows PowerShell 5.1: the self-hosted runner has no pwsh 7
+        env:
+          QT_PREFIX: ${{ vars.QT_PREFIX }}
         run: |
           # windows-latest now ships Visual Studio 2026 (generator "Visual Studio 18 2026"),
           # so pick the newest generator the image actually has instead of pinning VS 17.
@@ -40,7 +57,11 @@ jobs:
           foreach ($g in @('Visual Studio 18 2026', 'Visual Studio 17 2022')) {
             if ($help -match [regex]::Escape($g)) { $generator = $g; break }
           }
-          $prefix = Join-Path $env:GITHUB_WORKSPACE 'Qt/6.6.3/msvc2019_64'
+          # Self-hosted runner: use the Qt that is already installed there.
+          $prefix = $env:QT_PREFIX
+          if (-not $prefix -or -not (Test-Path $prefix)) {
+            $prefix = Join-Path $env:GITHUB_WORKSPACE 'Qt/6.6.3/msvc2019_64'
+          }
           if (-not (Test-Path $prefix)) { throw "Qt prefix not found: $prefix" }
           if ($generator) {
             Write-Host "Using generator: $generator"
@@ -55,15 +76,60 @@ jobs:
       - name: Test
         run: ctest --test-dir launcher/build -C Release --output-on-failure
       - name: Deploy Qt (windeployqt)
-        shell: pwsh
+        shell: powershell  # Windows PowerShell 5.1: the self-hosted runner has no pwsh 7
+        env:
+          QT_PREFIX: ${{ vars.QT_PREFIX }}
         run: |
-          $qtBin = Join-Path $env:GITHUB_WORKSPACE 'Qt/6.6.3/msvc2019_64/bin'
+          $prefix = $env:QT_PREFIX
+          if (-not $prefix -or -not (Test-Path $prefix)) {
+            $prefix = Join-Path $env:GITHUB_WORKSPACE 'Qt/6.6.3/msvc2019_64'
+          }
+          $qtBin = Join-Path $prefix 'bin'
           $exe = Join-Path $env:GITHUB_WORKSPACE 'launcher/build/Release/MinecraftLauncher.exe'
           if (-not (Test-Path $exe)) { throw "launcher exe not found: $exe" }
-          & (Join-Path $qtBin 'windeployqt.exe') --release --no-translations $exe
+
+          # windeployqt only copies the MSVC runtime when VCINSTALLDIR is set
+          # (otherwise it prints "Cannot find Visual Studio installation
+          # directory"), so run it inside the developer shell. Without this the
+          # uploaded artifact starts only on machines that already have the
+          # Visual C++ redistributable.
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
+          if (-not (Test-Path $vswhere)) { throw "vswhere not found: $vswhere" }
+          $vsPath = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (-not $vsPath) { throw 'No Visual Studio installation with the C++ toolset found' }
+          $vcvars = Join-Path $vsPath 'VC/Auxiliary/Build/vcvars64.bat'
+          if (-not (Test-Path $vcvars)) { throw "vcvars64.bat not found: $vcvars" }
+
+          # A tiny batch file keeps the nested quoting out of PowerShell.
+          $bat = Join-Path $env:RUNNER_TEMP 'deploy-qt.bat'
+          $batLines = @(
+            '@echo off',
+            "call `"$vcvars`" >nul",
+            "`"$qtBin\windeployqt.exe`" --release --no-translations --compiler-runtime `"$exe`"",
+            'exit /b %ERRORLEVEL%'
+          )
+          Set-Content -Path $bat -Value $batLines -Encoding ascii
+          & cmd /c $bat
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          # windeployqt only drops vc_redist.x64.exe here, so deploy the CRT
+          # app-local from the toolset's own redist folder (VC143, VC145, ...).
+          $outDir = Split-Path $exe
+          $crtDirs = Get-ChildItem -Path (Join-Path $vsPath 'VC/Redist/MSVC/*/x64/Microsoft.VC1*.CRT') -Directory -ErrorAction SilentlyContinue |
+            Sort-Object -Property FullName -Descending
+          if (-not $crtDirs) { throw "MSVC redist folder not found under $vsPath" }
+          Copy-Item -Path (Join-Path $crtDirs[0].FullName '*.dll') -Destination $outDir -Force
+          # The DLLs are now app-local; keep the 25 MB installer out of the artifact.
+          Remove-Item -Path (Join-Path $outDir 'vc_redist.x64.exe') -ErrorAction SilentlyContinue
+
+          # Fail loudly instead of uploading an artifact that cannot start.
+          $missing = @('msvcp140.dll', 'vcruntime140.dll', 'vcruntime140_1.dll') | Where-Object {
+            -not (Test-Path (Join-Path $outDir $_))
+          }
+          if ($missing) { throw "The VC++ runtime was not deployed: $($missing -join ', ')" }
+          Write-Host 'VC++ runtime deployed next to the launcher.'
       - name: Upload runnable launcher artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: MinecraftLauncher-windows
           path: launcher/build/Release/

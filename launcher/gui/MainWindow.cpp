@@ -4,6 +4,7 @@
 #include "auth/BackendAuthClient.h"
 #include "auth/SessionManager.h"
 #include "auth/TokenStorage.h"
+#include "core/FriendlyError.h"
 #include "core/SystemMemory.h"
 #include "gui/CrashReportDialog.h"
 #include "gui/LoginDialog.h"
@@ -291,15 +292,19 @@ void MainWindow::attemptSessionRestore()
     if (m_settings.username.isEmpty())
         return;
     if (m_authClient->backendUrl().isEmpty()) {
-        showStatus(tr("A mentett munkamenethez nincs érvényes backend URL."));
+        showStatus(tr("A mentett munkamenethez nincs érvényes backend URL. Add meg a backend "
+                      "URL-t, majd jelentkezz be újra."));
         return;
     }
 
     m_sessions->restore(m_settings.username, [this](bool ok, const QString &error) {
-        if (!ok)
-            showStatus(tr("A munkamenet visszaállítása sikertelen: %1").arg(error));
-        else
+        if (!ok) {
+            qWarning() << "Session restore failed:" << error;
+            showStatus(tr("A munkamenet visszaállítása sikertelen: %1")
+                           .arg(FriendlyError::explain(error)));
+        } else {
             showStatus(tr("Munkamenet visszaállítva: %1").arg(m_settings.username));
+        }
         updateAuthUi();
     });
 }
@@ -326,7 +331,8 @@ void MainWindow::onSaveBackendUrl()
     m_settings.backendUrl = m_authClient->backendUrl();
     m_backendUrlEdit->setText(m_settings.backendUrl);
     if (!saveSettings()) {
-        showStatus(tr("A backend URL érvényes, de a beállítások mentése sikertelen."));
+        showStatus(tr("A backend URL érvényes, de a beállítások mentése sikertelen. Ellenőrizd, "
+                      "hogy a launcher mappája írható-e."));
         return;
     }
     showStatus(tr("Backend URL mentve: %1").arg(m_settings.backendUrl));
@@ -359,12 +365,15 @@ void MainWindow::onLoginClicked()
                       [this, username](bool ok, const QString &error) {
                           setBusy(false);
                           if (!ok) {
-                              showStatus(tr("Bejelentkezés sikertelen: %1").arg(error));
+                              qWarning() << "Login failed:" << error;
+                              showStatus(tr("Bejelentkezés sikertelen: %1")
+                                             .arg(FriendlyError::explain(error)));
                               return;
                           }
                           m_settings.username = username;
                           if (!saveSettings())
-                              showStatus(tr("Bejelentkezve, de a beállítások mentése sikertelen."));
+                              showStatus(tr("Bejelentkezve, de a beállítások mentése sikertelen. "
+                                            "Ellenőrizd, hogy a launcher mappája írható-e."));
                           else
                               showStatus(tr("Bejelentkezve: %1").arg(username));
                           updateAuthUi();
@@ -378,11 +387,16 @@ void MainWindow::onLogoutClicked()
         setBusy(false);
         m_settings.username.clear();
         if (!saveSettings())
-            showStatus(tr("Kijelentkezve, de a beállítások mentése sikertelen."));
+            showStatus(tr("Kijelentkezve, de a beállítások mentése sikertelen. Ellenőrizd, hogy "
+                          "a launcher mappája írható-e."));
         else if (ok)
             showStatus(tr("Kijelentkezve."));
-        else
-            showStatus(tr("A szerveroldali kijelentkezés nem sikerült; a helyi munkamenet törölve (%1).").arg(error));
+        else {
+            qWarning() << "Logout failed:" << error;
+            showStatus(tr("A szerveroldali kijelentkezés nem sikerült; a helyi munkamenet "
+                          "törölve (%1).")
+                           .arg(FriendlyError::explain(error)));
+        }
         updateAuthUi();
     });
 }
@@ -395,9 +409,13 @@ void MainWindow::onSkinUploadFinished(bool success, const QString &skinId, const
         return;
     }
 
-    showStatus(error.isEmpty()
-                   ? tr("Skin feltöltés sikertelen.")
-                   : tr("Skin feltöltés sikertelen: %1").arg(error));
+    if (error.isEmpty()) {
+        showStatus(tr("Skin feltöltés sikertelen: %1")
+                       .arg(FriendlyError::explain(QStringLiteral("skin upload failed"))));
+    } else {
+        qWarning() << "Skin upload failed:" << error;
+        showStatus(tr("Skin feltöltés sikertelen: %1").arg(FriendlyError::explain(error)));
+    }
     statusBar()->showMessage(tr("Skin feltöltés sikertelen"), 5000);
 }
 
@@ -488,7 +506,8 @@ void MainWindow::onNewsClicked()
             QJsonParseError parseError{};
             const QJsonDocument doc = QJsonDocument::fromJson(payload, &parseError);
             if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
-                showStatus(tr("Hírek betöltése sikertelen: érvénytelen válasz."));
+                showStatus(tr("Hírek betöltése sikertelen: %1")
+                               .arg(FriendlyError::explain(QStringLiteral("invalid response"))));
                 if (m_newsButton != nullptr)
                     m_newsButton->setEnabled(true);
                 reply->deleteLater();
@@ -516,7 +535,9 @@ void MainWindow::onNewsClicked()
             (void)box.exec();
             showStatus(tr("Hírek betöltve."));
         } else {
-            showStatus(tr("Hírek betöltése sikertelen: %1").arg(reply->errorString()));
+            qWarning() << "News load failed:" << reply->errorString();
+            showStatus(tr("Hírek betöltése sikertelen: %1")
+                           .arg(FriendlyError::explain(reply->errorString())));
         }
         if (m_newsButton != nullptr)
             m_newsButton->setEnabled(true);
@@ -575,8 +596,11 @@ void MainWindow::onCrashReportClicked()
         connect(reply, &QNetworkReply::finished, this, [this, reply, nam]() {
             if (reply->error() == QNetworkReply::NoError)
                 showStatus(tr("Crash jelentés elküldve."));
-            else
-                showStatus(tr("Crash jelentés küldése sikertelen: %1").arg(reply->errorString()));
+            else {
+                qWarning() << "Crash report failed:" << reply->errorString();
+                showStatus(tr("Crash jelentés küldése sikertelen: %1")
+                               .arg(FriendlyError::explain(reply->errorString())));
+            }
             if (m_crashButton != nullptr)
                 m_crashButton->setEnabled(true);
             reply->deleteLater();
@@ -710,7 +734,13 @@ void MainWindow::onImportModpackClicked()
         return;
     }
     if (proc.exitCode() != 0) {
-        finish(tr("Modpack import sikertelen: %1").arg(QString::fromLocal8Bit(proc.readAllStandardError())));
+        const QString rawError = QString::fromLocal8Bit(proc.readAllStandardError()).trimmed();
+        // The PowerShell text is technical; log it and show a plain explanation.
+        qWarning() << "Modpack import failed:" << rawError;
+        finish(tr("Modpack import sikertelen: %1")
+                   .arg(FriendlyError::explain(rawError.isEmpty()
+                                                   ? QStringLiteral("modpack import failed")
+                                                   : rawError)));
         return;
     }
 

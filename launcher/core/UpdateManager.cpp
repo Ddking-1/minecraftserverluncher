@@ -3,6 +3,9 @@
 
 #include "UpdateManagerHMAC.h"
 
+#include "FriendlyError.h"
+
+#include <QDebug>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QNetworkReply>
@@ -41,7 +44,7 @@ void UpdateManager::checkForUpdate()
 
     connect(reply, &QNetworkReply::finished, this, [this, reply]() {
         if (reply->error() != QNetworkReply::NoError) {
-            emit checkFailed(reply->errorString());
+            emit checkFailed(FriendlyError::explain(reply->errorString()));
             reply->deleteLater();
             return;
         }
@@ -51,13 +54,13 @@ void UpdateManager::checkForUpdate()
         QJsonParseError err{};
         const QJsonDocument doc = QJsonDocument::fromJson(data, &err);
         if (err.error != QJsonParseError::NoError || !doc.isObject()) {
-            emit checkFailed(QStringLiteral("invalid manifest JSON"));
+            emit checkFailed(FriendlyError::explain(QStringLiteral("invalid manifest JSON")));
             return;
         }
         const QJsonObject root = doc.object();
         const QJsonValue u = root.value(QStringLiteral("update"));
         if (!u.isObject()) {
-            emit checkFailed(QStringLiteral("missing update object"));
+            emit checkFailed(FriendlyError::explain(QStringLiteral("missing update object")));
             return;
         }
         const QJsonObject obj = u.toObject();
@@ -69,7 +72,11 @@ void UpdateManager::checkForUpdate()
 
         // Verify the manifest HMAC-SHA256 signature before trusting it.
         if (!verifyManifestSignature(m_signingKey, version, url, sha256, mandatory, signature)) {
-            emit checkFailed(QStringLiteral("manifest signature verification failed"));
+            // Never tell the player to install an unverified update: log the
+            // technical reason and explain the safe action instead.
+            qWarning() << "UpdateManager: manifest signature verification failed";
+            emit checkFailed(
+                FriendlyError::explain(QStringLiteral("manifest signature verification failed")));
             return;
         }
 

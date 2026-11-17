@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-only
 #include "GameLauncher.h"
 
+#include "FriendlyError.h"
 #include "game/JavaDetector.h"
 
+#include <QDebug>
 #include <QProcess>
 
 namespace {
@@ -69,47 +71,48 @@ bool GameLauncher::start(const LaunchRequest &req)
 {
     // JVM arg / injection validation.
     if (req.minMemoryMb < 0 || req.maxMemoryMb < 0 || req.minMemoryMb > 65536 || req.maxMemoryMb > 65536) {
-        emit launchFailed(QStringLiteral("implausible memory settings"));
+        emit launchFailed(FriendlyError::explain(QStringLiteral("implausible memory settings")));
         return false;
     }
     if (req.minMemoryMb > 0 && req.maxMemoryMb > 0 && req.minMemoryMb > req.maxMemoryMb) {
-        emit launchFailed(QStringLiteral("min memory exceeds max memory"));
+        emit launchFailed(FriendlyError::explain(QStringLiteral("min memory exceeds max memory")));
         return false;
     }
     if (req.mainClass.contains(QChar('\n')) || req.mainClass.contains(QChar('\r')) || req.mainClass.contains(QChar('\0'))) {
-        emit launchFailed(QStringLiteral("unsafe main class"));
+        emit launchFailed(FriendlyError::explain(QStringLiteral("unsafe main class")));
         return false;
     }
     if (req.classpath.contains(QChar('\n')) || req.classpath.contains(QChar('\r')) || req.classpath.contains(QChar('\0'))) {
-        emit launchFailed(QStringLiteral("unsafe classpath"));
+        emit launchFailed(FriendlyError::explain(QStringLiteral("unsafe classpath")));
         return false;
     }
     for (const QString &a : req.extraJvmArgs) {
         if (!isSafeArg(a)) {
-            emit launchFailed(QStringLiteral("unsafe jvm argument"));
+            emit launchFailed(FriendlyError::explain(QStringLiteral("unsafe jvm argument")));
             return false;
         }
     }
     for (const QString &a : req.gameArgs) {
         if (!isSafeArg(a)) {
-            emit launchFailed(QStringLiteral("unsafe game argument"));
+            emit launchFailed(FriendlyError::explain(QStringLiteral("unsafe game argument")));
             return false;
         }
     }
     if (req.javaPath.isEmpty() || !JavaDetector::isPlausibleJava(req.javaPath)) {
-        emit launchFailed(QStringLiteral("invalid or implausible java executable"));
+        emit launchFailed(
+            FriendlyError::explain(QStringLiteral("invalid or implausible java executable")));
         return false;
     }
     if (req.classpath.isEmpty()) {
-        emit launchFailed(QStringLiteral("empty classpath"));
+        emit launchFailed(FriendlyError::explain(QStringLiteral("empty classpath")));
         return false;
     }
     if (req.mainClass.isEmpty()) {
-        emit launchFailed(QStringLiteral("empty main class"));
+        emit launchFailed(FriendlyError::explain(QStringLiteral("empty main class")));
         return false;
     }
     if (m_process) {
-        emit launchFailed(QStringLiteral("a launch is already running"));
+        emit launchFailed(FriendlyError::explain(QStringLiteral("a launch is already running")));
         return false;
     }
 
@@ -133,7 +136,10 @@ bool GameLauncher::start(const LaunchRequest &req)
     m_process->start();
     if (m_process->state() == QProcess::NotRunning) {
         const QString err = m_process->errorString();
-        emit launchFailed(err.isEmpty() ? QStringLiteral("failed to start process") : err);
+        // The technical reason goes to the log; the player gets plain Hungarian.
+        qWarning() << "GameLauncher: process did not start:" << err;
+        emit launchFailed(
+            FriendlyError::explain(err.isEmpty() ? QStringLiteral("failed to start process") : err));
         m_process->deleteLater();
         m_process = nullptr;
         return false;

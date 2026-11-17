@@ -9,6 +9,105 @@
 - `docs/AI_CONTEXT.md`, `docs/WORK_STATE.md` and `docs/PROGRESS.md` updated to the verified state and the 27-test count; the duplicated 2026-11-17 test-requirements entry was replaced by the real verification result.
 - Still open: Qt 6.6.3 `msvc2019_64` bundles no OpenSSL 3 DLLs, so HTTPS at launcher runtime needs `libssl-3-x64.dll` / `libcrypto-3-x64.dll` staged.
 
+### CI - self-hosted Windows runner with automatic hosted fallback (2026-11-17)
+
+- Registered a self-hosted Windows runner on the development machine
+  (`windows-local-<host>`, labels `self-hosted, windows, x64, launcher`), so
+  `launcher.yml` builds and tests on the machine that already has Qt 6.6.3 and
+  the MSVC toolset instead of waiting for a hosted runner.
+- `launcher.yml` now resolves `runs-on` from a dispatch input: pushes and pull
+  requests use `[self-hosted, windows, x64, launcher]`, while
+  `workflow_dispatch` with `runner: hosted` uses `windows-latest`.
+- The `Install Qt` step is skipped when the `QT_PREFIX` repository variable
+  points at an existing Qt installation (set to the local
+  `Qt/6.6.3/msvc2019_64`), and the Configure/Deploy steps resolve the prefix the
+  same way, falling back to the downloaded Qt on the hosted runner.
+- New `runner-fallback.yml` (every 10 minutes on `windows-latest`) watches for
+  `launcher` runs that stayed `queued` longer than 15 minutes - i.e. the
+  self-hosted runner is offline - cancels them and re-dispatches the build on
+  `windows-latest`. It runs from `master` and can also be started by hand with a
+  custom `stale_minutes`.
+- Runner persistence on the machine: `HKCU\...\Run` entry
+  `GitHubRunner` -> `C:\GITHUB\actions-runner\run.cmd`, so the listener starts
+  with the user session after a reboot.
+
+### CI - deprecated Node 20 actions and a launcher artifact without the VC++ runtime (2026-11-17)
+
+- `windeployqt` printed `Warning: Cannot find Visual Studio installation
+  directory, VCINSTALLDIR is not set.` and skipped the MSVC runtime, so the
+  uploaded `MinecraftLauncher-windows` artifact only started on machines that
+  already had the Visual C++ redistributable. The deploy step now locates the
+  toolset with `vswhere`, runs `windeployqt --compiler-runtime` inside
+  `vcvars64`, and fails the job if `msvcp140.dll` / `vcruntime140.dll` are not
+  next to the exe.
+- Bumped the actions that the runners reported as Node 20 deprecated:
+  `actions/checkout` v4 -> v5 (still pinned by commit SHA in the Windows
+  workflows), `actions/upload-artifact` v4 -> v6 (v5 still ran on Node 20), `actions/setup-java` v4 -> v5.
+  The `##[warning] Node.js 20 is deprecated` annotation is gone, and the
+  `setup-java v4 is deprecated` warning with it.
+- Audited every job log of the recent runs: the launcher build/CTest, Go
+  `vet/test/build` and the Gradle Velocity build produced no compiler or test
+  warnings; the remaining log noise (tar cache messages, `punycode`
+  deprecations from the action runtime) comes from the runner, not this code.
+- Validated with `actionlint` 1.7.12 against all three workflows (exit 0).
+
+### Launcher - friendly errors on the remaining GUI surfaces (2026-11-17)
+
+- Closed the last gaps on the GUI side: news loading (`MainWindow`), skin
+  upload and avatar preview (`SkinPreviewWidget`, `MainWindow`), login/logout,
+  session restore, settings persistence and the crash-log viewer now all pass
+  their raw error strings through `FriendlyError::explain` and log the
+  technical wording with `qWarning` instead of showing it.
+- New rules/messages: `kAvatarLoad` (avatar preview download/load failure),
+  `kFileEmpty`, `kLogOpen`, `kLogRead`, so picking an unreadable log file no
+  longer tells the player to restart the launcher.
+- `kGeneric` and the unexpected-exit-code message now carry an action too; the
+  generic fallback no longer echoes the raw snippet, because the raw text is in
+  the log anyway and the player needs an instruction instead.
+- `test_friendly_error` gained cases for news parse errors, skin upload, avatar
+  preview, crash-log failures and the modpack stderr path, plus a global
+  assertion that every produced message contains an action. New regression test
+  `newsFailureIsExplainedInHungarian` in `test_main_window` clicks Hírek against
+  a dead backend and asserts there is no English/Qt/URL text in the status line
+  but there is a Hungarian instruction.
+- Verified: full Release build and CTest 28/28 passing locally (MSVC 2022 +
+  Qt 6.6.3); commit pushed to `fix/friendly-errors-coverage`.
+
+### Launcher - plain Hungarian explanation for every error (2026-11-17)
+
+- `core/FriendlyError` now covers every raw error the launcher can produce or
+  receive: launch that never started, out-of-memory, missing/broken Java,
+  login and session problems, taken username, rate limiting, missing backend
+  URL, permission/disk/file errors, download failures, TLS/network/DNS, update
+  manifest and signature failures, skin upload/format errors, invalid memory
+  settings, process start/crash/timeout, HTTP 400/401/403/404/409/418/429/5xx,
+  game exit codes, and a generic fallback. Every rule - including the fallback
+  - also states what the player should do.
+- `MainWindow` (session restore, login, logout, skin upload, news, crash
+  report) and `SkinPreviewWidget` now pass raw backend/Qt error strings through
+  `FriendlyError::explain`, so no English `QNetworkReply` text reaches the
+  status line any more.
+- `core/GameLauncher` (memory/classpath/main-class/argument validation, start
+  failure) and `core/UpdateManager` (manifest fetch/parse/signature) also route
+  their failures through `FriendlyError` and log the technical wording, so no
+  component can hand raw English text to the UI. Real Qt wordings such as
+  `Host x not found`, `Connection refused` and `Error transferring ... server
+  replied: Not Found` now map to the right explanation, and a DNS failure is no
+  longer mistaken for a backend 404.
+- Fixed the real cause of unreadable Hungarian text: MSVC compiled the UTF-8
+  sources with the machine's ANSI codepage. `launcher/CMakeLists.txt` now adds
+  `/utf-8`, so the plain-language messages are actually readable.
+- Test `friendly_error` grew from 24 to ~110 checks, including a table of the
+  concrete raw strings emitted by the launcher and an assertion that no English
+  wording survives in any produced message; it caught the `"ram"`-in-
+  `"parameters"` false match, the process-timeout/network ordering, the DNS vs
+  404 confusion and the charset problem. New test `friendly_error_paths` drives
+  `MinecraftLauncher` and `UpdateManager` and asserts their emitted messages are
+  Hungarian. Both friendly-error tests run under the `/W4 /WX` gate.
+- Verified end to end: fresh clone of the branch, fresh build directory, MSVC
+  2022 + Qt 6.6.3 configure + Release build, CTest 28/28 passing, and the GUI
+  starts with `QT_QPA_PLATFORM=offscreen`. PR #15 CI: `launcher` and `linux-ci`
+  green.
 ### Launcher GUI features F2/F3/F5/F6/F7/F10 (2026-11-17)
 
 - Added CrashReportDialog (Close/Send/View logs) posting to /api/v1/crash-reports with machine info and optional bearer token.

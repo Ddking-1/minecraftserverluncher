@@ -213,13 +213,31 @@ SettingsStore, RotatingFileLogger, FileIntegrity, Version), `launcher/minecraft`
 (BackendAuthClient with a 15s timeout and status-code error mapping,
 TokenStorage using Windows DPAPI, SessionManager), `launcher/launch`
 (LaunchTask/LaunchStep framework), `launcher/updates` (UpdateManifest parser,
-UpdateChecker) and `launcher/game` (JavaDetector, MinecraftLauncher). CMake
-configure and `cmake --build ...` succeed with Qt 6.6.3 under both MinGW GCC
-13.1 and MSVC (2022, and MSVC 14.52 re-verified 2026-11-17 with 27/27 CTest);
+UpdateChecker), `launcher/game` (JavaDetector, MinecraftLauncher) and
+`launcher/core/FriendlyError`, the single source of plain-language Hungarian
+error messages: every user-facing failure goes through
+`FriendlyError::explain`, and the build passes `/utf-8` on MSVC because all UI
+strings are UTF-8 Hungarian (without it the text is garbled on a machine whose
+ANSI codepage is not UTF-8). Coverage is complete on the GUI side as well:
+news loading, skin upload/preview, login/logout, session restore, settings
+persistence and the crash-log viewer all pass their raw error strings through
+`explain` and log the technical wording with `qWarning`, so the player only
+ever sees Hungarian text plus a concrete action (the generic fallback no
+longer echoes the raw snippet). CMake configure and `cmake --build ... --config
+Release` succeed with Qt 6.6.3 under both MinGW GCC 13.1 and MSVC (2022, and
+MSVC 14.52 + CMake 3.30.5 + Ninja re-verified 2026-11-17 with the full CTest
+suite green),
 including the `/W4 /WX` gate on the MSVC launcher target. Library/asset download steps
 remain stubs pending DECISION-005. The CI workflow
-(`.github/workflows/launcher.yml`) runs on GitHub-hosted `windows-latest`, where
-Qt 6.6.3 is installed by `jurplel/install-qt-action`; a failing install now fails
+(`.github/workflows/launcher.yml`) runs on the self-hosted Windows runner
+(labels `self-hosted, windows, x64, launcher`) when one is available and on
+GitHub-hosted `windows-latest` otherwise: `runner-fallback.yml` re-dispatches a
+run that stays queued (`runner: hosted`) and the job skips `install-qt-action`
+when the `QT_PREFIX` repository variable points at a local Qt; the artifact deploy step
+locates the toolset with `vswhere` and runs
+`windeployqt --compiler-runtime` inside `vcvars64` (without that the uploaded
+launcher lacked the MSVC runtime), and the actions are on their Node 24
+releases (`checkout` v5, `upload-artifact` v6, `setup-java` v5); a failing install now fails
 the job instead of skipping Configure/Build/Test.
 
 The Velocity plugin builds against `velocity-api:4.2.0` with JDK 25

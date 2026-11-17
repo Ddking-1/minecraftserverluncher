@@ -1,0 +1,62 @@
+name: runner-fallback
+
+# The launcher build targets the self-hosted Windows runner. If that runner is
+# offline (machine asleep, runner not started), the run stays "queued" and would
+# block the PR forever. This workflow watches for that, cancels the stuck run
+# and re-dispatches launcher.yml on windows-latest, so CI always finishes.
+#
+# Scheduled workflows only run from the default branch, so this file has to be
+# merged to master before the failover is active. It can also be started by hand
+# (Actions -> runner-fallback) after lowering stale_minutes.
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+    inputs:
+      stale_minutes:
+        description: 'Treat a run queued for longer than this as stuck'
+        default: '15'
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  failover:
+    runs-on: windows-latest
+    steps:
+      - name: Re-dispatch stuck launcher runs on the hosted runner
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          STALE_MINUTES: ${{ inputs.stale_minutes || '15' }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $headers = @{
+            Authorization          = "Bearer $env:GH_TOKEN"
+            Accept                 = 'application/vnd.github+json'
+            'X-GitHub-Api-Version' = '2022-11-28'
+          }
+          $base = "https://api.github.com/repos/$env:REPO"
+          $stale = [double]$env:STALE_MINUTES
+          $runs = Invoke-RestMethod -Uri "$base/actions/runs?per_page=50" -Headers $headers
+          $dispatched = 0
+          foreach ($r in $runs.workflow_runs) {
+            if ($r.status -ne 'queued') { continue }
+            if ($r.name -ne 'launcher') { continue }
+            $age = ((Get-Date).ToUniversalTime() - ([datetime]$r.created_at).ToUniversalTime()).TotalMinutes
+            if ($age -lt $stale) { continue }
+            Write-Host "Run $($r.id) has been queued for $([math]::Round($age)) min; failing over to windows-latest."
+            try {
+              Invoke-RestMethod -Method Post -Uri "$base/actions/runs/$($r.id)/cancel" -Headers $headers | Out-Null
+            } catch {
+              Write-Host "Cancel failed (continuing): $($_.Exception.Message)"
+            }
+            $body = @{ ref = $r.head_branch; inputs = @{ runner = 'hosted' } } | ConvertTo-Json
+            Invoke-RestMethod -Method Post -Uri "$base/actions/workflows/launcher.yml/dispatches" `
+              -Headers $headers -Body $body -ContentType 'application/json' | Out-Null
+            $dispatched++
+          }
+          Write-Host "Dispatched $dispatched hosted fallback run(s)."

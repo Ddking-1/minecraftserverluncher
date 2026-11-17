@@ -41,6 +41,7 @@ private slots:
     void backendUrlValidationAndPersistence();
     void loginRequiresBackendUrl();
     void sessionRestorePropagatesToken();
+    void newsFailureIsExplainedInHungarian();
 };
 
 void TestMainWindow::backendUrlValidationAndPersistence()
@@ -148,6 +149,35 @@ void TestMainWindow::sessionRestorePropagatesToken()
     QVERIFY(!storage.save(unsafe));
     AuthSession loaded;
     QVERIFY(!storage.load(QStringLiteral("../escape"), loaded));
+}
+
+void TestMainWindow::newsFailureIsExplainedInHungarian()
+{
+    MainWindow window;
+    auto *edit = window.findChild<QLineEdit *>(QStringLiteral("backendUrlEdit"));
+    auto *save = window.findChild<QPushButton *>(QStringLiteral("saveBackendButton"));
+    auto *news = window.findChild<QPushButton *>(QStringLiteral("newsButton"));
+    auto *status = window.findChild<QLabel *>(QStringLiteral("statusLabel"));
+    QVERIFY(edit != nullptr && save != nullptr && news != nullptr);
+    QVERIFY(status != nullptr);
+
+    // Loopback port 1 has nothing listening: the same path as a dead backend on
+    // the player's machine, and it fails immediately (no test timeout).
+    edit->setText(QStringLiteral("http://127.0.0.1:1"));
+    save->click();
+    QVERIFY(!window.backendUrl().isEmpty());
+
+    news->click();
+    QTRY_VERIFY_WITH_TIMEOUT(status->text().contains(QString::fromUtf8("Hírek betöltése sikertelen")),
+                             15000);
+
+    const QString text = status->text();
+    // The raw Qt wording must stay in the log; the player gets Hungarian.
+    QVERIFY2(!text.contains(QStringLiteral("Connection refused")), qPrintable(text));
+    QVERIFY2(!text.contains(QStringLiteral("Error transferring")), qPrintable(text));
+    QVERIFY2(!text.contains(QStringLiteral("127.0.0.1")), qPrintable(text));
+    // ... and an instruction, not just the fact that it failed.
+    QVERIFY2(text.contains(QString::fromUtf8("próbáld")), qPrintable(text));
 }
 
 QTEST_MAIN(TestMainWindow)

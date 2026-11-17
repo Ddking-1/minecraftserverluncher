@@ -20,7 +20,31 @@ used Qt 6.6.3 `mingw_64` + MinGW GCC 13.1 and MSVC 2022 with 23/23 tests (the
 suite has since grown to 27 targets).
 
 Branch:
-master (all task branches fast-forward merged and pushed).
+`fix/friendly-errors-coverage` (PR #15, open, CI green; merge is the owner's
+decision). `master` holds everything merged so far.
+
+Open task branch (2026-11-17): plain-language errors now cover the whole GUI
+(news, skin upload/preview, login/logout, session restore, settings save,
+crash-log viewer) - see `docs/CHANGELOG.md` and `docs/PROGRESS.md`. Verified
+end to end: fresh clone of the pushed branch, fresh build directory, MSVC 2022
++ Qt 6.6.3 configure + Release build, CTest 28/28 passing, and the GUI was
+still running 8 s after an offscreen start with an empty log.
+
+CI runners (2026-11-17): `launcher.yml` targets a new self-hosted Windows
+runner on the development machine (`windows-local-<host>`, labels
+`self-hosted, windows, x64, launcher`), which has Qt 6.6.3 and the MSVC toolset
+installed locally - the `QT_PREFIX` repository variable points there so the Qt
+download is skipped. `runner-fallback.yml` (scheduled, on `windows-latest`)
+cancels a `launcher` run that stays queued >15 minutes and re-dispatches it with
+`runner: hosted`, so CI always finishes when the local machine is off. The
+listener autostarts from `HKCU\...\Run` (`GitHubRunner`).
+
+CI (2026-11-17): the recent runs are green, and the warning sweep fixed the
+only real defect - the launcher artifact was uploaded without the VC++ runtime
+because `windeployqt` ran without `VCINSTALLDIR`; the step now uses `vswhere` +
+`vcvars64 --compiler-runtime` and fails if the runtime DLLs are missing. The
+Node 20 deprecated actions were bumped (`checkout` v5, `upload-artifact` v6,
+`setup-java` v5). All workflows pass `actionlint` 1.7.12.
 
 CI status (2026-11-16): `linux-ci` runs on the self-hosted Debian runner; the
 Windows workflows (`launcher.yml`, `backend.yml`) now run on GitHub-hosted
@@ -699,3 +723,71 @@ pipeline finished. Tests: `game_exit_diagnostics`.
 messages (Java, login, memory, instance, directories, downloads, game exit).
 `LaunchTask` and `DownloadAsset` use it; unknown errors get a generic fallback
 plus a snippet. Tests: `friendly_error`.
+
+## 2026-11-17 - PLAIN-LANGUAGE ERRORS FOR EVERY FAILURE, NOT JUST LAUNCH/DOWNLOAD
+
+Branch:
+fix/friendly-errors-coverage (pushed by the agent as the final git step).
+
+Status:
+DONE and verified locally. MSVC 2022 BuildTools + Qt 6.6.3 `msvc2019_64` +
+CMake 3.30.5: full `cmake --build ... --config Release` succeeds and CTest is
+27/27 passing. Backend (Go) and Velocity plugin are untouched.
+
+Reason:
+The first plain-language pass only wrapped launch steps and downloads, so any
+other failure still showed English Qt/backend text to the player, e.g.
+`Invalid or expired credentials`, `Server error, please try again later`,
+`Request timed out (5s)`, `upload failed (HTTP 413)`.
+
+DONE:
+- `core/FriendlyError` rewritten as an ordered rule set covering: launch that
+  did not start, memory/OOM, Java missing or unreadable, expired credentials,
+  not logged in, username taken, rate limiting, missing backend URL, no
+  instance, permissions, disk full, missing files, directory creation,
+  download busy/URL/write/checksum, TLS, DNS/network/timeout, update manifest
+  and signature, skin format/upload, invalid memory settings, process
+  start/crash/timeout, HTTP 400/401/403/404/409/429/5xx, game exit codes, and a
+  snippet fallback. Idempotent: an already-Hungarian message is passed through.
+- `MainWindow` uses `FriendlyError::explain` for session restore, login, logout,
+  skin upload, news and crash-report errors; `SkinPreviewWidget` does the same
+  for its upload status.
+- `launcher/CMakeLists.txt` compiles with `/utf-8` on MSVC. Without it MSVC used
+  the machine's ANSI codepage for the UTF-8 sources, which garbled every
+  Hungarian string at runtime (this was a real, user-visible bug).
+- `test_friendly_error` now also checks a table of the concrete raw strings the
+  launcher emits, verifies none is returned unchanged, and verifies that a
+  translated message is stable when explained again.
+
+Known issues / next step:
+`game/MinecraftLauncher` and `core/UpdateManager` emit raw English error
+strings but are not wired into the GUI yet; wrap them with
+`FriendlyError::explain` when they are connected.
+
+## 2026-11-17 - FRIENDLY ERRORS: FULL COVERAGE VERIFIED
+
+Status:
+GREEN. Every error string the launcher can emit or receive is mapped to a plain
+Hungarian explanation with an action; verified on a fresh clone of
+`fix/friendly-errors-coverage` with a fresh build directory.
+
+Branch:
+fix/friendly-errors-coverage (PR #15, base master). Commits: 9b0db61 (rule
+table + GUI wiring + `/utf-8`), 93254fd (UpdateManager + MinecraftLauncher),
+db71c94 (GameLauncher + remaining Qt wordings + no-English assertion).
+
+Tests (fresh clone, MSVC 2022, Qt 6.6.3 msvc2019_64, Release):
+- configure + full build: exit 0, 32 target outputs, no warnings/errors
+- `ctest -C Release`: 100% tests passed, 0 failed out of 28
+- GUI: `.verify/build3/Release/MinecraftLauncher.exe` with
+  `QT_QPA_PLATFORM=offscreen` runs (PID alive after 10 s, empty log)
+
+CI (commit db71c94): `launcher` SUCCESS, `linux-ci` SUCCESS, backend workflow not
+triggered (no server/ changes). MSVC `/W4 /WX` is now exercised on a real
+machine, closing the "MSVC unverified" note from 2026-11-16.
+
+Remaining:
+- The raw-error rules are text based; a brand-new backend message that matches
+  no rule still falls back to the generic "unexpected error" sentence plus the
+  technical snippet, so extend the table when a new backend error is added.
+- Velocity/T11 still BLOCKED on DECISION-004/005 (untouched by this work).
