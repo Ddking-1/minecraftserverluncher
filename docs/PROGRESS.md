@@ -1112,3 +1112,8 @@ Adversarial hardening (2026-11-17): hostile-tester cases (empty input, slow netw
 double click, odd characters, unauthorized access) fixed for F2/F3/F5/F6/F7/F10 and
 for the backend crash-report logging path. New tests: launcher `memory_clamp`,
 backend `TestSanitizeLogFieldStripsControlChars`.
+
+Friendly memory feedback (2026-11-17): RAM panel shows installed/allowed/selected
+memory in one line, an over-limit setting is clamped with a plain-language status
+message, and the launch step refuses an impossible heap with the same numbers.
+New test: launcher `system_memory`.

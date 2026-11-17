@@ -4,6 +4,7 @@
 #include "auth/BackendAuthClient.h"
 #include "auth/SessionManager.h"
 #include "auth/TokenStorage.h"
+#include "core/SystemMemory.h"
 #include "gui/CrashReportDialog.h"
 #include "gui/LoginDialog.h"
 #include "ui/SkinPreviewWidget.h"
@@ -30,7 +31,9 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
+#include <QLocale>
 #include <QPushButton>
+#include <QSignalBlocker>
 #include <QStandardPaths>
 #include <QStatusBar>
 #include <QSysInfo>
@@ -63,6 +66,7 @@ MainWindow::MainWindow(QWidget *parent)
     , m_authClient(new BackendAuthClient(this))
     , m_sessions(new SessionManager(m_authClient, m_tokenStorage.get(), this))
 {
+    m_allowedMaxMemoryMb = SystemMemory::allowedMaxMb();
     buildUi();
     loadSettings();
     m_skinPreview->setAuthClient(m_authClient);
@@ -104,16 +108,32 @@ void MainWindow::buildUi()
 
     // RAM slider (F5)
     auto *ramBox = new QGroupBox(tr("RAM (MB)"), central);
-    auto *ramLayout = new QHBoxLayout(ramBox);
+    auto *ramOuter = new QVBoxLayout(ramBox);
+    auto *ramLayout = new QHBoxLayout();
     m_ramLabel = new QLabel(tr("4096"), ramBox);
     m_ramSlider = new QSlider(Qt::Horizontal, ramBox);
     m_ramSlider->setObjectName(QStringLiteral("ramSlider"));
-    m_ramSlider->setRange(512, 65536);
+    // The upper bound comes from the machine, not from a fixed 64 GB guess.
+    m_ramSlider->setRange(SystemMemory::kMinMb, m_allowedMaxMemoryMb);
     m_ramSlider->setValue(m_settings.maxMemoryMb);
     m_ramSlider->setSingleStep(256);
+    m_ramSlider->setPageStep(512);
+    m_ramSlider->setToolTip(tr("A játéknak adott memória. A felső korlát a gép memóriája "
+                              "mínusz %1, amit a rendszernek hagyunk.")
+                               .arg(formatMb(SystemMemory::kReservedMb)));
     ramLayout->addWidget(m_ramSlider, 1);
     ramLayout->addWidget(m_ramLabel);
+    ramOuter->addLayout(ramLayout);
+
+    // Short, plain-language statistics: what the machine has, what we allow.
+    m_ramInfoLabel = new QLabel(ramBox);
+    m_ramInfoLabel->setObjectName(QStringLiteral("ramInfoLabel"));
+    m_ramInfoLabel->setWordWrap(true);
+    m_ramInfoLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    ramOuter->addWidget(m_ramInfoLabel);
+
     layout->addWidget(ramBox);
+    updateRamInfo();
 
     // Offline mode (F6)
     m_offlineModeCheckBox = new QCheckBox(tr("Offline mód"), central);
@@ -188,11 +208,32 @@ void MainWindow::loadSettings()
     else
         m_settings = SettingsStore::defaults();
 
+    // A hand-edited launcher.json (or a settings file copied from a bigger
+    // machine) must not ask for more memory than this computer has.
+    const int requestedMemoryMb = m_settings.maxMemoryMb;
+    m_settings.maxMemoryMb = SystemMemory::clampToAllowed(requestedMemoryMb, m_allowedMaxMemoryMb);
+    if (m_settings.maxMemoryMb != requestedMemoryMb) {
+        (void)saveSettings();
+        const int totalMb = SystemMemory::totalPhysicalMb();
+        if (totalMb > 0) {
+            showStatus(tr("A mentett %1 memória-beállítás túl nagy ehhez a géphez: összesen %2 memória "
+                          "van, ebből %3 a rendszernek van fenntartva, így legfeljebb %4 engedélyezett. "
+                          "A beállítást a biztonságos maximumra állítottuk.")
+                           .arg(formatMb(requestedMemoryMb), formatMb(totalMb),
+                                formatMb(SystemMemory::kReservedMb),
+                                formatMb(m_settings.maxMemoryMb)));
+        } else {
+            showStatus(tr("A mentett %1 memória-beállítás érvénytelen volt, ezért %2-re módosítottuk.")
+                           .arg(formatMb(requestedMemoryMb), formatMb(m_settings.maxMemoryMb)));
+        }
+    }
+
     m_backendUrlEdit->setText(m_settings.backendUrl);
     if (m_ramSlider != nullptr)
         m_ramSlider->setValue(m_settings.maxMemoryMb);
     if (m_ramLabel != nullptr)
         m_ramLabel->setText(QString::number(m_settings.maxMemoryMb));
+    updateRamInfo();
     if (m_offlineModeCheckBox != nullptr)
         m_offlineModeCheckBox->setChecked(m_settings.offlineMode);
     if (m_settings.backendUrl.isEmpty())
@@ -360,11 +401,60 @@ void MainWindow::onSkinUploadFinished(bool success, const QString &skinId, const
     statusBar()->showMessage(tr("Skin feltöltés sikertelen"), 5000);
 }
 
+QString MainWindow::formatMb(int mb)
+{
+    if (mb <= 0)
+        return QStringLiteral("?");
+    if (mb % 1024 == 0)
+        return tr("%1 GB").arg(mb / 1024);
+    return tr("%1 GB").arg(QLocale().toString(mb / 1024.0, 'f', 1));
+}
+
+void MainWindow::updateRamInfo()
+{
+    if (m_ramInfoLabel == nullptr)
+        return;
+
+    const int totalMb = SystemMemory::totalPhysicalMb();
+    const int selectedMb = m_settings.maxMemoryMb;
+    const int allowedMb = m_allowedMaxMemoryMb;
+
+    if (totalMb > 0) {
+        m_ramInfoLabel->setText(
+            tr("Gép memóriája: %1 · ebből legfeljebb %2 engedélyezett (%3 a rendszernek fenntartva) "
+               "· beállítva: %4")
+                .arg(formatMb(totalMb), formatMb(allowedMb),
+                     formatMb(SystemMemory::kReservedMb), formatMb(selectedMb)));
+    } else {
+        // Unknown machine: do not pretend to know the size, keep it honest.
+        m_ramInfoLabel->setText(
+            tr("A gép memóriája nem állapítható meg, ezért a biztonságos maximum %1 · beállítva: %2")
+                .arg(formatMb(allowedMb), formatMb(selectedMb)));
+    }
+}
+
 void MainWindow::onRamSliderChanged(int value)
 {
-    m_settings.maxMemoryMb = value;
+    const int clamped = SystemMemory::clampToAllowed(value, m_allowedMaxMemoryMb);
+    if (clamped != value) {
+        QSignalBlocker blocker(m_ramSlider);
+        m_ramSlider->setValue(clamped);
+        const int totalMb = SystemMemory::totalPhysicalMb();
+        if (totalMb > 0) {
+            showStatus(tr("Legfeljebb %1 memória engedélyezett ezen a gépen: %2 rendszer memória, "
+                          "ebből %3 a rendszernek van fenntartva. A beállítást a maximumra állítottuk.")
+                           .arg(formatMb(clamped), formatMb(totalMb),
+                                formatMb(SystemMemory::kReservedMb)));
+        } else {
+            showStatus(tr("Legfeljebb %1 memória engedélyezett. A beállítást a maximumra állítottuk.")
+                           .arg(formatMb(clamped)));
+        }
+    }
+
+    m_settings.maxMemoryMb = clamped;
     if (m_ramLabel != nullptr)
-        m_ramLabel->setText(QString::number(value));
+        m_ramLabel->setText(QString::number(clamped));
+    updateRamInfo();
     (void)saveSettings();
 }
 

@@ -274,3 +274,8 @@ Batch (2026-11-17): launcher GUI features F2/F3/F5/F6/F7/F10 implemented and ver
 - Adversarial hardening pass on F2/F3/F5/F6/F7/F10: input validation, timeouts,
   reentrancy guards, payload caps, zip pre-checks, memory clamping, and
   crash-report log sanitization on the backend.
+
+- Memory UX: `core/SystemMemory` reports installed RAM and the allowed heap
+  (installed - 2 GB). The GUI shows it as a one-line statistic and clamps any
+  over-limit value with a plain-language message; the launch step refuses an
+  impossible heap instead of letting the JVM fail opaquely.

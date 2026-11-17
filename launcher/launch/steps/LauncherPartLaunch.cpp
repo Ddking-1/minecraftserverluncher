@@ -6,6 +6,7 @@
 #include <QtGlobal>
 
 #include "minecraft/MinecraftInstance.h"
+#include "core/SystemMemory.h"
 
 LauncherPartLaunch::LauncherPartLaunch(LaunchTask *parent, MinecraftInstance *instance,
                                        AuthSessionPtr session, MinecraftTargetPtr target)
@@ -26,6 +27,28 @@ void LauncherPartLaunch::executeTask()
         return;
     }
 
+    // Refuse an impossible heap up front: the JVM would either fail with an
+    // opaque error or push the machine into swapping. The numbers are part of
+    // the message so the user sees *why* the setting is rejected.
+    const int totalMb = SystemMemory::totalPhysicalMb();
+    const int allowedMb = SystemMemory::allowedMaxMb(totalMb);
+    const int requestedMb =
+        SystemMemory::clampToAllowed(m_instance->maxMemoryMb(), SystemMemory::kAbsoluteMaxMb);
+    const QString memoryHint = totalMb > 0
+        ? QStringLiteral("%1 MB installed, at most %2 MB allowed (%3 MB kept for the system)")
+              .arg(totalMb)
+              .arg(allowedMb)
+              .arg(SystemMemory::kReservedMb)
+        : QStringLiteral("at most %1 MB allowed").arg(allowedMb);
+
+    if (requestedMb > allowedMb) {
+        emit failed(QStringLiteral("not enough memory: this instance is set to %1 MB, but %2. "
+                                   "Lower the RAM setting and try again.")
+                        .arg(requestedMb)
+                        .arg(memoryHint));
+        return;
+    }
+
     QStringList args = buildJvmArgs();
     args << QStringLiteral("-cp") << QStringLiteral("__CLASSPATH__"); // filled by library resolver
     args << QStringLiteral("net.minecraft.launcher.Main");
@@ -36,7 +59,10 @@ void LauncherPartLaunch::executeTask()
     m_process->start(javaPath, args);
 
     if (!m_process->waitForStarted(10000)) {
-        emit failed(QStringLiteral("failed to start the game process"));
+        emit failed(QStringLiteral("the game did not start with %1 MB of memory (%2). "
+                                   "Lower the RAM setting or close other programs, then try again.")
+                        .arg(requestedMb)
+                        .arg(memoryHint));
         return;
     }
     emit logLine(QStringLiteral("Launched game process (pid %1)").arg(m_process->processId()));

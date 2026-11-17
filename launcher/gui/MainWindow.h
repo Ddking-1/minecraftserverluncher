@@ -58,6 +58,10 @@ private:
     void setBusy(bool busy);
     void attemptSessionRestore();
     void showStatus(const QString &message);
+    // Refresh the "installed RAM / allowed maximum" hint under the slider.
+    void updateRamInfo();
+    // "6 GB" / "6,5 GB" style formatting for the memory hint.
+    [[nodiscard]] static QString formatMb(int mb);
     [[nodiscard]] static QString deviceId();
     [[nodiscard]] static QString deviceName();
 
@@ -70,6 +74,9 @@ private:
     SkinPreviewWidget *m_skinPreview = nullptr;
     QSlider *m_ramSlider = nullptr;
     QLabel *m_ramLabel = nullptr;
+    QLabel *m_ramInfoLabel = nullptr;
+    // Ceiling derived from installed RAM (total - reserve for the OS).
+    int m_allowedMaxMemoryMb = 0;
     QCheckBox *m_offlineModeCheckBox = nullptr;
     QPushButton *m_newsButton = nullptr;
     QPushButton *m_crashButton = nullptr;

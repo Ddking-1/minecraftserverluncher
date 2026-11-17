@@ -151,6 +151,7 @@ add_executable(test_main_window
     ui/SkinPreviewWidget.h
     core/SkinClient.cpp
     core/SettingsStore.cpp
+    core/SystemMemory.cpp
     auth/BackendAuthClient.cpp
     auth/SessionManager.cpp
     auth/TokenStorage.cpp
@@ -198,6 +199,13 @@ add_executable(test_memory_clamp tests/test_memory_clamp.cpp core/SettingsStore.
 target_include_directories(test_memory_clamp PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(test_memory_clamp PRIVATE launcher_minecraft Qt6::Core)
 add_test(NAME memory_clamp COMMAND test_memory_clamp)
+
+# The RAM hint ("8 GB total, 6 GB allowed") and the pre-launch memory guard
+# must agree on the same numbers.
+add_executable(test_system_memory tests/test_system_memory.cpp)
+target_include_directories(test_system_memory PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(test_system_memory PRIVATE launcher_core Qt6::Core)
+add_test(NAME system_memory COMMAND test_system_memory)
 
 add_executable(MinecraftLauncher
     main.cpp
