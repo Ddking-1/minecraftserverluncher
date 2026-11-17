@@ -3,6 +3,7 @@ package api
 import (
 	"net/http"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -88,6 +89,28 @@ func TestRequireDeviceIDWhenEnabled(t *testing.T) {
 	}, "")
 	if code != http.StatusOK {
 		t.Fatalf("login with device_id status = %d, want 200", code)
+	}
+}
+
+// TestSanitizeLogFieldStripsControlChars guards against log forging: a hostile
+// crash report must not be able to inject newlines or terminal escape codes
+// into the server log, and oversized fields are truncated.
+func TestSanitizeLogFieldStripsControlChars(t *testing.T) {
+	got := sanitizeLogField("boom\nfake admin login OK\r\x1b[31mred")
+	if strings.ContainsAny(got, "\n\r\x1b") {
+		t.Fatalf("sanitizeLogField left control characters in %q", got)
+	}
+	if !strings.Contains(got, "fake admin login OK") {
+		t.Fatalf("sanitizeLogField lost text content: %q", got)
+	}
+
+	long := sanitizeLogField(strings.Repeat("A", maxCrashFieldLen*2))
+	if len(long) > maxCrashFieldLen+len("...(truncated)") {
+		t.Fatalf("sanitizeLogField did not truncate: len = %d", len(long))
+	}
+
+	if got := sanitizeLogField(nil); got != "<nil>" {
+		t.Fatalf("sanitizeLogField(nil) = %q", got)
 	}
 }
 

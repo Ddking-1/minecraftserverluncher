@@ -538,3 +538,32 @@ No production functionality is claimed at this stage.
 - Audited all endpoints, DB queries, auth logic.
 - No test bypasses, no leaked keys, no IDOR beyond intended scopes.
 - Documented in docs/SECURITY_AUDIT.md.
+
+### Adversarial hardening of launcher GUI features (2026-11-17)
+
+Owner: hostile-tester review of F2, F3, F5, F6, F7, F10.
+
+- F3 modpack import: reentrancy guard (double click), empty/missing file rejection,
+  quote/newline path rejection, PowerShell invoked via argument list (no shell
+  string interpolation), zip pre-check for path traversal / >4 GB uncompressed /
+  >200k entries / corrupt archive with distinct diagnostics, timeout process kill,
+  and "nothing extracted" detection.
+- F2 crash popup: send button disabled during submit, 15 s transfer timeout,
+  fail-fast when logged out (endpoint is authenticated), message/log payload
+  truncated to stay under the backend 1 MiB body limit, crash.log auto-load
+  bounded to 8 MB.
+- F7 crash log viewer: missing/empty/unreadable file diagnostics, reads at most
+  8 MB, viewer truncates to the last 256 kB with a header instead of freezing.
+- F10 news panel: offline-mode and no-backend guards, reentrancy guard, 15 s
+  transfer timeout, 512 kB response cap, JSON parse errors reported, at most 20
+  items x 500 chars, rendered as plain text (no HTML injection).
+- F5 RAM slider: instance memory setters clamp (512..65536 max, <= max for min),
+  global launcher.json override clamped, `LauncherPartLaunch::buildJvmArgs`
+  clamps again so -Xms never exceeds -Xmx.
+- F6 offline mode: checkbox cannot be toggled mid-request, skin upload disabled
+  while offline, news/crash-report network actions blocked with explicit status.
+- Backend `POST /api/v1/crash-reports`: client-supplied fields are sanitized
+  (control characters/newlines removed) and truncated to 2 kB before logging,
+  preventing log forging; fields logged in deterministic key order.
+- New regression test `test_memory_clamp` (launcher) and
+  `TestSanitizeLogFieldStripsControlChars` (backend).

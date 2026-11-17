@@ -192,6 +192,13 @@ add_subdirectory(auth)
 add_subdirectory(core)
 add_subdirectory(minecraft)
 
+# Hostile memory values (0, negative, absurd) must be clamped before they
+# reach the JVM as -Xmx/-Xms. Needs the instance/launch library.
+add_executable(test_memory_clamp tests/test_memory_clamp.cpp core/SettingsStore.cpp)
+target_include_directories(test_memory_clamp PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(test_memory_clamp PRIVATE launcher_minecraft Qt6::Core)
+add_test(NAME memory_clamp COMMAND test_memory_clamp)
+
 add_executable(MinecraftLauncher
     main.cpp
     gui/MainWindow.cpp

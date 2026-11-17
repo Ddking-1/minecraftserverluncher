@@ -3,6 +3,7 @@
 
 #include <QFileDialog>
 #include <QFile>
+#include <QFileInfo>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QMessageBox>
@@ -62,12 +63,24 @@ QString CrashReportDialog::logText() const
 
 void CrashReportDialog::setLogText(const QString &text)
 {
-    if (m_logView)
+    if (!m_logView)
+        return;
+    // Hard cap so a multi-gigabyte log cannot freeze the UI or blow up the
+    // report payload. Only the tail is relevant for a crash.
+    constexpr int kMaxLogChars = 256 * 1024;
+    if (text.size() > kMaxLogChars) {
+        m_logView->setPlainText(tr("[A napló csonkolva, teljes hossz: %1 karakter]\n%2")
+                                    .arg(QString::number(static_cast<qlonglong>(text.size())),
+                                         text.right(kMaxLogChars)));
+    } else {
         m_logView->setPlainText(text);
+    }
 }
 
 void CrashReportDialog::onSend()
 {
+    if (m_sendButton != nullptr)
+        m_sendButton->setEnabled(false);
     emit sendRequested(userMessage(), logText());
     accept();
 }
@@ -78,11 +91,27 @@ void CrashReportDialog::onViewLogs()
                                                 tr("Naplók (*.log *.txt);;Minden fájl (*)"));
     if (path.isEmpty())
         return;
+    QFileInfo info(path);
+    if (!info.exists() || !info.isFile()) {
+        QMessageBox::warning(this, tr("Hiba"), tr("A fájl nem található."));
+        return;
+    }
+    if (info.size() <= 0) {
+        QMessageBox::warning(this, tr("Hiba"), tr("A fájl üres."));
+        return;
+    }
+    // Read at most 8 MB; the viewer itself trims further.
+    constexpr qint64 kMaxReadBytes = 8 * 1024 * 1024;
     QFile f(path);
     if (!f.open(QIODevice::ReadOnly | QIODevice::Text)) {
         QMessageBox::warning(this, tr("Hiba"), tr("A fájl nem nyitható meg."));
         return;
     }
-    setLogText(QString::fromUtf8(f.readAll()));
+    const QByteArray data = f.read(kMaxReadBytes);
     f.close();
+    if (data.isEmpty()) {
+        QMessageBox::warning(this, tr("Hiba"), tr("A fájl nem olvasható."));
+        return;
+    }
+    setLogText(QString::fromUtf8(data));
 }

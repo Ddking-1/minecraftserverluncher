@@ -3,6 +3,7 @@
 
 #include <QDir>
 #include <QJsonObject>
+#include <QtGlobal>
 
 #include "PackProfile.h"
 #include "core/InstancePersistence.h"
@@ -97,10 +98,12 @@ bool MinecraftInstance::load()
             SettingsStore::Settings global;
             // reuse InstancePersistence settings fields
             LauncherSettings gs = InstancePersistence::settingsFromJson(globalObj);
+            // Clamp the global values so a corrupted/hostile launcher.json
+            // cannot produce an unlaunchable -Xmx/-Xms pair.
             if (gs.maxMemoryMb > 0)
-                m_maxMemoryMb = gs.maxMemoryMb;
+                m_maxMemoryMb = qBound(512, gs.maxMemoryMb, 65536);
             if (gs.minMemoryMb > 0)
-                m_minMemoryMb = gs.minMemoryMb;
+                m_minMemoryMb = qBound(256, gs.minMemoryMb, 65536);
             if (!gs.javaPath.isEmpty())
                 m_javaPath = gs.javaPath;
         }
@@ -166,8 +169,13 @@ int MinecraftInstance::maxMemoryMb() const
 
 void MinecraftInstance::setMaxMemoryMb(int mb)
 {
+    // Clamp defensively: callers (UI, instance files, tests) may pass 0,
+    // negative or absurd values that would make the JVM refuse to start.
+    mb = qBound(512, mb, 65536);
     if (m_maxMemoryMb == mb)
         return;
+    if (mb < m_minMemoryMb)
+        m_minMemoryMb = mb;
     m_maxMemoryMb = mb;
     emit propertiesChanged(this);
 }
@@ -179,6 +187,9 @@ int MinecraftInstance::minMemoryMb() const
 
 void MinecraftInstance::setMinMemoryMb(int mb)
 {
+    mb = qBound(256, mb, 65536);
+    if (mb > m_maxMemoryMb)
+        mb = m_maxMemoryMb;
     if (m_minMemoryMb == mb)
         return;
     m_minMemoryMb = mb;
