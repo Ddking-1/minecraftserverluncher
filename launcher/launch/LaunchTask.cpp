@@ -69,7 +69,10 @@ void LaunchTask::onStepReady()
 
 void LaunchTask::onStepFailed(const QString &reason)
 {
-    if (m_state != State::Running)
+    // A step may also report a problem *after* the pipeline finished: the game
+    // process started successfully and then died (for example out of memory).
+    // That is a real failure and must reach the UI instead of being dropped.
+    if (m_state == State::Failed || m_state == State::Aborted)
         return;
     setState(State::Failed);
     emit failed(reason);

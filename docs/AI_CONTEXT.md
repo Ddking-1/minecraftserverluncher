@@ -279,3 +279,9 @@ Batch (2026-11-17): launcher GUI features F2/F3/F5/F6/F7/F10 implemented and ver
   (installed - 2 GB). The GUI shows it as a one-line statistic and clamps any
   over-limit value with a plain-language message; the launch step refuses an
   impossible heap instead of letting the JVM fail opaquely.
+
+- Game exit diagnostics: `core/GameExitDiagnostics` classifies a dead game
+  process from its output tail and exit code; only genuine memory exhaustion
+  gets the numbered Hungarian message, everything else keeps the generic exit
+  log line. `LaunchTask::failed()` may follow `succeeded()` for a game that died
+  after starting.

@@ -7,6 +7,7 @@
 
 #include "minecraft/MinecraftInstance.h"
 #include "core/SystemMemory.h"
+#include "core/GameExitDiagnostics.h"
 
 LauncherPartLaunch::LauncherPartLaunch(LaunchTask *parent, MinecraftInstance *instance,
                                        AuthSessionPtr session, MinecraftTargetPtr target)
@@ -54,8 +55,22 @@ void LauncherPartLaunch::executeTask()
     args << QStringLiteral("net.minecraft.launcher.Main");
     args << buildGameArgs();
 
+    // Remember the numbers now: the settings can change while the game runs.
+    m_requestedMb = requestedMb;
+    m_totalMb = totalMb;
+    m_allowedMb = allowedMb;
+    m_exitReported = false;
+
     m_process = new QProcess(this);
     m_process->setWorkingDirectory(m_instance->gameRoot());
+    // The JVM explains its own death on stderr; we need those words to tell
+    // "out of memory" apart from an ordinary crash.
+    m_process->setProcessChannelMode(QProcess::MergedChannels);
+    connect(m_process, &QProcess::readyRead, this, [this]() { drainProcessOutput(); });
+    connect(m_process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished), this,
+            [this](int exitCode, QProcess::ExitStatus status) {
+                reportProcessExit(exitCode, status);
+            });
     m_process->start(javaPath, args);
 
     if (!m_process->waitForStarted(10000)) {
@@ -71,8 +86,48 @@ void LauncherPartLaunch::executeTask()
 
 void LauncherPartLaunch::abort()
 {
-    if (m_process)
+    if (m_process) {
+        // A user-initiated stop is not a crash: no diagnosis for it.
+        m_exitReported = true;
         m_process->kill();
+    }
+}
+
+void LauncherPartLaunch::drainProcessOutput()
+{
+    if (!m_process)
+        return;
+    constexpr int kMaxOutputTail = 16 * 1024;
+    m_outputTail += QString::fromLocal8Bit(m_process->readAll());
+    if (m_outputTail.size() > kMaxOutputTail)
+        m_outputTail = m_outputTail.right(kMaxOutputTail);
+}
+
+void LauncherPartLaunch::reportProcessExit(int exitCode, QProcess::ExitStatus status)
+{
+    if (m_exitReported)
+        return;
+    m_exitReported = true;
+
+    // Pick up anything the process wrote just before it died.
+    drainProcessOutput();
+
+    if (status == QProcess::NormalExit && exitCode == 0)
+        return; // the player closed the game: nothing to report
+
+    const QString memoryMessage = GameExitDiagnostics::diagnoseExit(
+        exitCode, m_outputTail, m_requestedMb, m_totalMb, m_allowedMb);
+    if (!memoryMessage.isEmpty()) {
+        // Same wording and numbers as the RAM panel, instead of a raw JVM trace.
+        emit logLine(memoryMessage);
+        emit failed(memoryMessage);
+        return;
+    }
+
+    emit logLine(QStringLiteral("The game process exited (code %1)%2")
+                     .arg(exitCode)
+                     .arg(status == QProcess::CrashExit ? QStringLiteral(" after a crash")
+                                                        : QString()));
 }
 
 QStringList LauncherPartLaunch::buildJvmArgs() const

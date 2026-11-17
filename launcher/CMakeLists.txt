@@ -207,6 +207,13 @@ target_include_directories(test_system_memory PRIVATE ${CMAKE_CURRENT_SOURCE_DIR
 target_link_libraries(test_system_memory PRIVATE launcher_core Qt6::Core)
 add_test(NAME system_memory COMMAND test_system_memory)
 
+# A game that dies of memory pressure must be explained with the RAM panel's
+# numbers; other crashes keep the generic message.
+add_executable(test_game_exit_diagnostics tests/test_game_exit_diagnostics.cpp)
+target_include_directories(test_game_exit_diagnostics PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(test_game_exit_diagnostics PRIVATE launcher_minecraft Qt6::Core)
+add_test(NAME game_exit_diagnostics COMMAND test_game_exit_diagnostics)
+
 add_executable(MinecraftLauncher
     main.cpp
     gui/MainWindow.cpp

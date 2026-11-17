@@ -679,3 +679,12 @@ RAM slider upper bound = installed RAM - 2 GB (min 512 MB, max 64 GB), shown wit
 short statistics label ("8 GB total, 6 GB allowed, 4 GB set"). Over-limit saved
 values are clamped + explained. `LauncherPartLaunch` fails fast with the numbers
 when the heap exceeds the machine. Tests: `test_system_memory`.
+
+## 2026-11-17 — GAME RAN OUT OF MEMORY MESSAGE
+
+`LauncherPartLaunch` keeps a bounded tail of the game output and diagnoses an
+abnormal exit. Memory deaths (`OutOfMemoryError`, heap/GC/native allocation
+failures, exit 137) report the RAM panel's numbers in Hungarian; other crashes
+keep the generic "process exited (code N)" path; `abort()` stays silent.
+`LaunchTask` now surfaces a late step failure instead of dropping it after the
+pipeline finished. Tests: `game_exit_diagnostics`.
