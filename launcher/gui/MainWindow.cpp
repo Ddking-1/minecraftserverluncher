@@ -11,6 +11,7 @@
 #include <QCheckBox>
 #include <QFileDialog>
 #include <QFile>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QNetworkAccessManager>
@@ -19,6 +20,7 @@
 #include <QNetworkRequest>
 #include <QProcess>
 #include <QSlider>
+#include <QSysInfo>
 
 #include <QDir>
 #include <QGroupBox>
