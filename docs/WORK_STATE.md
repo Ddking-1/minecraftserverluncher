@@ -663,3 +663,7 @@ Audit (2026-11-17): API/DB/auth audit done; findings documented in SECURITY_AUDI
 All six features (F2, F3, F5, F6, F7, F10) now have functional, non-stub code paths.
 Launcher CI and backend CI green on master (latest commit 383ec9e).
 Open items: cross-platform modpack extraction; anonymous crash reports.
+
+## 2026-11-17 — CLEANUP (SplashScreen)
+
+Removed unused `launcher/gui/SplashScreen.cpp/.h`. No references; build/tests unaffected.

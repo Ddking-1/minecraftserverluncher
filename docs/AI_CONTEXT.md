@@ -270,3 +270,5 @@ Batch (2026-11-17): launcher GUI features F2/F3/F5/F6/F7/F10 implemented and ver
 - F7 crash log viewer opens and displays a log file.
 - F10 news panel fetches and displays /api/v1/news.
 - launcher CI (build + ctest) SUCCESS; backend CI SUCCESS.
+
+- Cleanup: removed unused SplashScreen component (no references); build/tests unaffected.

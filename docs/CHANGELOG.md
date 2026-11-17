@@ -538,3 +538,7 @@ No production functionality is claimed at this stage.
 - Audited all endpoints, DB queries, auth logic.
 - No test bypasses, no leaked keys, no IDOR beyond intended scopes.
 - Documented in docs/SECURITY_AUDIT.md.
+
+### Cleanup (2026-11-17)
+
+- Removed completely unused `launcher/gui/SplashScreen.cpp` and `SplashScreen.h` (no references anywhere in code or tests).

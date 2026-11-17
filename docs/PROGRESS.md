@@ -1107,3 +1107,5 @@ Cross-platform modpack extraction; anonymous crash reports (currently require au
 
 Manual user action:
 None for Git.
+
+Cleanup: removed unused SplashScreen component; build/tests unaffected.
