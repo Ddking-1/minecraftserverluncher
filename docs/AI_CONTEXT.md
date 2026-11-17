@@ -224,7 +224,11 @@ both MinGW GCC 13.1 and MSVC 2022; CTest runs 23/23 passing tests under both,
 including the `/W4 /WX` gate on the MSVC launcher target. Library/asset download steps
 remain stubs pending DECISION-005. The CI workflow
 (`.github/workflows/launcher.yml`) runs on GitHub-hosted `windows-latest`, where
-Qt 6.6.3 is installed by `jurplel/install-qt-action`; a failing install now fails
+Qt 6.6.3 is installed by `jurplel/install-qt-action`; the artifact deploy step
+locates the toolset with `vswhere` and runs
+`windeployqt --compiler-runtime` inside `vcvars64` (without that the uploaded
+launcher lacked the MSVC runtime), and the actions are on their Node 24
+releases (`checkout` v5, `upload-artifact` v5, `setup-java` v5); a failing install now fails
 the job instead of skipping Configure/Build/Test.
 
 The Velocity plugin builds against `velocity-api:4.2.0` with JDK 25

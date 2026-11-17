@@ -22,7 +22,8 @@ jobs:
       run:
         working-directory: server
     steps:
-      - uses: actions/checkout@v4
+      # Node 20 actions are deprecated on the runners; v5 runs on Node 24.
+      - uses: actions/checkout@v5
       - uses: actions/setup-go@v5
         with:
           go-version-file: server/go.mod
@@ -39,8 +40,8 @@ jobs:
   velocity:
     runs-on: [self-hosted, linux, x64]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "25"

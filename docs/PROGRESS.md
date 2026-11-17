@@ -1171,3 +1171,14 @@ these raw strings and now asserts every message contains an action, and
 Hírek against `http://127.0.0.1:1` and requires a Hungarian instruction with no
 `Connection refused` / URL text. Verified locally: full Release build and CTest
 28/28 passing with MSVC 2022 + Qt 6.6.3.
+
+CI warning sweep (2026-11-17): every job log of the recent runs was read. The
+only real defect was in `launcher.yml` - `windeployqt` ran outside the Visual
+Studio developer shell, printed `Cannot find Visual Studio installation
+directory, VCINSTALLDIR is not set` and left the VC++ runtime out of the
+uploaded artifact; the step now uses `vswhere` + `vcvars64` and
+`--compiler-runtime`, and asserts `msvcp140.dll`/`vcruntime140.dll` exist.
+`actions/checkout` (v4->v5), `actions/upload-artifact` (v4->v5) and
+`actions/setup-java` (v4->v5) were the Node 20 deprecated actions reported by
+the runners. No compiler or test warnings were found in the launcher, Go or
+Velocity jobs. All three workflows pass `actionlint` 1.7.12.

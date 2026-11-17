@@ -18,7 +18,8 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      # Node 20 actions are deprecated on the runners; v5 runs on Node 24.
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - name: Install Qt
         id: install_qt
         uses: jurplel/install-qt-action@a9c63c7c123f3069cff414e7e482d95dfa9d8125 # v4
@@ -60,10 +61,40 @@ jobs:
           $qtBin = Join-Path $env:GITHUB_WORKSPACE 'Qt/6.6.3/msvc2019_64/bin'
           $exe = Join-Path $env:GITHUB_WORKSPACE 'launcher/build/Release/MinecraftLauncher.exe'
           if (-not (Test-Path $exe)) { throw "launcher exe not found: $exe" }
-          & (Join-Path $qtBin 'windeployqt.exe') --release --no-translations $exe
+
+          # windeployqt only copies the MSVC runtime when VCINSTALLDIR is set
+          # (otherwise it prints "Cannot find Visual Studio installation
+          # directory"), so run it inside the developer shell. Without this the
+          # uploaded artifact starts only on machines that already have the
+          # Visual C++ redistributable.
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
+          if (-not (Test-Path $vswhere)) { throw "vswhere not found: $vswhere" }
+          $vsPath = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (-not $vsPath) { throw 'No Visual Studio installation with the C++ toolset found' }
+          $vcvars = Join-Path $vsPath 'VC/Auxiliary/Build/vcvars64.bat'
+          if (-not (Test-Path $vcvars)) { throw "vcvars64.bat not found: $vcvars" }
+
+          # A tiny batch file keeps the nested quoting out of PowerShell.
+          $bat = Join-Path $env:RUNNER_TEMP 'deploy-qt.bat'
+          $batLines = @(
+            '@echo off',
+            "call `"$vcvars`" >nul",
+            "`"$qtBin\windeployqt.exe`" --release --no-translations --compiler-runtime `"$exe`"",
+            'exit /b %ERRORLEVEL%'
+          )
+          Set-Content -Path $bat -Value $batLines -Encoding ascii
+          & cmd /c $bat
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          # Fail loudly instead of uploading an artifact that cannot start.
+          $outDir = Split-Path $exe
+          $missing = @('msvcp140.dll', 'vcruntime140.dll') | Where-Object {
+            -not (Test-Path (Join-Path $outDir $_))
+          }
+          if ($missing) { throw "windeployqt did not deploy the VC++ runtime: $($missing -join ', ')" }
+          Write-Host 'VC++ runtime deployed next to the launcher.'
       - name: Upload runnable launcher artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
         with:
           name: MinecraftLauncher-windows
           path: launcher/build/Release/

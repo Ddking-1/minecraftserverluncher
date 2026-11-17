@@ -28,6 +28,13 @@ end to end: fresh clone of the pushed branch, fresh build directory, MSVC 2022
 + Qt 6.6.3 configure + Release build, CTest 28/28 passing, and the GUI was
 still running 8 s after an offscreen start with an empty log.
 
+CI (2026-11-17): the recent runs are green, and the warning sweep fixed the
+only real defect - the launcher artifact was uploaded without the VC++ runtime
+because `windeployqt` ran without `VCINSTALLDIR`; the step now uses `vswhere` +
+`vcvars64 --compiler-runtime` and fails if the runtime DLLs are missing. The
+Node 20 deprecated actions were bumped (`checkout` v5, `upload-artifact` v5,
+`setup-java` v5). All workflows pass `actionlint` 1.7.12.
+
 CI status (2026-11-16): `linux-ci` runs on the self-hosted Debian runner; the
 Windows workflows (`launcher.yml`, `backend.yml`) now run on GitHub-hosted
 `windows-latest` and are green end-to-end — launcher run `43936830013` builds

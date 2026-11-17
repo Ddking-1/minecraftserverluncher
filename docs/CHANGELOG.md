@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+### CI - deprecated Node 20 actions and a launcher artifact without the VC++ runtime (2026-11-17)
+
+- `windeployqt` printed `Warning: Cannot find Visual Studio installation
+  directory, VCINSTALLDIR is not set.` and skipped the MSVC runtime, so the
+  uploaded `MinecraftLauncher-windows` artifact only started on machines that
+  already had the Visual C++ redistributable. The deploy step now locates the
+  toolset with `vswhere`, runs `windeployqt --compiler-runtime` inside
+  `vcvars64`, and fails the job if `msvcp140.dll` / `vcruntime140.dll` are not
+  next to the exe.
+- Bumped the actions that the runners reported as Node 20 deprecated:
+  `actions/checkout` v4 -> v5 (still pinned by commit SHA in the Windows
+  workflows), `actions/upload-artifact` v4 -> v5, `actions/setup-java` v4 -> v5.
+  The `##[warning] Node.js 20 is deprecated` annotation is gone, and the
+  `setup-java v4 is deprecated` warning with it.
+- Audited every job log of the recent runs: the launcher build/CTest, Go
+  `vet/test/build` and the Gradle Velocity build produced no compiler or test
+  warnings; the remaining log noise (tar cache messages, `punycode`
+  deprecations from the action runtime) comes from the runner, not this code.
+- Validated with `actionlint` 1.7.12 against all three workflows (exit 0).
+
 ### Launcher - friendly errors on the remaining GUI surfaces (2026-11-17)
 
 - Closed the last gaps on the GUI side: news loading (`MainWindow`), skin
