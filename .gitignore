@@ -39,6 +39,7 @@ reference/
 
 # Local one-click testing / demo (built artifacts and scripts; not source)
 _local_test/
+alpha/
 
 # Packaged installer artifacts and staged Qt runtime (built, not source)
 packaging/nsis/*.exe
@@ -57,3 +58,4 @@ build-local/
 
 # Local one-click testing / demo (built artifacts and scripts; not source)
 _local_test/
+alpha/
