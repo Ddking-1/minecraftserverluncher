@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+### PR #8 ported: library/asset resolution is implemented (2026-11-17)
+
+- Merged the still-relevant half of PR #8 through the task branch
+  `fix/port-pr8-resolver-integrity`. `ResolveLibraries` and `ResolveAssets` now
+  read the instance `version.json` metadata (DECISION-005) and download the
+  declared files with SHA-1 verification and atomic writes; a missing, unsafe or
+  mismatched entry fails the launch instead of silently continuing.
+- Kept `master` for the two areas where it already ships newer work: token
+  storage (DPAPI-only, fail-closed, username allowlist) and trusted-proxy rate
+  limiting (`AUTH_TRUST_PROXY`). The PR's `AUTH_TRUST_PROXY_HEADERS` /
+  `AUTH_TRUSTED_PROXY_CIDRS` variant is not used, and `docs/SECURITY_REVIEW.md`
+  now describes the variable that actually exists.
+- Added `test_token_storage`, `test_resolve_libraries` and `test_resolve_assets`
+  (the suite is 31 targets). They link `launcher_auth`, `launcher_core` and
+  `launcher_minecraft` instead of the PR's pre-library-split source list;
+  `launcher_minecraft` links `Qt6::Network` for the resolver steps.
+- Re-verified on the owner's machine: build 41/41 steps, CTest **31/31 passing**
+  (Qt 6.6.3 `msvc2019_64`, MSVC 14.52, CMake 3.30.5, Ninja).
+
 ### Master merge: friendly-error coverage and SplashScreen cleanup (2026-11-17)
 
 - Merged `fix/friendly-errors-coverage` (11 commits) into `master`: complete

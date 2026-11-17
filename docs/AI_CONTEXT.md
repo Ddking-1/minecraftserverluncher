@@ -44,9 +44,10 @@ later on 2026-11-16: the MSVC Release build is clean under `/W4 /WX` and
 `ctest -C Release` also passed. Re-verified 2026-11-17 on the owner's Windows
 machine with Qt 6.6.3 `msvc2019_64`, MSVC 14.52 (Visual Studio 18 Insiders),
 CMake 3.30.5 and Ninja: configure and build succeed and `ctest` reports
-**28/28 passing** — the suite has grown to 28 targets (memory_clamp,
+**31/31 passing** — the suite has grown to 31 targets (memory_clamp,
 system_memory, game_exit_diagnostics, friendly_error and friendly_error_paths
-were added after the earlier 23-test runs). The warnings-as-errors gate applies to every test executable as well
+were added after the earlier 23-test runs, and token_storage,
+resolve_libraries and resolve_assets came with the PR #8 resolver port). The warnings-as-errors gate applies to every test executable as well
 (`/W4 /WX` on MSVC, `-Wall -Wextra -Werror` on GCC/Clang), so test-only code
 cannot hide warnings.
 
@@ -147,7 +148,7 @@ NOT "full Prism Launcher + custom layer". See `docs/DECISIONS.md` DECISION-001.
 - Architecture documentation includes `docs/PRISM_MINIMAL_CORE.md` and
   `docs/PRISM_ARCHITECTURE_REVIEW.md` (DECISION-003/004/005)
 - Backend source exists under `server/` (Go module `minecraftserverluncher/server`)
-- Launcher core exists under `launcher/` (C++ / Qt6, builds and tests green **on a Windows machine with the verified Qt 6.6.3 + MSVC or MinGW GCC toolchain**). Latest local verification: 2026-11-17, Qt 6.6.3 `msvc2019_64` + MSVC 14.52 + CMake 3.30.5 + Ninja, `ctest` 28/28. The CMake configure and Release build are portable, but `ctest` requires the Qt 6.6.3 binaries and platform plugins staged next to the executables (the `stage_qt_runtime` target does this).
+- Launcher core exists under `launcher/` (C++ / Qt6, builds and tests green **on a Windows machine with the verified Qt 6.6.3 + MSVC or MinGW GCC toolchain**). Latest local verification: 2026-11-17, Qt 6.6.3 `msvc2019_64` + MSVC 14.52 + CMake 3.30.5 + Ninja, `ctest` 31/31. The CMake configure and Release build are portable, but `ctest` requires the Qt 6.6.3 binaries and platform plugins staged next to the executables (the `stage_qt_runtime` target does this).
 - Comprehensive Code Wiki: `docs/CODE_WIKI.md` covers architecture, modules,
   key classes/functions, dependencies, and run instructions.
 

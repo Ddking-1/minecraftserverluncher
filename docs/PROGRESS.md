@@ -1274,3 +1274,61 @@ uploaded artifact; the step now uses `vswhere` + `vcvars64` and
 the runners. No compiler or test warnings were found in the launcher, Go or
 Velocity jobs. All three workflows pass `actionlint` 1.7.12.
 Cleanup: removed unused SplashScreen component; build/tests unaffected.
+
+## 2026-11-17 — GITHUB CLI AVAILABLE: PR #8 PORTED AND RE-VERIFIED
+
+Agent/model: Buffy (Freebuff) - code agent
+Branch: fix/port-pr8-resolver-integrity (merged into master)
+Task: Finish the GitHub-side work now that `gh` is usable on the machine: check
+  the merge state of PR #15, triage the last open PR (#8), merge only the part
+  that is still missing from master, and re-verify the launcher.
+Started: 2026-11-17
+Completed: 2026-11-17
+
+Findings:
+- The GitHub CLI is installed at `C:\Program Files\GitHub CLI\gh.exe`
+  (2.104.0) but is not on PATH; it is logged in as `Ddking-1` with `repo`
+  scope. No manual GitHub step is needed any more.
+- PR #15 (`fix/friendly-errors-coverage`) was already MERGED (Ddking-1,
+  2026-11-17 20:25 UTC, merge commit d6fed7f), so no close action was required.
+- PR #8 (copilot/fix-security-issues-and-bugs, 2026-10-04) was 170 commits
+  behind master. Two of its five areas - token storage hardening and
+  trusted-proxy rate limiting - already exist in master in newer form, so those
+  conflicts were resolved to master. The resolver implementation and its three
+  tests were still missing and were ported.
+
+Files:
+- launcher/launch/steps/ResolveLibraries.cpp/.h - real metadata-driven download
+  with SHA-1 verification, path safety and atomic writes; the stale "pending
+  DECISION-005" comments replaced by the real contract.
+- launcher/launch/steps/ResolveAssets.cpp/.h - asset index/object resolution
+  with the same integrity and failure rules.
+- launcher/tests/test_token_storage.cpp, test_resolve_libraries.cpp,
+  test_resolve_assets.cpp - new regression tests (added from PR #8).
+- launcher/CMakeLists.txt - three new test targets, linked against the existing
+  libraries instead of the PR's duplicate source list.
+- launcher/minecraft/CMakeLists.txt - `launcher_minecraft` now links
+  `Qt6::Network` (the resolver steps need it).
+- launcher/README.md - launch metadata contract documented.
+- docs/SECURITY_REVIEW.md - trusted-proxy wording corrected to
+  `AUTH_TRUST_PROXY`.
+- docs/AI_CONTEXT.md, docs/WORK_STATE.md - live state raised to 31/31.
+
+Tests:
+- `MSYS_NO_PATHCONV=1 cmd /c "_local_test\build-msvc.bat"` -> build 41/41.
+- `MSYS_NO_PATHCONV=1 cmd /c "_local_test\test-msvc.bat"` -> CTest 31/31 passed,
+  0 failed.
+
+Current status:
+`fix/port-pr8-resolver-integrity` is merged into master; the tree is clean and
+the suite is green at 31/31.
+
+Next:
+Re-apply the HTML escaping from the old `fix/web-xss-and-skin-upload-cleanup`
+branch on a fresh branch (its binary skin upload is obsolete), then package the
+OpenSSL 3 runtime DLLs and settle the skin-file read policy. T11 Velocity
+remains BLOCKED on DECISION-004/005.
+
+Manual user action:
+None for GitHub. Optional: add `C:\Program Files\GitHub CLI` to PATH so `gh`
+works from a plain shell.
