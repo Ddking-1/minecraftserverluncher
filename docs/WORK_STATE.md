@@ -672,3 +672,10 @@ in the PowerShell call, zip-slip/huge-zip bombs, unbounded log and news payloads
 offline mode not disabling network features, unclamped memory values reaching
 -Xmx/-Xms, crash-report log forging.
 Tests: launcher `test_memory_clamp`; backend `TestSanitizeLogFieldStripsControlChars`.
+
+## 2026-11-17 — FRIENDLY MEMORY MESSAGES
+
+RAM slider upper bound = installed RAM - 2 GB (min 512 MB, max 64 GB), shown with a
+short statistics label ("8 GB total, 6 GB allowed, 4 GB set"). Over-limit saved
+values are clamped + explained. `LauncherPartLaunch` fails fast with the numbers
+when the heap exceeds the machine. Tests: `test_system_memory`.

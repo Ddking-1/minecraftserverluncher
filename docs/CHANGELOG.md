@@ -567,3 +567,19 @@ Owner: hostile-tester review of F2, F3, F5, F6, F7, F10.
   preventing log forging; fields logged in deterministic key order.
 - New regression test `test_memory_clamp` (launcher) and
   `TestSanitizeLogFieldStripsControlChars` (backend).
+
+### User-friendly memory messages (2026-11-17)
+
+- RAM panel now shows a one-line statistic: installed memory, the maximum the
+  launcher allows (installed minus 2 GB kept for the system) and the current
+  setting, e.g. "Gép memóriája: 8 GB · ebből legfeljebb 6 GB engedélyezett
+  (2 GB a rendszernek fenntartva) · beállítva: 4 GB".
+- The slider's upper bound is the machine's limit instead of a fixed 64 GB.
+- A saved/edited value above the limit is clamped on load, saved back, and
+  explained in the status bar with the same numbers.
+- `LauncherPartLaunch` refuses to start with a heap larger than the machine
+  allows and names the numbers instead of letting the JVM fail opaquely; a
+  process that will not start now reports the requested heap plus the machine
+  statistics.
+- New helper `core/SystemMemory` (Windows `GlobalMemoryStatusEx`, Linux
+  `sysconf`) and test `test_system_memory`.
