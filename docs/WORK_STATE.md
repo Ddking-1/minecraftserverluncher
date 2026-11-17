@@ -12,23 +12,25 @@ DECISION-005 (metadata source).
 Status:
 GREEN everywhere, verified on a real Windows 11 machine on 2026-11-16 and
 re-verified on 2026-11-17: the Go backend builds, vets and tests clean, and the
-C++/Qt6 launcher builds with Qt 6.6.3 and passes its full CTest suite (28/28).
+C++/Qt6 launcher builds with Qt 6.6.3 and passes its full CTest suite (31/31).
 The 2026-11-17 run used Qt 6.6.3 `msvc2019_64` with MSVC 14.52 (Visual Studio
 18 Insiders), CMake 3.30.5 and the Ninja generator, so the `/W4 /WX` warnings gate
 is confirmed green on the launcher and on every test executable. Earlier runs
 used Qt 6.6.3 `mingw_64` + MinGW GCC 13.1 and MSVC 2022 with 23/23 tests (the
-suite has since grown to 28 targets).
+suite has since grown to 31 targets, most recently with the resolver tests).
 
 Branch:
 `master`. `fix/friendly-errors-coverage` (PR #15) and
 `cleanup/remove-unused-splashscreen` were merged into `master` on 2026-11-17;
-`master` now holds every completed task branch.
+PR #8's hash-verified library/asset resolvers followed on the same day via
+the `fix/port-pr8-resolver-integrity` branch. `master` now holds every
+completed task branch and no open PR carries unmerged work.
 
 Merged task (2026-11-17): plain-language errors cover the whole GUI (news, skin
 upload/preview, login/logout, session restore, settings save, crash-log viewer)
 - see `docs/CHANGELOG.md` and `docs/PROGRESS.md`. The unused SplashScreen
 component is gone. Merged state re-verified on the owner's machine: Qt 6.6.3
-`msvc2019_64` + MSVC 14.52 + CMake 3.30.5 + Ninja, full build and CTest 28/28
+`msvc2019_64` + MSVC 14.52 + CMake 3.30.5 + Ninja, full build and CTest 31/31
 passing.
 
 CI runners (2026-11-17): `launcher.yml` targets a new self-hosted Windows
@@ -80,7 +82,8 @@ Current step:
 - Qt6 GUI wiring: MainWindow + SkinPreviewWidget are wired into `main.cpp`. MainWindow now owns the backend URL setting and the login/logout/session-restore flow (source only, not compiled in this environment).
 - Documentation: AI-generated-code disclaimer added to README.md and docs/AI_CONTEXT.md; CHANGELOG.md, PROGRESS.md and WORK_STATE.md updated per PROJECT AGENTS rules 10-14.
 
-- Test execution requirements: running the full CTest suite requires a Windows machine with Qt 6.6.3 plus its platform plugins staged next to the executables (the `stage_qt_runtime` target copies them) and a Windows C++ toolchain (MSVC `/W4 /WX` or MinGW GCC 13.1 with `-Werror`). Verified working configuration (2026-11-17): Qt 6.6.3 `msvc2019_64`, MSVC 14.52 (VS 18 Insiders, `vcvars64.bat`), CMake 3.30.5, Ninja, `-DCMAKE_PREFIX_PATH=C:/Qt/6.6.3/msvc2019_64`; configure + build + `ctest` gave 28/28 passing after the 2026-11-17 merges. Note that CMake 3.30.5 has no generator for VS 18 Insiders, so Ninja is used instead of the `Visual Studio 17 2022` generator named in CI.
+- Test execution requirements: running the full CTest suite requires a Windows machine with Qt 6.6.3 plus its platform plugins staged next to the executables (the `stage_qt_runtime` target copies them) and a Windows C++ toolchain (MSVC `/W4 /WX` or MinGW GCC 13.1 with `-Werror`). Verified working configuration (2026-11-17): Qt 6.6.3 `msvc2019_64`, MSVC 14.52 (VS 18 Insiders, `vcvars64.bat`), CMake 3.30.5, Ninja, `-DCMAKE_PREFIX_PATH=C:/Qt/6.6.3/msvc2019_64`; configure + build + `ctest` gave 31/31 passing after the 2026-11-17 merges and
+the PR #8 resolver port. Note that CMake 3.30.5 has no generator for VS 18 Insiders, so Ninja is used instead of the `Visual Studio 17 2022` generator named in CI.
 
 Next step:
 Decide the cross-account read policy of `GET /api/v1/skin-files/{id}`, ship an
@@ -94,6 +97,8 @@ Repository facts:
 - reference/ is local-only, never committed (DECISION-002)
 - backend source exists under server/ (Go module minecraftserverluncher/server)
 - launcher core exists under launcher/ (C++ / Qt6, builds and tests green)
+- launcher token persistence is DPAPI-only (no plaintext fallback)
+- launcher library/asset resolution uses hash-verified `version.json` metadata
 - velocity directory is scaffolded but empty (no code yet)
 
 Last commit:

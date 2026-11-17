@@ -40,3 +40,14 @@ cmake -S launcher -B launcher/build -G "Visual Studio 17 2022" -A x64
 cmake --build launcher/build --config Release
 ctest --test-dir launcher/build -C Release --output-on-failure
 ```
+
+## Launch metadata inputs
+
+`ResolveLibraries` and `ResolveAssets` read `version.json` in each instance
+root:
+
+- `libraries`: array of `{ path, url, sha1 }`
+- `asset_index`: `{ id, url, sha1, objects_base_url }`
+
+All downloaded files are SHA-1 verified before write and the step fails on any
+metadata/path/hash mismatch.
