@@ -100,12 +100,12 @@ target_compile_features(test_skin_client PRIVATE cxx_std_17)
 
 add_test(NAME skin_client COMMAND $<TARGET_FILE:test_skin_client>)
 
-add_executable(test_download_asset tests/test_download_asset.cpp core/DownloadAsset.cpp core/FileIntegrity.cpp)
+add_executable(test_download_asset tests/test_download_asset.cpp core/DownloadAsset.cpp core/FileIntegrity.cpp core/FriendlyError.cpp)
 target_include_directories(test_download_asset PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(test_download_asset PRIVATE Qt6::Core Qt6::Network)
 add_test(NAME download_asset COMMAND test_download_asset)
 
-add_executable(test_download_queue tests/test_download_queue.cpp core/DownloadQueue.cpp core/DownloadAsset.cpp core/FileIntegrity.cpp)
+add_executable(test_download_queue tests/test_download_queue.cpp core/DownloadQueue.cpp core/DownloadAsset.cpp core/FileIntegrity.cpp core/FriendlyError.cpp)
 target_include_directories(test_download_queue PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(test_download_queue PRIVATE Qt6::Core Qt6::Network)
 add_test(NAME download_queue COMMAND test_download_queue)
