@@ -151,6 +151,7 @@ add_executable(test_main_window
     ui/SkinPreviewWidget.h
     core/SkinClient.cpp
     core/SettingsStore.cpp
+    core/SystemMemory.cpp
     auth/BackendAuthClient.cpp
     auth/SessionManager.cpp
     auth/TokenStorage.cpp
