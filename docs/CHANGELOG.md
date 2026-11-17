@@ -583,3 +583,21 @@ Owner: hostile-tester review of F2, F3, F5, F6, F7, F10.
   statistics.
 - New helper `core/SystemMemory` (Windows `GlobalMemoryStatusEx`, Linux
   `sysconf`) and test `test_system_memory`.
+
+### Friendly message for a game that runs out of memory (2026-11-17)
+
+- The launched game process is now monitored after a successful start: its
+  output is kept in a bounded tail (16 kB) and an abnormal exit is diagnosed.
+- Memory exhaustion (JVM `OutOfMemoryError` / `Java heap space` /
+  `GC overhead limit exceeded` / heap reservation failure, or SIGKILL exit code
+  137 from the OS OOM killer) produces the same plain-language Hungarian text as
+  the RAM panel, with requested memory, installed memory and the allowed
+  maximum plus the action to take.
+- Any other crash keeps the generic behaviour: a neutral "process exited
+  (code N)" log line, no memory wording.
+- A deliberate stop (`abort()`) never reports a failure.
+- `LaunchTask` no longer drops a step failure that arrives after the pipeline
+  finished, so a game that dies after starting reaches the UI's error channel
+  (`succeeded()` = the game started, a later `failed()` = it then died).
+- New test `game_exit_diagnostics` (pure classification + message + late-failure
+  forwarding, no real OOM).

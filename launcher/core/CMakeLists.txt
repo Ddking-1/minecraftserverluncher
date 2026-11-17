@@ -9,6 +9,8 @@ add_library(launcher_core STATIC
     InstanceTypes.h
     SystemMemory.h
     SystemMemory.cpp
+    GameExitDiagnostics.h
+    GameExitDiagnostics.cpp
 )
 target_include_directories(launcher_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)
 target_link_libraries(launcher_core PUBLIC Qt6::Core)

@@ -38,6 +38,10 @@ public:
     // Abort the running pipeline.
     void abort();
 
+    // Note on signal order: succeeded() means "the game process started". If
+    // that process later dies (out of memory or a crash), failed() follows even
+    // though the state was already Finished, and state() becomes Failed.
+
     State state() const;
     BaseInstance *instance() const;
 
