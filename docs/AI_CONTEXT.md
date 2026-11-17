@@ -36,12 +36,17 @@ See `docs/DECISIONS.md` DECISION-006 and `docs/WORK_STATE.md`.
 
 The C++/Qt6 launcher core is implemented on `master` and the build baseline is
 GREEN on Windows 11, verified 2026-11-16: CMake configure and a Release build
-with Qt 6.6.3 succeed, `MinecraftLauncher.exe` and all 23 CTest binaries are
-produced, and `ctest` reports 23/23 passing. The verified toolchain is the Qt
-6.6.3 `mingw_64` package with MinGW GCC 13.1, and the MSVC 2022 Build Tools
-(MSVC 19.44, Windows SDK 10.0.26100) were installed later on 2026-11-16: the
-MSVC Release build is clean under `/W4 /WX` and `ctest -C Release` also reports
-23/23. The warnings-as-errors gate applies to every test executable as well
+with Qt 6.6.3 succeed, `MinecraftLauncher.exe` and every CTest binary are
+produced, and `ctest` reports all tests passing (23/23 at that time). The
+verified toolchain is the Qt 6.6.3 `mingw_64` package with MinGW GCC 13.1, and
+the MSVC 2022 Build Tools (MSVC 19.44, Windows SDK 10.0.26100) were installed
+later on 2026-11-16: the MSVC Release build is clean under `/W4 /WX` and
+`ctest -C Release` also passed. Re-verified 2026-11-17 on the owner's Windows
+machine with Qt 6.6.3 `msvc2019_64`, MSVC 14.52 (Visual Studio 18 Insiders),
+CMake 3.30.5 and Ninja: configure and build succeed and `ctest` reports
+**27/27 passing** — the suite has grown to 27 targets (memory_clamp,
+system_memory, game_exit_diagnostics and friendly_error were added after the
+earlier 23-test runs). The warnings-as-errors gate applies to every test executable as well
 (`/W4 /WX` on MSVC, `-Wall -Wextra -Werror` on GCC/Clang), so test-only code
 cannot hide warnings.
 
@@ -142,7 +147,7 @@ NOT "full Prism Launcher + custom layer". See `docs/DECISIONS.md` DECISION-001.
 - Architecture documentation includes `docs/PRISM_MINIMAL_CORE.md` and
   `docs/PRISM_ARCHITECTURE_REVIEW.md` (DECISION-003/004/005)
 - Backend source exists under `server/` (Go module `minecraftserverluncher/server`)
-- Launcher core exists under `launcher/` (C++ / Qt6, builds and tests green **on a Windows machine with the verified Qt 6.6.3 + MSVC or MinGW GCC toolchain**; full CTest execution requires the staged toolchain). Note: the CMake configure and Release build are portable, but `ctest 23/23` pass requires the Qt 6.6.3 binaries and platform plugins staged next to the executables.
+- Launcher core exists under `launcher/` (C++ / Qt6, builds and tests green **on a Windows machine with the verified Qt 6.6.3 + MSVC or MinGW GCC toolchain**). Latest local verification: 2026-11-17, Qt 6.6.3 `msvc2019_64` + MSVC 14.52 + CMake 3.30.5 + Ninja, `ctest` 27/27. The CMake configure and Release build are portable, but `ctest` requires the Qt 6.6.3 binaries and platform plugins staged next to the executables (the `stage_qt_runtime` target does this).
 - Comprehensive Code Wiki: `docs/CODE_WIKI.md` covers architecture, modules,
   key classes/functions, dependencies, and run instructions.
 
@@ -209,8 +214,8 @@ SettingsStore, RotatingFileLogger, FileIntegrity, Version), `launcher/minecraft`
 TokenStorage using Windows DPAPI, SessionManager), `launcher/launch`
 (LaunchTask/LaunchStep framework), `launcher/updates` (UpdateManifest parser,
 UpdateChecker) and `launcher/game` (JavaDetector, MinecraftLauncher). CMake
-configure and `cmake --build ... --config Release` succeed with Qt 6.6.3 under
-both MinGW GCC 13.1 and MSVC 2022; CTest runs 23/23 passing tests under both,
+configure and `cmake --build ...` succeed with Qt 6.6.3 under both MinGW GCC
+13.1 and MSVC (2022, and MSVC 14.52 re-verified 2026-11-17 with 27/27 CTest);
 including the `/W4 /WX` gate on the MSVC launcher target. Library/asset download steps
 remain stubs pending DECISION-005. The CI workflow
 (`.github/workflows/launcher.yml`) runs on GitHub-hosted `windows-latest`, where

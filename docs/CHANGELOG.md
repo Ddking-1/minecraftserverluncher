@@ -2,12 +2,12 @@
 
 ## Unreleased
 
-### Documentation update per PROJECT AGENTS rules 10-14 (2026-11-17)
+### Local MSVC toolchain verified: full CTest suite green (2026-11-17)
 
-- Updated `docs/AI_CONTEXT.md`: added test execution requirement note (Windows + Qt 6.6.3 + MSVC/MinGW toolchain needed for full CTest 23/23 pass).
-- Updated `docs/PROGRESS.md`: added entry documenting test execution requirements and task completion.
-- Updated `docs/WORK_STATE.md`: updated Current step and added test execution requirements section.
-- Updated `docs/CHANGELOG.md`: added unreleased entry documenting the documentation update task.
+- Recorded the verified local build configuration: Qt 6.6.3 `msvc2019_64`, MSVC 14.52 (Visual Studio 18 Insiders via `vcvars64.bat`), CMake 3.30.5 and Ninja, with `-DCMAKE_PREFIX_PATH=C:/Qt/6.6.3/msvc2019_64`.
+- Verified on Windows 11: configure + build 220/220 steps, then `ctest` **27/27 passing** (the suite is 27 targets; earlier runs recorded 23).
+- `docs/AI_CONTEXT.md`, `docs/WORK_STATE.md` and `docs/PROGRESS.md` updated to the verified state and the 27-test count; the duplicated 2026-11-17 test-requirements entry was replaced by the real verification result.
+- Still open: Qt 6.6.3 `msvc2019_64` bundles no OpenSSL 3 DLLs, so HTTPS at launcher runtime needs `libssl-3-x64.dll` / `libcrypto-3-x64.dll` staged.
 
 ### Launcher GUI features F2/F3/F5/F6/F7/F10 (2026-11-17)
 

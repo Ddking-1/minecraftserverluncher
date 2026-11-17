@@ -1127,28 +1127,35 @@ Plain-language errors (2026-11-17): every launch/download failure now surfaces a
 short Hungarian explanation via `core/FriendlyError`, with technical detail kept
 in the log. New test: launcher `friendly_error`.
 
-## 2026-11-17 — TEST EXECUTION REQUIREMENTS DOCUMENTATION
+## 2026-11-17 — LOCAL TOOLCHAIN INSTALL AND FULL CTEST VERIFICATION
 
 Agent/model: Buffy (Freebuff) - code agent
-Branch: doc/update-test-requirements (this documentation task)
-Task: Document that full CTest test execution (23/23) requires a Windows machine with the verified Qt 6.6.3 toolchain (MSVC 2022 Build Tools or MinGW GCC 13.1). Note: CMake configure and Release build are portable, but `ctest` requires the Qt 6.6.3 binaries and platform plugins staged next to executables. This entry fulfills PROJECT AGENTS rules 10-14: documentation update for a meaningful task where the build/test task is blocked by missing toolchain in this cloud environment.
+Branch: doc/update-test-requirements (this task continued on its existing branch, rule 25)
+Task: Establish whether the launcher can be built and tested on the owner's Windows machine, then record the verified toolchain and the real test result. The owner installed Qt 6.6.3 `msvc2019_64`; the MSVC compiler (14.52, Visual Studio 18 Insiders) and CMake 3.30.5 + Ninja from Qt's own `Tools` package were already present. No further install was needed.
 Started: 2026-11-17
 Completed: 2026-11-17
 
 Files:
-docs/AI_CONTEXT.md (test execution requirement added)
+docs/AI_CONTEXT.md (build baseline + repository facts updated: 27 tests, 2026-11-17 verification)
 docs/PROGRESS.md (this entry)
-docs/WORK_STATE.md (current step updated)
+docs/WORK_STATE.md (status, test-execution requirements and next step updated)
 docs/CHANGELOG.md (unreleased entry)
 
-Tests:
-No build or tests executed in this environment (cloud VM has no Qt 6 / CMake toolchain). The change is documentation only. Checks performed: git status and full git diff review before committing; documentation format consistency verified against AGENTS.md rules 10-14.
+Verification (Windows 11, Qt 6.6.3 `msvc2019_64`):
+- Configure: `cmake -S launcher -B launcher/build-ninja -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=C:/Qt/6.6.3/msvc2019_64` after `vcvars64.bat` -> OK.
+- Build: 220/220 steps, launcher + all test executables linked, `stage_qt_runtime` staged Qt and plugins -> OK.
+- Test: `ctest --test-dir launcher/build-ninja --output-on-failure` -> **27/27 passed**, 0 failed (3.1 s).
+- The `/W4 /WX` gate was active for the launcher and every test target during the build.
+
+Notes:
+- CMake 3.30.5 has no generator for Visual Studio 18 Insiders, so Ninja was used; the CI workflow's `Visual Studio 17/18` generator path is unaffected.
+- Qt 6.6.3 `msvc2019_64` ships no `libssl-3-x64.dll` / `libcrypto-3-x64.dll`, so CMake still warns that HTTPS backends will not work at runtime until OpenSSL 3 is staged.
 
 Current status:
-Documentation updated per PROJECT AGENTS rules 10-14. Test execution requirements recorded. Next steps require a Windows machine with Qt 6.6.3 + MSVC toolchain to build and run the CTest suite.
+The launcher build and the whole CTest suite are verified green on the owner's machine; nothing else is required to compile or test the launcher.
 
 Next:
-Install Qt 6.6.3 and MSVC on a Windows machine, then run: cmake --build <build-dir> --config Release && ctest --test-dir <build-dir>/Release --output-on-failure. Or use the GitHub Actions workflows in .github/workflows/launcher.yml.
+Ship an OpenSSL 3 TLS backend (`libssl-3-x64.dll`, `libcrypto-3-x64.dll`) with the launcher package so HTTPS works at runtime; then the existing open items (cross-account skin-file read policy, Velocity token transport).
 
 Manual user action:
-A Windows machine with Qt 6.6.3 + MSVC toolchain is required to build and run the CTest suite. Documented per AGENTS.md rules 10-14 for future reference.
+None for building/testing. OpenSSL 3 DLLs are needed only for the packaged launcher's HTTPS traffic at runtime.

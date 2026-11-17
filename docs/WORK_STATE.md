@@ -10,12 +10,14 @@ The T1–T45 backlog (`docs/MASTER_PLAN_EXTENDED.md`) is complete except T11
 DECISION-005 (metadata source).
 
 Status:
-GREEN everywhere, verified on a real Windows 11 machine on 2026-11-16: the Go
-backend builds, vets and tests clean, and the C++/Qt6 launcher builds with
-Qt 6.6.3 and passes its full CTest suite (23/23). The verified launcher
-toolchain is Qt 6.6.3 `mingw_64` + MinGW GCC 13.1, because MSVC 2022 is not
-installed on that machine; the MSVC `/W4 /WX` build is therefore still
-unverified.
+GREEN everywhere, verified on a real Windows 11 machine on 2026-11-16 and
+re-verified on 2026-11-17: the Go backend builds, vets and tests clean, and the
+C++/Qt6 launcher builds with Qt 6.6.3 and passes its full CTest suite (27/27).
+The 2026-11-17 run used Qt 6.6.3 `msvc2019_64` with MSVC 14.52 (Visual Studio
+18 Insiders), CMake 3.30.5 and the Ninja generator, so the `/W4 /WX` warnings gate
+is confirmed green on the launcher and on every test executable. Earlier runs
+used Qt 6.6.3 `mingw_64` + MinGW GCC 13.1 and MSVC 2022 with 23/23 tests (the
+suite has since grown to 27 targets).
 
 Branch:
 master (all task branches fast-forward merged and pushed).
@@ -53,12 +55,12 @@ Current step:
 - Qt6 GUI wiring: MainWindow + SkinPreviewWidget are wired into `main.cpp`. MainWindow now owns the backend URL setting and the login/logout/session-restore flow (source only, not compiled in this environment).
 - Documentation: AI-generated-code disclaimer added to README.md and docs/AI_CONTEXT.md; CHANGELOG.md, PROGRESS.md and WORK_STATE.md updated per PROJECT AGENTS rules 10-14.
 
-- Test execution requirements: Full CTest test execution (23/23) requires a Windows machine with the verified Qt 6.6.3 toolchain (MSVC 2022 Build Tools or MinGW GCC 13.1). CMake configure and Release build are portable, but `ctest` requires the Qt 6.6.3 binaries and platform plugins staged next to executables. Documentation of this requirement fulfills AGENTS.md rules 10-14 for future reference when the build/test task is blocked by missing toolchain.
+- Test execution requirements: running the full CTest suite requires a Windows machine with Qt 6.6.3 plus its platform plugins staged next to the executables (the `stage_qt_runtime` target copies them) and a Windows C++ toolchain (MSVC `/W4 /WX` or MinGW GCC 13.1 with `-Werror`). Verified working configuration (2026-11-17): Qt 6.6.3 `msvc2019_64`, MSVC 14.52 (VS 18 Insiders, `vcvars64.bat`), CMake 3.30.5, Ninja, `-DCMAKE_PREFIX_PATH=C:/Qt/6.6.3/msvc2019_64`; configure + build + `ctest` gave 27/27 passing. Note that CMake 3.30.5 has no generator for VS 18 Insiders, so Ninja is used instead of the `Visual Studio 17 2022` generator named in CI.
 
 Next step:
 Decide the cross-account read policy of `GET /api/v1/skin-files/{id}`, ship an
 OpenSSL 3 TLS backend with the launcher package (HTTPS backends currently fail
-without it), repeat the build with MSVC 2022 (`/W4 /WX`), and resolve the
+without it; the Qt 6.6.3 MSVC install ships no `libssl-3-x64.dll`), and resolve the
 Velocity token transport. T11 Velocity remains BLOCKED on DECISION-004/005.
 
 Repository facts:
