@@ -405,6 +405,8 @@ void MainWindow::onCrashReportClicked()
         auto *nam = new QNetworkAccessManager(this);
         QNetworkRequest req(QUrl(m_authClient->backendUrl() + QStringLiteral("/api/v1/crash-reports")));
         req.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
+        if (m_sessions != nullptr && m_sessions->currentSession() != nullptr)
+            req.setRawHeader("Authorization", ("Bearer " + m_sessions->currentSession()->access_token).toUtf8());
         QJsonObject obj;
         obj[QStringLiteral("message")] = msg;
         obj[QStringLiteral("logs")] = logs;
