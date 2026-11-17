@@ -3,6 +3,7 @@
 
 #include "LaunchStep.h"
 #include "core/BaseInstance.h"
+#include "core/FriendlyError.h"
 
 LaunchTask::LaunchTask(BaseInstance *instance, QObject *parent)
     : QObject(parent), m_instance(instance)
@@ -74,8 +75,10 @@ void LaunchTask::onStepFailed(const QString &reason)
     // That is a real failure and must reach the UI instead of being dropped.
     if (m_state == State::Failed || m_state == State::Aborted)
         return;
+    // Keep the technical detail in the log, but show a plain-language message.
+    emit logLine(reason);
     setState(State::Failed);
-    emit failed(reason);
+    emit failed(FriendlyError::explain(reason));
 }
 
 void LaunchTask::setState(State state)

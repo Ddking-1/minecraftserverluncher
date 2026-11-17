@@ -2,6 +2,7 @@
 #include "DownloadAsset.h"
 
 #include "FileIntegrity.h"
+#include "FriendlyError.h"
 
 #include <QFile>
 #include <QFileInfo>
@@ -29,15 +30,15 @@ void DownloadAsset::setMaxRetries(int retries)
 void DownloadAsset::start(const QUrl &url, const QString &localPath, const QString &expectedSha256)
 {
     if (m_reply) {
-        emit failed(QStringLiteral("a download is already in progress"));
+        emit failed(FriendlyError::explain(QStringLiteral("a download is already in progress")));
         return;
     }
     if (!url.isValid() || url.isRelative()) {
-        emit failed(QStringLiteral("invalid download URL"));
+        emit failed(FriendlyError::explain(QStringLiteral("invalid download URL")));
         return;
     }
     if (url.scheme() != QLatin1String("http") && url.scheme() != QLatin1String("https")) {
-        emit failed(QStringLiteral("unsupported URL scheme"));
+        emit failed(FriendlyError::explain(QStringLiteral("unsupported URL scheme")));
         return;
     }
 
@@ -78,7 +79,7 @@ void DownloadAsset::handleReply()
             scheduleRetry();
             return;
         }
-        finish(err);
+        finish(FriendlyError::explain(err));
         return;
     }
     const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
@@ -88,7 +89,7 @@ void DownloadAsset::handleReply()
             scheduleRetry();
             return;
         }
-        finish(QStringLiteral("HTTP %1").arg(status));
+        finish(FriendlyError::explain(QStringLiteral("HTTP %1").arg(status)));
         return;
     }
     const QByteArray data = reply->readAll();
@@ -97,22 +98,22 @@ void DownloadAsset::handleReply()
     // Atomically write then verify the digest before accepting the file.
     QSaveFile file(m_localPath);
     if (!file.open(QIODevice::WriteOnly)) {
-        finish(QStringLiteral("could not open destination file"));
+        finish(FriendlyError::explain(QStringLiteral("could not open destination file")));
         return;
     }
     if (file.write(data) != data.size()) {
-        finish(QStringLiteral("write failed"));
+        finish(FriendlyError::explain(QStringLiteral("write failed")));
         return;
     }
     if (!file.commit()) {
-        finish(QStringLiteral("commit failed"));
+        finish(FriendlyError::explain(QStringLiteral("commit failed")));
         return;
     }
 
     if (!FileIntegrity::verify(m_localPath, m_expectedSha256)) {
         QFile::remove(m_localPath);
         // Never retry a checksum mismatch: the file is corrupt, not transient.
-        finish(QStringLiteral("SHA-256 mismatch"));
+        finish(FriendlyError::explain(QStringLiteral("SHA-256 mismatch")));
         return;
     }
     emit progress(100.0);

@@ -285,3 +285,7 @@ Batch (2026-11-17): launcher GUI features F2/F3/F5/F6/F7/F10 implemented and ver
   gets the numbered Hungarian message, everything else keeps the generic exit
   log line. `LaunchTask::failed()` may follow `succeeded()` for a game that died
   after starting.
+
+- User-facing errors: `core/FriendlyError::explain` converts technical
+  launch/download errors to plain Hungarian; `LaunchTask` logs the raw reason
+  and emits the friendly text.
