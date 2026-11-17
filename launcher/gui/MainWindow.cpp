@@ -448,6 +448,7 @@ void MainWindow::onImportModpackClicked()
         return;
     }
     showStatus(tr("Modpack importálva: %1").arg(dest));
+}
 
 void MainWindow::showStatus(const QString &message)
 {
