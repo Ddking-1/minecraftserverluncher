@@ -28,4 +28,4 @@ add_library(launcher_minecraft STATIC
     ../launch/java/JavaVersion.cpp
 )
 target_include_directories(launcher_minecraft PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)
-target_link_libraries(launcher_minecraft PUBLIC launcher_core Qt6::Core)
+target_link_libraries(launcher_minecraft PUBLIC launcher_core Qt6::Core Qt6::Network)

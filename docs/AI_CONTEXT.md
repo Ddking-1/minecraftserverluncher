@@ -211,7 +211,7 @@ Launcher core (`launcher/`, C++/Qt6) is on `master`: `launcher/core`
 SettingsStore, RotatingFileLogger, FileIntegrity, Version), `launcher/minecraft`
 (MinecraftInstance, PackProfile, ModScanner), `launcher/auth`
 (BackendAuthClient with a 15s timeout and status-code error mapping,
-TokenStorage using Windows DPAPI, SessionManager), `launcher/launch`
+TokenStorage using Windows DPAPI with no plaintext fallback, SessionManager), `launcher/launch`
 (LaunchTask/LaunchStep framework), `launcher/updates` (UpdateManifest parser,
 UpdateChecker), `launcher/game` (JavaDetector, MinecraftLauncher) and
 `launcher/core/FriendlyError`, the single source of plain-language Hungarian
@@ -227,8 +227,11 @@ longer echoes the raw snippet). CMake configure and `cmake --build ... --config
 Release` succeed with Qt 6.6.3 under both MinGW GCC 13.1 and MSVC (2022, and
 MSVC 14.52 + CMake 3.30.5 + Ninja re-verified 2026-11-17 with the full CTest
 suite green),
-including the `/W4 /WX` gate on the MSVC launcher target. Library/asset download steps
-remain stubs pending DECISION-005. The CI workflow
+including the `/W4 /WX` gate on the MSVC launcher target. The library and
+asset steps (`ResolveLibraries`, `ResolveAssets`) download from the instance
+`version.json` metadata (DECISION-005: the self-hosted backend is the metadata
+source) and SHA-1 verify every file before an atomic write; any
+metadata/path/hash mismatch fails the launch instead of proceeding. The CI workflow
 (`.github/workflows/launcher.yml`) runs on the self-hosted Windows runner
 (labels `self-hosted, windows, x64, launcher`) when one is available and on
 GitHub-hosted `windows-latest` otherwise: `runner-fallback.yml` re-dispatches a

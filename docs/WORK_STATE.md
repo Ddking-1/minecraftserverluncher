@@ -94,6 +94,8 @@ Repository facts:
 - reference/ is local-only, never committed (DECISION-002)
 - backend source exists under server/ (Go module minecraftserverluncher/server)
 - launcher core exists under launcher/ (C++ / Qt6, builds and tests green)
+- launcher token persistence is DPAPI-only (no plaintext fallback)
+- launcher library/asset resolution uses hash-verified `version.json` metadata
 - velocity directory is scaffolded but empty (no code yet)
 
 Last commit:

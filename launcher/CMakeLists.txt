@@ -425,3 +425,23 @@ if(LibFuzzer_FOUND)
 endif()
 
 enable_testing()
+
+add_executable(test_token_storage tests/test_token_storage.cpp auth/TokenStorage.cpp)
+target_include_directories(test_token_storage PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(test_token_storage PRIVATE Qt6::Core)
+if(WIN32)
+    target_link_libraries(test_token_storage PRIVATE crypt32)
+endif()
+add_test(NAME token_storage COMMAND test_token_storage)
+
+add_executable(test_resolve_libraries tests/test_resolve_libraries.cpp)
+target_include_directories(test_resolve_libraries PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(test_resolve_libraries PRIVATE
+    launcher_auth launcher_core launcher_minecraft Qt6::Core Qt6::Network)
+add_test(NAME resolve_libraries COMMAND test_resolve_libraries)
+
+add_executable(test_resolve_assets tests/test_resolve_assets.cpp)
+target_include_directories(test_resolve_assets PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(test_resolve_assets PRIVATE
+    launcher_auth launcher_core launcher_minecraft Qt6::Core Qt6::Network)
+add_test(NAME resolve_assets COMMAND test_resolve_assets)

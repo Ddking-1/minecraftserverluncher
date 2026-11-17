@@ -6,10 +6,10 @@
 
 class MinecraftInstance;
 
-// Ensures the instance's asset directory exists and is ready for the launch.
-// NOTE: actual asset download depends on the metadata source decision
-// (docs/DECISIONS.md DECISION-005, currently pending); this step prepares the
-// local layout and is the seam where download logic will be added.
+// Resolves the instance's asset files from the instance `version.json` metadata
+// (DECISION-005: the self-hosted backend is the metadata source). Every
+// download is SHA-1 verified before an atomic write and any metadata, path or
+// hash mismatch fails the launch instead of proceeding.
 class ResolveAssets : public LaunchStep
 {
     Q_OBJECT
