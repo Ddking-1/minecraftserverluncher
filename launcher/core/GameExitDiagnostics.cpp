@@ -8,9 +8,10 @@ namespace {
 
 // The JVM's own wording. All matches are case-insensitive and are only trusted
 // for a process that actually failed (exitCode != 0).
-const QStringList &memorySignals()
+const QStringList &memoryMarkers()
 {
-    static const QStringList signals = {
+    // NB: "signals" is a Qt keyword macro, so the list is called markers.
+    static const QStringList markers = {
         QStringLiteral("outofmemoryerror"),
         QStringLiteral("java heap space"),
         QStringLiteral("gc overhead limit exceeded"),
@@ -21,7 +22,7 @@ const QStringList &memorySignals()
         QStringLiteral("killed process"),        // Linux OOM killer
         QStringLiteral("out of memory"),
     };
-    return signals;
+    return markers;
 }
 
 // 128 + SIGKILL(9): what the Linux OOM killer leaves behind.
@@ -39,8 +40,8 @@ bool looksLikeMemoryExhaustion(const QString &output, int exitCode)
         return true;
 
     const QString lower = output.toLower();
-    for (const QString &signal : memorySignals()) {
-        if (lower.contains(signal))
+    for (const QString &marker : memoryMarkers()) {
+        if (lower.contains(marker))
             return true;
     }
     return false;
