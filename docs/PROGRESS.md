@@ -1126,3 +1126,29 @@ launcher `game_exit_diagnostics`.
 Plain-language errors (2026-11-17): every launch/download failure now surfaces a
 short Hungarian explanation via `core/FriendlyError`, with technical detail kept
 in the log. New test: launcher `friendly_error`.
+
+## 2026-11-17 — TEST EXECUTION REQUIREMENTS DOCUMENTATION
+
+Agent/model: Buffy (Freebuff) - code agent
+Branch: doc/update-test-requirements (this documentation task)
+Task: Document that full CTest test execution (23/23) requires a Windows machine with the verified Qt 6.6.3 toolchain (MSVC 2022 Build Tools or MinGW GCC 13.1). Note: CMake configure and Release build are portable, but `ctest` requires the Qt 6.6.3 binaries and platform plugins staged next to executables. This entry fulfills PROJECT AGENTS rules 10-14: documentation update for a meaningful task where the build/test task is blocked by missing toolchain in this cloud environment.
+Started: 2026-11-17
+Completed: 2026-11-17
+
+Files:
+docs/AI_CONTEXT.md (test execution requirement added)
+docs/PROGRESS.md (this entry)
+docs/WORK_STATE.md (current step updated)
+docs/CHANGELOG.md (unreleased entry)
+
+Tests:
+No build or tests executed in this environment (cloud VM has no Qt 6 / CMake toolchain). The change is documentation only. Checks performed: git status and full git diff review before committing; documentation format consistency verified against AGENTS.md rules 10-14.
+
+Current status:
+Documentation updated per PROJECT AGENTS rules 10-14. Test execution requirements recorded. Next steps require a Windows machine with Qt 6.6.3 + MSVC toolchain to build and run the CTest suite.
+
+Next:
+Install Qt 6.6.3 and MSVC on a Windows machine, then run: cmake --build <build-dir> --config Release && ctest --test-dir <build-dir>/Release --output-on-failure. Or use the GitHub Actions workflows in .github/workflows/launcher.yml.
+
+Manual user action:
+A Windows machine with Qt 6.6.3 + MSVC toolchain is required to build and run the CTest suite. Documented per AGENTS.md rules 10-14 for future reference.

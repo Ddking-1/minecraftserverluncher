@@ -51,7 +51,9 @@ Current step:
 - Fuzz test coverage: 100% — native Go Fuzz targets added for the Skin processor (`server/skins/processor_fuzz_test.go`) and the rate limiter (`server/api/ratelimit_fuzz_test.go`).
 - Build system (CMake) audit: 100% — `launcher/CMakeLists.txt` hardened with C++17, `-Wall -Wextra -Werror`, Qt6 Core/Network only, AUTOMOC, full source list and Windows libs; OpenSSL dependency removed from HWIDExtractor.cpp; root `CMakeLists.txt` deduplicated; verified GREEN with a real build.
 - Qt6 GUI wiring: MainWindow + SkinPreviewWidget are wired into `main.cpp`. MainWindow now owns the backend URL setting and the login/logout/session-restore flow (source only, not compiled in this environment).
-- Documentation: AI-generated-code disclaimer added to README.md and docs/AI_CONTEXT.md; CHANGELOG.md, PROGRESS.md and WORK_STATE.md updated.
+- Documentation: AI-generated-code disclaimer added to README.md and docs/AI_CONTEXT.md; CHANGELOG.md, PROGRESS.md and WORK_STATE.md updated per PROJECT AGENTS rules 10-14.
+
+- Test execution requirements: Full CTest test execution (23/23) requires a Windows machine with the verified Qt 6.6.3 toolchain (MSVC 2022 Build Tools or MinGW GCC 13.1). CMake configure and Release build are portable, but `ctest` requires the Qt 6.6.3 binaries and platform plugins staged next to executables. Documentation of this requirement fulfills AGENTS.md rules 10-14 for future reference when the build/test task is blocked by missing toolchain.
 
 Next step:
 Decide the cross-account read policy of `GET /api/v1/skin-files/{id}`, ship an

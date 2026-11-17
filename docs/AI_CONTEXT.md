@@ -142,7 +142,7 @@ NOT "full Prism Launcher + custom layer". See `docs/DECISIONS.md` DECISION-001.
 - Architecture documentation includes `docs/PRISM_MINIMAL_CORE.md` and
   `docs/PRISM_ARCHITECTURE_REVIEW.md` (DECISION-003/004/005)
 - Backend source exists under `server/` (Go module `minecraftserverluncher/server`)
-- Launcher core exists under `launcher/` (C++ / Qt6, builds and tests green)
+- Launcher core exists under `launcher/` (C++ / Qt6, builds and tests green **on a Windows machine with the verified Qt 6.6.3 + MSVC or MinGW GCC toolchain**; full CTest execution requires the staged toolchain). Note: the CMake configure and Release build are portable, but `ctest 23/23` pass requires the Qt 6.6.3 binaries and platform plugins staged next to the executables.
 - Comprehensive Code Wiki: `docs/CODE_WIKI.md` covers architecture, modules,
   key classes/functions, dependencies, and run instructions.
 

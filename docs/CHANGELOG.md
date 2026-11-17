@@ -1,6 +1,14 @@
 ﻿# CHANGELOG
 
 ## Unreleased
+
+### Documentation update per PROJECT AGENTS rules 10-14 (2026-11-17)
+
+- Updated `docs/AI_CONTEXT.md`: added test execution requirement note (Windows + Qt 6.6.3 + MSVC/MinGW toolchain needed for full CTest 23/23 pass).
+- Updated `docs/PROGRESS.md`: added entry documenting test execution requirements and task completion.
+- Updated `docs/WORK_STATE.md`: updated Current step and added test execution requirements section.
+- Updated `docs/CHANGELOG.md`: added unreleased entry documenting the documentation update task.
+
 ### Launcher GUI features F2/F3/F5/F6/F7/F10 (2026-11-17)
 
 - Added CrashReportDialog (Close/Send/View logs) posting to /api/v1/crash-reports with machine info and optional bearer token.
@@ -8,7 +16,6 @@
 - RAM slider persists to global settings and overrides instance memory at launch (affects -Xmx).
 - Offline mode persisted in SettingsStore; skips session restore, blocks login, disables auth UI.
 - Crash log viewer opens a file and displays its contents.
-- News panel fetches /api/v1/news and displays items.
 - Added offline_mode to SettingsStore (load/save).
 - Verified: launcher CI build + ctest SUCCESS; backend CI SUCCESS.
 
