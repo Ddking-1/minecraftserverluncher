@@ -128,6 +128,7 @@ target_link_libraries(test_game_paths PRIVATE Qt6::Core)
 add_test(NAME game_paths COMMAND test_game_paths)
 
 add_executable(test_game_launcher tests/test_game_launcher.cpp core/GameLauncher.cpp game/JavaDetector.cpp)
+target_sources(test_game_launcher PRIVATE core/FriendlyError.cpp)
 target_include_directories(test_game_launcher PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(test_game_launcher PRIVATE Qt6::Core)
 add_test(NAME game_launcher COMMAND test_game_launcher)

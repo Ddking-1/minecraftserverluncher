@@ -62,6 +62,19 @@ const char *const kJavaMissing =
     QT_TRANSLATE_NOOP("FriendlyError",
                       "Nincs beállítva Java futtatókörnyezet. Telepíts Java 17-et vagy újabbat, "
                       "vagy válaszd ki a Beállításokban.");
+const char *const kUnsafeArgs =
+    QT_TRANSLATE_NOOP("FriendlyError",
+                      "A játék indítási adatai szabálytalan karaktert tartalmaztak, ezért a "
+                      "launcher biztonsági okból nem indította el. Indítsd újra a launchert, és "
+                      "ha újra előjön, szólj a szerver üzemeltetőjének.");
+const char *const kIncompleteLaunch =
+    QT_TRANSLATE_NOOP("FriendlyError",
+                      "A játék indítási adatai hiányosak, ezért nem indult el. Indítsd újra a "
+                      "launchert, és ha újra előjön, telepítsd újra ezt a verziót.");
+const char *const kAlreadyRunning =
+    QT_TRANSLATE_NOOP("FriendlyError",
+                      "A játék már fut, ezért nem indult el még egyszer. Zárd be a futó "
+                      "játékot, ha újra szeretnéd indítani.");
 const char *const kJavaVersion =
     QT_TRANSLATE_NOOP("FriendlyError",
                       "A Java verziója nem ismerhető fel. Válassz másik Java-t a "
@@ -217,10 +230,20 @@ QString explain(const QString &raw)
     if (anyOf(lower, {"did not start"}))
         return say(kNotStarted);
 
+    // --- launch request validation (core/GameLauncher) ----------------------
+    if (anyOf(lower, {"already running"}))
+        return say(kAlreadyRunning);
+    if (anyOf(lower, {"unsafe main class", "unsafe classpath", "unsafe jvm argument",
+                      "unsafe game argument"}))
+        return say(kUnsafeArgs);
+    if (anyOf(lower, {"empty classpath", "empty main class"}))
+        return say(kIncompleteLaunch);
+
     // --- settings -----------------------------------------------------------
     // Before the memory rules: these sentences also contain the word "memory".
     if (anyOf(lower, {"maximum memory", "minimum memory", "memory must",
-                      "must not exceed", "below minimum"}))
+                      "must not exceed", "below minimum", "exceeds max memory",
+                      "min memory exceeds"}))
         return say(kSettingsMemory);
 
     // --- memory -------------------------------------------------------------
@@ -296,6 +319,11 @@ QString explain(const QString &raw)
     // --- network ------------------------------------------------------------
     if (anyOf(lower, {"ssl", "certificate", "tls", "handshake"}))
         return say(kSsl);
+    // Qt words a DNS failure as "Host api.example.com not found", which must not
+    // be mistaken for a backend 404 ("Not found").
+    if (lower.contains(QLatin1String("host")) &&
+        anyOf(lower, {"not found", "unreachable", "resolve", "lookup"}))
+        return say(kNetwork);
     if (anyOf(lower, {"timeout", "timed out", "connection", "refused", "network",
                       "host not found", "unreachable", "reset by peer", "offline",
                       "name resolution", "socket"}))

@@ -164,6 +164,29 @@ int main(int argc, char **argv)
         {"Host not found", "Hálózati hiba", "DNS failure"},
         {"SSL handshake failed", "biztonságos kapcsolat", "TLS failure"},
         {"request timed out (5s)", "Hálózati hiba", "request timeout"},
+        // Real QNetworkReply::errorString() values seen from Qt itself.
+        {"Host api.example.com not found", "Hálózati hiba", "Qt DNS errorString"},
+        {"Connection refused", "Hálózati hiba", "Qt refused errorString"},
+        {"Error transferring https://api.example.com/x - server replied: Service Unavailable",
+         "szerver", "Qt transfer errorString"},
+        {"Error downloading https://api.example.com/x - server replied: Not Found",
+         "nem található", "Qt download errorString"},
+        {"Error transferring https://api.example.com/x - server replied: Unauthorized",
+         "Jelentkezz be", "Qt unauthorized errorString"},
+        {"TLS initialization failed", "biztonságos kapcsolat", "Qt TLS errorString"},
+        // core/GameLauncher launch-request validation.
+        {"implausible memory settings", "memória", "GameLauncher bad memory"},
+        {"min memory exceeds max memory", "memória", "GameLauncher min > max"},
+        {"unsafe main class", "szabálytalan", "GameLauncher main class injection"},
+        {"unsafe classpath", "szabálytalan", "GameLauncher classpath injection"},
+        {"unsafe jvm argument", "szabálytalan", "GameLauncher jvm injection"},
+        {"unsafe game argument", "szabálytalan", "GameLauncher game arg injection"},
+        {"invalid or implausible java executable", "Java", "GameLauncher bad java"},
+        {"empty classpath", "hiányosak", "GameLauncher empty classpath"},
+        {"empty main class", "hiányosak", "GameLauncher empty main class"},
+        {"a launch is already running", "már fut", "GameLauncher double launch"},
+        {"failed to start process", "nem sikerült", "GameLauncher start failure"},
+        {"execvp: No such file or directory", "nem található", "Qt start failure text"},
 
         // filesystem
         {"Permission denied", "jogosultság", "denied write"},
@@ -209,6 +232,26 @@ int main(int argc, char **argv)
         check(out != raw, c.label);
         check(out.contains(QString::fromUtf8(c.expected)), c.label);
         check(FriendlyError::explain(out) == out, c.label);
+    }
+
+    // No technical English wording may survive: a player must never see the raw
+    // Qt/backend text, only the Hungarian explanation.
+    static const char *const kEnglish[] = {
+        "refused",  "Connection", "Error transferring", "Error downloading",
+        "timed out", "Unable to",  "failed to",          "not found",
+        "denied",   "HTTP ",      "manifest",           "signature",
+    };
+    for (const Case &c : cases) {
+        const QString out = FriendlyError::explain(QString::fromUtf8(c.raw));
+        bool clean = true;
+        for (const char *word : kEnglish) {
+            if (out.contains(QString::fromLatin1(word))) {
+                clean = false;
+                std::fprintf(stderr, "  raw=[%s] kept English [%s]: [%s]\n", c.raw, word,
+                             out.toUtf8().constData());
+            }
+        }
+        check(clean, c.label);
     }
 
     if (failures == 0)
