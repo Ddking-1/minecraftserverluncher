@@ -761,3 +761,20 @@ Owner: hostile-tester review of F2, F3, F5, F6, F7, F10.
 ### Cleanup (2026-11-17)
 
 - Removed completely unused `launcher/gui/SplashScreen.cpp` and `SplashScreen.h` (no references anywhere in code or tests).
+
+### Local test environment (2026-11-18)
+
+- Added `_local_test/` (git-ignored) with a unified `run_local.bat`/`run_local.ps1`
+  that starts the Go backend (auth-server), Minecraft server 1.21.11 and the
+  Velocity proxy with the project plugin, and stops all of them on close. The
+  launcher is intentionally not started by the script.
+- Downloaded Minecraft server 1.21.11 into `_local_test/minecraft-server/`
+  (eula=true, port 25566, offline mode) and Velocity 4.3.1 into
+  `_local_test/velocity/` with the plugin jar and a velocity.toml pointing at
+  the local backend.
+- Built `auth-server.exe` into `_local_test/backend/` and pre-created an
+  instance at `_local_test/launcher/instances/survival` plus a global launcher
+  settings file pointing the backend URL at http://127.0.0.1:8080.
+- Verified backend (/readyz, /healthz, web pages, register), Minecraft server
+  ("Done" reached) and Velocity (plugin initialized, backend URL correct).
+- Launcher updater remains unwired (not enabled). Captcha in dev mode.

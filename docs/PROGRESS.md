@@ -1332,3 +1332,8 @@ remains BLOCKED on DECISION-004/005.
 Manual user action:
 None for GitHub. Optional: add `C:\Program Files\GitHub CLI` to PATH so `gh`
 works from a plain shell.
+
+## 2026-11-18 - LOCAL TEST ENVIRONMENT
+
+- Unified local test runner added. Backend, MC 1.21.11, Velocity verified.
+- Launcher instance + backend URL pre-configured. Updater disabled. Captcha dev mode.

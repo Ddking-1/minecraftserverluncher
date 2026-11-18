@@ -801,3 +801,9 @@ Remaining:
 ## 2026-11-17 — CLEANUP (SplashScreen)
 
 Removed unused `launcher/gui/SplashScreen.cpp/.h`. No references; build/tests unaffected.
+
+## 2026-11-18 - LOCAL TEST ENVIRONMENT
+
+- Created `_local_test/` with unified `run_local.bat`/`run_local.ps1` (backend + MC 1.21.11 + Velocity).
+- Verified backend, MC server and Velocity. Launcher instance pre-created.
+- Launcher updater not enabled. Captcha in dev mode.

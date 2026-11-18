@@ -318,3 +318,12 @@ Batch (2026-11-17): launcher GUI features F2/F3/F5/F6/F7/F10 implemented and ver
   and emits the friendly text.
 
 - Cleanup: removed unused SplashScreen component (no references); build/tests unaffected.
+
+## Local test environment (2026-11-18)
+
+A unified local test environment lives in `_local_test/` (git-ignored). `run_local.bat`/
+`run_local.ps1` starts the Go backend (auth-server), Minecraft 1.21.11 server and
+Velocity proxy (with the project plugin) and stops all on close; the launcher is
+not started by it. Backend URL is pre-set to http://127.0.0.1:8080 in the global
+launcher settings. An original instance exists at `_local_test/launcher/instances/survival`.
+Captcha is in dev mode; the launcher updater is not wired/enabled.
