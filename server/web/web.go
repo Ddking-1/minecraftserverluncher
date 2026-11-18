@@ -9,7 +9,7 @@ import (
 	"net/http"
 )
 
-//go:embed static/*.html
+//go:embed static/*
 var staticFiles embed.FS
 
 // Handler returns an http.Handler serving the embedded website under "/".
@@ -40,6 +40,8 @@ func (h indexRedirect) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		r.URL.Path = "/dashboard.html"
 	case "/admin":
 		r.URL.Path = "/admin.html"
+	case "/register":
+		r.URL.Path = "/register.html"
 	}
 	h.next.ServeHTTP(w, r)
 }

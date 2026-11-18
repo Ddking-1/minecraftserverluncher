@@ -11,7 +11,6 @@
             const theme = localStorage.getItem('theme') || 'dark';
             document.documentElement.setAttribute('data-theme', theme);
         })();
-
         (function() {
             const lang = localStorage.getItem('lang') || 'hu';
             document.documentElement.setAttribute('lang', lang);
@@ -42,195 +41,189 @@
             </div>
         </div>
     </nav>
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div class="max-w-2xl mx-auto">
-            <h1 class="text-2xl font-bold mb-6" data-i18n="skinManager.title">Skin Manager</h1>
-            <div class="card">
-                <div class="card-header" data-i18n="skinManager.login">Belépés</div>
-                <form id="loginForm" class="space-y-4" onsubmit="event.preventDefault(); login();">
-                    <div>
-                        <label class="block text-sm font-medium mb-1" data-i18n="skinManager.username">Felhasználónév</label>
-                        <input type="text" id="username" required class="input">
+
+    <main class="auth-wrap">
+        <div class="auth-card animate-slide">
+            <h1 class="auth-title">Skin Manager</h1>
+            <p class="auth-sub">Belépés vagy regisztráció a skinek kezeléséhez</p>
+
+            <div id="authSection">
+                <div class="tab-row">
+                    <button class="tab-btn active" id="tabLogin" onclick="switchTab('login')">Belépés</button>
+                    <button class="tab-btn" id="tabRegister" onclick="switchTab('register')">Regisztráció</button>
+                </div>
+
+                <div id="loginForm">
+                    <div class="space-y-3">
+                        <input type="text" id="loginUsername" placeholder="Felhasználónév" class="input">
+                        <input type="password" id="loginPassword" placeholder="Jelszó" class="input">
+                        <button onclick="doLogin()" class="btn btn-primary w-full">Belépés</button>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium mb-1" data-i18n="skinManager.password">Jelszó</label>
-                        <input type="password" id="password" required class="input">
+                </div>
+
+                <div id="registerForm" class="hidden">
+                    <div class="space-y-3">
+                        <input type="text" id="regUsername" placeholder="Felhasználónév (3-32)" class="input">
+                        <input type="password" id="regPassword" placeholder="Jelszó (min. 8)" class="input">
+                        <button onclick="doRegister()" class="btn btn-primary w-full">Regisztráció</button>
                     </div>
-                    <button type="submit" class="btn btn-primary w-full" data-i18n="skinManager.login">Belépés</button>
-                </form>
+                </div>
+                <p id="authStatus" class="text-center text-sm text-red-400 mt-3"></p>
             </div>
-            <div id="uploadSection" class="card mt-6 hidden">
-                <div class="card-header" data-i18n="skinManager.upload">Skin Feltöltés</div>
+
+            <div id="uploadSection" class="hidden animate-fade">
+                <div class="card-header" style="border-bottom:1px solid var(--border-color);padding-bottom:.5rem;margin-bottom:1rem;font-weight:600;">Skin Feltöltés</div>
                 <div class="space-y-4">
                     <div>
-                        <label class="block text-sm font-medium mb-1" data-i18n="skinManager.selectSkin">Válassz egy képet</label>
-                        <input type="file" id="skinFileInput" accept="image/png, image/jpeg" class="input file-input">
+                        <label class="block text-sm font-medium mb-1">Válassz egy képet</label>
+                        <input type="file" id="skinFileInput" accept="image/png, image/jpeg" class="input file-input" onchange="previewImage(event)">
                     </div>
-                    <div id="previewArea" class="hidden flex justify-center">
-                        <img id="preview" class="max-h-64 rounded-lg shadow-lg" alt="Preview">
+                    <div id="previewArea" class="preview-box hidden">
+                        <img id="preview" alt="Preview">
                     </div>
                     <div class="flex gap-3">
-                        <button onclick="uploadSkin()" class="btn btn-primary flex-1" data-i18n="skinManager.upload">Feltöltés</button>
-                        <button onclick="loadSkins()" class="btn btn-secondary" data-i18n="skinManager.refresh">Frissítés</button>
+                        <button onclick="uploadSkin()" class="btn btn-primary flex-1">Feltöltés</button>
+                        <button onclick="loadSkins()" class="btn btn-secondary">Frissítés</button>
                     </div>
                     <p id="status" class="text-center text-sm text-muted"></p>
                 </div>
-            </div>
-            <div id="skinsList" class="card mt-6 hidden">
-                <div class="card-header" data-i18n="skinManager.mySkins">Saját Skinek</div>
-                <ul id="skins" class="divide-y divide-gray-700"></ul>
+
+                <div id="skinsList" class="mt-6">
+                    <div class="card-header" style="border-bottom:1px solid var(--border-color);padding-bottom:.5rem;margin-bottom:.5rem;font-weight:600;">Saját Skinek</div>
+                    <ul id="skins" class="divide-y divide-gray-700"></ul>
+                </div>
             </div>
         </div>
     </main>
+
     <script>
-        (function() {
-            const STORAGE_KEY_AUTH = 'minecraft_launcher_auth';
-            let auth = JSON.parse(localStorage.getItem(STORAGE_KEY_AUTH) || 'null');
+        const STORAGE_KEY_AUTH = 'minecraft_launcher_auth';
 
-            function showSection(sectionId) {
-                document.getElementById(sectionId).classList.remove('hidden');
-            }
+        function getAuth() {
+            const raw = localStorage.getItem(STORAGE_KEY_AUTH);
+            if (!raw) return null;
+            try { return JSON.parse(raw); } catch (e) { return null; }
+        }
+        function setAuth(a) { localStorage.setItem(STORAGE_KEY_AUTH, JSON.stringify(a)); }
+        function clearAuth() { localStorage.removeItem(STORAGE_KEY_AUTH); }
 
-            function hideSection(sectionId) {
-                document.getElementById(sectionId).classList.add('hidden');
-            }
+        function switchTab(tab) {
+            document.getElementById('loginForm').classList.toggle('hidden', tab !== 'login');
+            document.getElementById('registerForm').classList.toggle('hidden', tab !== 'register');
+            document.getElementById('tabLogin').classList.toggle('active', tab === 'login');
+            document.getElementById('tabRegister').classList.toggle('active', tab === 'register');
+            document.getElementById('authStatus').textContent = '';
+        }
 
-            function setStatus(message) {
-                document.getElementById('status').textContent = message;
-            }
+        function showUpload() {
+            document.getElementById('authSection').classList.add('hidden');
+            document.getElementById('uploadSection').classList.remove('hidden');
+        }
 
-            function previewImage(event) {
-                const reader = new FileReader();
-                reader.onload = function() {
-                    const preview = document.getElementById('preview');
-                    preview.src = reader.result;
-                    showSection('previewArea');
-                };
-                reader.readAsDataURL(event.target.files[0]);
-            }
+        async function doLogin() {
+            const username = document.getElementById('loginUsername').value.trim();
+            const password = document.getElementById('loginPassword').value;
+            const status = document.getElementById('authStatus');
+            status.textContent = '';
+            try {
+                const res = await fetch('/api/v1/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password, device_id: 'web-skin-manager', device_name: 'Web' })
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) { status.textContent = data.error || 'Hiba'; return; }
+                setAuth({ accessToken: data.access_token, refreshToken: data.refresh_token, username });
+                showUpload();
+                loadSkins();
+            } catch (e) { status.textContent = e.message; }
+        }
 
-            window.login = async function() {
-                const username = document.getElementById('username').value;
-                const password = document.getElementById('password').value;
+        async function doRegister() {
+            const username = document.getElementById('regUsername').value.trim();
+            const password = document.getElementById('regPassword').value;
+            const status = document.getElementById('authStatus');
+            status.textContent = '';
+            try {
+                const res = await fetch('/api/v1/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password, device_id: 'web-skin-manager', device_name: 'Web' })
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) { status.textContent = data.error || 'Hiba'; return; }
+                setAuth({ accessToken: data.access_token, refreshToken: data.refresh_token, username });
+                showUpload();
+                loadSkins();
+            } catch (e) { status.textContent = e.message; }
+        }
 
-                try {
-                    const response = await fetch('/api/v1/auth/login', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            username: username,
-                            password: password,
-                            device_id: 'web-dashboard',
-                            device_name: 'Web'
-                        })
-                    });
-
-                    if (!response.ok) {
-                        const data = await response.json();
-                        setStatus(data.error || 'Hiba occurred');
-                        return;
-                    }
-
-                    const data = await response.json();
-                    auth = {
-                        accessToken: data.access_token,
-                        refreshToken: data.refresh_token,
-                        username: username
-                    };
-                    localStorage.setItem(STORAGE_KEY_AUTH, JSON.stringify(auth));
-                    showSection('uploadSection');
-                    showSection('skinsList');
-                    loadSkins();
-                } catch (e) {
-                    setStatus(e.message);
-                }
+        function previewImage(event) {
+            const file = event.target.files && event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function() {
+                const preview = document.getElementById('preview');
+                preview.src = reader.result;
+                document.getElementById('previewArea').classList.remove('hidden');
             };
+            reader.readAsDataURL(file);
+        }
 
-            window.uploadSkin = async function() {
-                const fileInput = document.getElementById('skinFileInput');
-                if (!fileInput.files || !fileInput.files[0]) {
-                    setStatus('Kérlek válassz egy képet');
+        async function uploadSkin() {
+            const fileInput = document.getElementById('skinFileInput');
+            if (!fileInput.files || !fileInput.files[0]) {
+                setStatus('Kérlek válassz egy képet'); return;
+            }
+            const auth = getAuth();
+            if (!auth || !auth.accessToken) { setStatus('Kérlek előbb belépj'); return; }
+            const formData = new FormData();
+            formData.append('skin', fileInput.files[0]);
+            try {
+                const res = await fetch('/api/v1/skins/default', {
+                    method: 'PUT',
+                    body: formData,
+                    headers: { 'Authorization': `Bearer ${auth.accessToken}` }
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) { setStatus(data.error || 'Hiba'); return; }
+                setStatus('Sikeresen feltöltve!');
+                loadSkins();
+            } catch (e) { setStatus(e.message); }
+        }
+
+        async function loadSkins() {
+            const auth = getAuth();
+            if (!auth || !auth.accessToken) return;
+            const skinsList = document.getElementById('skins');
+            skinsList.innerHTML = '';
+            try {
+                const res = await fetch('/api/v1/skins', { headers: { 'Authorization': `Bearer ${auth.accessToken}` } });
+                if (!res.ok) throw new Error('Hiba');
+                const data = await res.json();
+                const skins = data.skins || [];
+                if (skins.length === 0) {
+                    skinsList.innerHTML = '<li class="py-4 text-center text-muted">Nincsenek feltöltött skinek</li>';
                     return;
                 }
+                skins.forEach(skin => {
+                    const li = document.createElement('li');
+                    li.className = 'flex items-center justify-between py-3';
+                    li.innerHTML = `<div><span class="font-medium">${skin.variant}</span><span class="text-xs text-muted ml-2">${skin.content_type}</span></div><span class="text-xs text-muted">${new Date(skin.created_at).toLocaleDateString()}</span>`;
+                    skinsList.appendChild(li);
+                });
+            } catch (e) { setStatus(e.message); }
+        }
 
-                if (!auth || !auth.accessToken) {
-                    setStatus('Kérlek first belépj');
-                    return;
-                }
+        function setStatus(m) { document.getElementById('status').textContent = m; }
 
-                const formData = new FormData();
-                formData.append('skin', fileInput.files[0]);
-
-                try {
-                    const response = await fetch('/api/v1/skins/default', {
-                        method: 'PUT',
-                        body: formData,
-                        headers: { 'Authorization': `Bearer ${auth.accessToken}` }
-                    });
-
-                    if (!response.ok) {
-                        const data = await response.json();
-                        setStatus(data.error || 'Hiba occurred');
-                        return;
-                    }
-
-                    setStatus('Sikeresen feltöltve!');
-                    loadSkins();
-                } catch (e) {
-                    setStatus(e.message);
-                }
-            };
-
-            window.loadSkins = async function() {
-                if (!auth || !auth.accessToken) {
-                    return;
-                }
-
-                const skinsList = document.getElementById('skins');
-                skinsList.innerHTML = '';
-
-                try {
-                    const response = await fetch('/api/v1/skins', {
-                        headers: { 'Authorization': `Bearer ${auth.accessToken}` }
-                    });
-
-                    if (!response.ok) {
-                        throw new Error('Hiba occurred');
-                    }
-
-                    const data = await response.json();
-                    const skins = data.skins || [];
-
-                    if (skins.length === 0) {
-                        skinsList.innerHTML = '<li class="py-4 text-center text-muted">Nincsenek feltöltött skinek</li>';
-                        return;
-                    }
-
-                    skins.forEach(skin => {
-                        const li = document.createElement('li');
-                        li.className = 'flex items-center justify-between py-3';
-                        li.innerHTML = `
-                            <div>
-                                <span class="font-medium">${skin.variant}</span>
-                                <span class="text-xs text-muted ml-2">${skin.content_type}</span>
-                            </div>
-                            <span class="text-xs text-muted">${new Date(skin.created_at).toLocaleDateString()}</span>
-                        `;
-                        skinsList.appendChild(li);
-                    });
-                } catch (e) {
-                    setStatus(e.message);
-                }
-            };
-
-            document.addEventListener('DOMContentLoaded', function() {
-                if (auth) {
-                    showSection('uploadSection');
-                    showSection('skinsList');
-                    loadSkins();
-                }
-            });
-        })();
+        document.addEventListener('DOMContentLoaded', function() {
+            const auth = getAuth();
+            if (auth && auth.accessToken) {
+                showUpload();
+                loadSkins();
+            }
+        });
     </script>
 </body>
-</html>
+</html>

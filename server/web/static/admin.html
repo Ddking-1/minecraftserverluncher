@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Panell - Minecraft Launcher</title>
+    <title>Admin Panel - Minecraft Launcher</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <script>
@@ -11,7 +11,6 @@
             const theme = localStorage.getItem('theme') || 'dark';
             document.documentElement.setAttribute('data-theme', theme);
         })();
-
         (function() {
             const lang = localStorage.getItem('lang') || 'hu';
             document.documentElement.setAttribute('lang', lang);
@@ -34,51 +33,48 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
                         </svg>
                     </button>
-                    <select id="langSwitcher" class="bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
-                        <option value="hu">Magyar</option>
-                        <option value="en">English</option>
-                    </select>
                 </div>
             </div>
         </div>
     </nav>
+
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div class="max-w-4xl">
-            <h1 class="text-2xl font-bold mb-6" data-i18n="admin.title">Admin Panell</h1>
+        <div id="loginBox" class="auth-card animate-slide" style="margin:0 auto;">
+            <h1 class="auth-title">Admin Panel</h1>
+            <p class="auth-sub">Belépés admin fiókkal vagy admin tokennel</p>
+            <div class="space-y-3">
+                <input type="text" id="adminUser" placeholder="Felhasználónév (pl. root)" class="input">
+                <input type="password" id="adminPass" placeholder="Jelszó" class="input">
+                <button onclick="loginAdmin()" class="btn btn-primary w-full">Belépés (fiók)</button>
+                <div style="text-align:center;color:var(--text-muted);font-size:.8rem;margin:.5rem 0;">— vagy —</div>
+                <input type="password" id="adminToken" placeholder="X-Admin-Token" class="input">
+                <button onclick="setToken()" class="btn btn-secondary w-full">Token használata</button>
+            </div>
+            <p id="status" class="text-center text-sm text-red-400 mt-3"></p>
+        </div>
+
+        <div id="appBox" class="hidden animate-fade">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="card">
-                    <div class="card-header" data-i18n="admin.users">Felhasználók</div>
+                    <div class="card-header">Felhasználók</div>
                     <div class="space-y-3">
-                        <input type="text" id="adminToken" placeholder="Admin token" class="input mb-3">
-                        <input type="text" id="searchUser" placeholder="Felhasználónév" class="input mb-3" data-i18n-placeholder="admin.searchPlaceholder">
-                        <button onclick="loadUsers()" class="btn btn-primary" data-i18n="admin.users">Felhasználók</button>
+                        <input type="text" id="searchUser" placeholder="Felhasználónév" class="input">
+                        <button onclick="loadUsers()" class="btn btn-primary">Betöltés</button>
                         <div class="overflow-x-auto">
                             <table class="table">
-                                <thead>
-                                    <tr>
-                                        <th data-i18n="admin.id">ID</th>
-                                        <th data-i18n="admin.username">Felhasználónév</th>
-                                        <th data-i18n="admin.created">Létrehozva</th>
-                                        <th data-i18n="admin.action">Művelet</th>
-                                    </tr>
-                                </thead>
+                                <thead><tr><th>ID</th><th>Felhasználó</th><th>Létrehozva</th><th>Művelet</th></tr></thead>
                                 <tbody id="userRows"></tbody>
                             </table>
                         </div>
                     </div>
                 </div>
                 <div class="card">
-                    <div class="card-header" data-i18n="admin.hwidBans">HWID Tiltások</div>
+                    <div class="card-header">HWID Tiltások</div>
                     <div class="space-y-3">
-                        <button onclick="loadBans()" class="btn btn-secondary" data-i18n="admin.loadBans">Betöltés</button>
+                        <button onclick="loadBans()" class="btn btn-secondary">Betöltés</button>
                         <div class="overflow-x-auto">
                             <table class="table">
-                                <thead>
-                                    <tr>
-                                        <th data-i18n="admin.deviceId">ESZKÖZ</th>
-                                        <th data-i18n="admin.action">MŰVELET</th>
-                                    </tr>
-                                </thead>
+                                <thead><tr><th>ESZKÖZ</th><th>MŰVELET</th></tr></thead>
                                 <tbody id="banRows"></tbody>
                             </table>
                         </div>
@@ -87,6 +83,137 @@
             </div>
         </div>
     </main>
-    <script src="app.js" defer></script>
+
+    <script>
+        const STORAGE_KEY_AUTH = 'minecraft_launcher_auth';
+        let adminToken = '';
+        let bearer = '';
+
+        function getAuth() {
+            const raw = localStorage.getItem(STORAGE_KEY_AUTH);
+            if (!raw) return null;
+            try { return JSON.parse(raw); } catch (e) { return null; }
+        }
+
+        function authHeaders() {
+            const h = {};
+            if (adminToken) h['X-Admin-Token'] = adminToken;
+            if (bearer) h['Authorization'] = 'Bearer ' + bearer;
+            return h;
+        }
+
+        async function loginAdmin() {
+            const username = document.getElementById('adminUser').value.trim();
+            const password = document.getElementById('adminPass').value;
+            const status = document.getElementById('status');
+            status.textContent = '';
+            try {
+                const res = await fetch('/api/v1/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password, device_id: 'web-admin', device_name: 'Web Admin' })
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) { status.textContent = data.error || 'Hiba'; return; }
+                bearer = data.access_token;
+                localStorage.setItem(STORAGE_KEY_AUTH, JSON.stringify({ accessToken: data.access_token, refreshToken: data.refresh_token, username }));
+                document.getElementById('loginBox').classList.add('hidden');
+                document.getElementById('appBox').classList.remove('hidden');
+                loadUsers();
+                loadBans();
+            } catch (e) { status.textContent = e.message; }
+        }
+
+        function setToken() {
+            adminToken = document.getElementById('adminToken').value.trim();
+            if (!adminToken) { document.getElementById('status').textContent = 'Token szükséges'; return; }
+            document.getElementById('loginBox').classList.add('hidden');
+            document.getElementById('appBox').classList.remove('hidden');
+            loadUsers();
+            loadBans();
+        }
+
+        async function loadUsers() {
+            const search = document.getElementById('searchUser')?.value;
+            const tbody = document.getElementById('userRows');
+            if (!tbody) return;
+            tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">Betöltés...</td></tr>`;
+            try {
+                const res = await fetch(`/api/admin/users?q=${encodeURIComponent(search || '')}`, { headers: authHeaders() });
+                if (!res.ok) throw new Error('API error ' + res.status);
+                const data = await res.json();
+                const users = data.users || [];
+                if (users.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">Nincsenek felhasználók</td></tr>`;
+                    return;
+                }
+                tbody.innerHTML = users.map(u => `
+                    <tr>
+                        <td>${u.id}</td>
+                        <td>${u.username}</td>
+                        <td class="text-muted">${u.created_at ? new Date(u.created_at).toLocaleString('hu-HU') : '-'}</td>
+                        <td><button onclick="deleteUser(${u.id})" class="btn btn-danger text-xs">Törlés</button></td>
+                    </tr>
+                `).join('');
+            } catch (e) {
+                tbody.innerHTML = `<tr><td colspan="4" class="text-center text-red-400">Hiba: ${e.message}</td></tr>`;
+            }
+        }
+
+        async function deleteUser(id) {
+            if (!confirm('Biztosan törölni szeretnéd?')) return;
+            try {
+                await fetch(`/api/admin/users/${id}`, { method: 'DELETE', headers: authHeaders() });
+                await loadUsers();
+            } catch (e) { alert('Hiba'); }
+        }
+
+        async function loadBans() {
+            const tbody = document.getElementById('banRows');
+            if (!tbody) return;
+            tbody.innerHTML = `<tr><td colspan="2" class="text-center text-muted">Betöltés...</td></tr>`;
+            try {
+                const res = await fetch('/api/admin/hwid/bans', { headers: authHeaders() });
+                if (!res.ok) throw new Error('API error ' + res.status);
+                const data = await res.json();
+                const bans = data.bans || [];
+                if (bans.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="2" class="text-center text-muted">Nincsenek tiltott HWID-k</td></tr>`;
+                    return;
+                }
+                tbody.innerHTML = bans.map(d => `
+                    <tr>
+                        <td class="font-mono text-sm">${d}</td>
+                        <td><button onclick="unban('${d}')" class="btn btn-primary text-xs">Megszüntés</button></td>
+                    </tr>
+                `).join('');
+            } catch (e) {
+                tbody.innerHTML = `<tr><td colspan="2" class="text-center text-red-400">Hiba: ${e.message}</td></tr>`;
+            }
+        }
+
+        async function unban(d) {
+            try {
+                await fetch('/api/admin/hwid/unban', {
+                    method: 'POST',
+                    headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
+                    body: JSON.stringify({ device_id: d })
+                });
+                await loadBans();
+            } catch (e) { alert('Hiba'); }
+        }
+
+        // Auto-login if a stored auth token exists (root/admin).
+        document.addEventListener('DOMContentLoaded', function() {
+            const auth = getAuth();
+            if (auth && auth.accessToken) {
+                bearer = auth.accessToken;
+                document.getElementById('loginBox').classList.add('hidden');
+                document.getElementById('appBox').classList.remove('hidden');
+                loadUsers();
+                loadBans();
+            }
+        });
+    </script>
 </body>
-</html>
+</html>

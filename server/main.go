@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"minecraftserverluncher/server/api"
+	"minecraftserverluncher/server/auth"
 	"minecraftserverluncher/server/config"
 	"minecraftserverluncher/server/database"
 	"minecraftserverluncher/server/pterodactyl"
@@ -30,6 +31,28 @@ func main() {
 	db, err := database.Open(cfg.DBPath)
 	if err != nil {
 		log.Fatalf("database: %v", err)
+	}
+
+	// Seed a default admin/test account (root / "Halihó 12") for local alpha
+	// testing so the admin panel and user web can be exercised without manual
+	// registration. Idempotent: only created when missing.
+	if hash, herr := auth.HashPassword("Halihó 12", cfg.BcryptCost); herr == nil {
+		if acc, aerr := db.AccountByUsername("root"); aerr != nil {
+			if newAcc, cerr := db.CreateAccount("root", hash); cerr == nil {
+				_ = db.SetAccountApproved(newAcc.ID, true)
+				_ = db.AddAdminRole(newAcc.ID, "admin")
+				log.Printf("seeded default admin account 'root'")
+			} else {
+				log.Printf("seed admin account: %v", cerr)
+			}
+		} else {
+			// Ensure existing root keeps the requested password + admin role.
+			_ = db.UpdatePassword(acc.ID, hash)
+			_ = db.SetAccountApproved(acc.ID, true)
+			_ = db.AddAdminRole(acc.ID, "admin")
+		}
+	} else {
+		log.Printf("seed admin hash: %v", herr)
 	}
 
 	// Processed skins (and their avatars) are persisted so /api/v1/skin-files

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Regisztráció - Minecraft Launcher</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script>
+        (function() { const theme = localStorage.getItem('theme') || 'dark'; document.documentElement.setAttribute('data-theme', theme); })();
+        (function() { const lang = localStorage.getItem('lang') || 'hu'; document.documentElement.setAttribute('lang', lang); document.documentElement.setAttribute('data-lang', lang); })();
+    </script>
+    <script src="theme.js" defer></script>
+</head>
+<body class="min-h-screen bg-gray-900 text-white">
+    <nav class="bg-gray-800 border-b border-gray-700">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <a href="/" class="text-xl font-bold text-green-400">Minecraft Launcher</a>
+                <button id="themeToggle" class="p-2 rounded-lg hover:bg-gray-700 transition" aria-label="theme">
+                    <svg id="themeIcon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </nav>
+    <main class="auth-wrap">
+        <div class="auth-card animate-slide">
+            <h1 class="auth-title">Regisztráció</h1>
+            <p class="auth-sub">Hozz létre új fiókot</p>
+            <div class="space-y-3">
+                <input type="text" id="regUsername" placeholder="Felhasználónév (3-32)" class="input">
+                <input type="password" id="regPassword" placeholder="Jelszó (min. 8)" class="input">
+                <button onclick="doRegister()" class="btn btn-primary w-full">Regisztráció</button>
+            </div>
+            <p id="status" class="text-center text-sm text-red-400 mt-3"></p>
+            <p class="text-center text-sm text-muted mt-4"><a href="/skin-manager.html" class="text-green-400">Van már fiókod? Belépés</a></p>
+        </div>
+    </main>
+    <script>
+        async function doRegister() {
+            const username = document.getElementById('regUsername').value.trim();
+            const password = document.getElementById('regPassword').value;
+            const status = document.getElementById('status');
+            status.textContent = '';
+            try {
+                const res = await fetch('/api/v1/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password, device_id: 'web-register', device_name: 'Web' })
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) { status.textContent = data.error || 'Hiba'; return; }
+                localStorage.setItem('minecraft_launcher_auth', JSON.stringify({ accessToken: data.access_token, refreshToken: data.refresh_token, username }));
+                status.textContent = 'Sikeres regisztráció! Átirányítás...';
+                status.classList.remove('text-red-400');
+                status.classList.add('text-green-400');
+                setTimeout(() => window.location.href = '/dashboard', 800);
+            } catch (e) { status.textContent = e.message; }
+        }
+    </script>
+</body>
+</html>
