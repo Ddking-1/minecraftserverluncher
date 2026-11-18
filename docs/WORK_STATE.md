@@ -61,6 +61,26 @@ component is gone. Merged state re-verified on the owner's machine: Qt 6.6.3
 `msvc2019_64` + MSVC 14.52 + CMake 3.30.5 + Ninja, full build and CTest 31/31
 passing.
 
+## 2026-11-18 - SKIN ALPHA CHANNEL FIX (feat/web-ui-foundation)
+
+Status:
+GREEN. `cd server && go test -count=1 ./...` passes (api, auth, cache, config,
+database, devices, pterodactyl, sessions, skins, web). `go vet ./...` and 
+`go build ./...` clean.
+
+DONE:
+- `server/skins/processor.go`: `ProcessSkin` now normalizes alpha channels via 
+  `normalizeSkinAlpha()`. Body region pixels (head, body, arms, legs) are forced 
+  to full opacity. Overlay layer (hat/jacket) keeps its alpha. Transparent 
+  corners outside the skin template get minimal alpha (1/255) to avoid holes.
+- Live server rebuilt and tested: blaze-64x32.png opaque pixels went from 48 to 
+  704 after processing. 64x64 RGBA skins now render body parts correctly.
+- Invalid skins still rejected: 128x128, 32x32, corrupted PNGs, non-PNG files.
+- Documentation: `docs/SKIN_SYSTEM.md` updated with alpha channel handling section.
+
+Branch:
+`feat/web-ui-foundation` (commit ddb577b, pushed).
+
 CI runners (2026-11-17): `launcher.yml` targets a new self-hosted Windows
 runner on the development machine (`windows-local-<host>`, labels
 `self-hosted, windows, x64, launcher`), which has Qt 6.6.3 and the MSVC toolset

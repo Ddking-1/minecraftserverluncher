@@ -1426,7 +1426,21 @@ Next:
 Replace the mock provider with the authenticated API, enforce granular
 permissions server-side, then review and merge the task branch.
 
-Manual user action:
-None required for the UI work. Optional: install Go or add it to PATH so the Go
-web handler and tests can be compiled and run locally; review/merge the task
-branch after checks.
+## 2026-11-18 - SKIN ALPHA CHANNEL FIX (feat/web-ui-foundation)
+
+Status: GREEN. Skin processor alpha normalization implemented and tested.
+
+Done:
+- `server/skins/processor.go`: `ProcessSkin` now calls `normalizeSkinAlpha()` to 
+  force body region pixels opaque, preserve overlay alpha, and give minimal alpha 
+  to transparent corners.
+- Tested with real corrupted skins: blaze-64x32.png opaque pixels 48→704, 
+  64x64 RGBA skins fixed, invalid skins still rejected.
+- Live server rebuilt and verified at 127.0.0.1:8090.
+- `docs/SKIN_SYSTEM.md` updated with alpha channel handling section.
+- `docs/WORK_STATE.md` updated.
+
+Tests: `go test -count=1 ./...` passes (all packages), `go vet ./...` clean, 
+`go build ./...` clean.
+
+Manual user action: none required.

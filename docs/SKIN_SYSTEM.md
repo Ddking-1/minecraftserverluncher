@@ -34,6 +34,20 @@ Uploaded files must be validated.
 
 Do not accept arbitrary file paths or server-side executable content.
 
+## Alpha channel handling
+
+The skin processor (`server/skins/ProcessSkin`) normalizes alpha channels to
+prevent invisible players:
+
+- Body region pixels (head, body, arms, legs) are forced to full opacity (alpha=255).
+- The overlay layer (hat/jacket at x>=32, y>=32 in 64x64 skins) keeps its original alpha.
+- Transparent pixels outside the skin template but within the 64x64 box get minimal alpha (1/255)
+  to avoid rendering holes while preserving intended transparency.
+- Pixels outside the 64x64 box remain fully transparent.
+
+Only 64x64 and 64x32 PNGs are accepted. Non-PNG files and wrong dimensions are rejected.
+The server re-encodes the PNG to strip metadata, EXIF, and extra chunks.
+
 ## Storage
 
 Prefer simple external/object storage or a lightweight backend strategy.
