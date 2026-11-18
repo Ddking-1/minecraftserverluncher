@@ -81,6 +81,30 @@ DONE:
 Branch:
 `feat/web-ui-foundation` (commit ddb577b, pushed).
 
+## 2026-11-18 - COOKIE CONSENT + ANALYTICS (feat/web-ui-foundation)
+
+Status:
+GREEN. `cd server && go test -count=1 ./...` passes. `go vet ./...` and 
+`go build ./...` clean.
+
+DONE:
+- Frontend: `core/cookie-consent.js` (popup + localStorage state) and 
+  `core/analytics.js` (consent-gated event tracking) added.
+- Cookie consent popup appears before the app renders if the user has not made 
+  a choice; no analytics or non-essential cookies are set before acceptance.
+- Backend: `POST /api/v1/cookie-consent` sets `alpha_consent` (1 year) and 
+  `alpha_visit` (1 hour, httpOnly) cookies. `POST /api/v1/analytics/event` 
+  only accepts events when the consent cookie is "accepted" (returns 204 otherwise).
+- Login sets an `alpha_session` cookie (httpOnly, same expiry as access token) 
+  only when the user has already accepted cookies — in addition to the bearer 
+  token the UI already sends.
+- Live server rebuilt and verified at 127.0.0.1:8090: consent acceptance 
+  returns Set-Cookie headers; analytics without consent returns 204; analytics 
+  with consent returns 200.
+
+Branch:
+`feat/web-ui-foundation` (commit 2c7ce5d, pushed).
+
 CI runners (2026-11-17): `launcher.yml` targets a new self-hosted Windows
 runner on the development machine (`windows-local-<host>`, labels
 `self-hosted, windows, x64, launcher`), which has Qt 6.6.3 and the MSVC toolset
