@@ -48,7 +48,15 @@
 - Fixed responsive grid/text overflow so blocks stay together and long text
   truncates instead of slipping the layout on unusual aspect ratios: the standard
   `overflow: hidden; text-overflow: ellipsis` pattern was added where needed
-  (skin-facts dd, detail-fact strong/span, hero-meta-item strong/meta-sub,
+- Fixed skin alpha channel handling: `server/skins/processor.go` `ProcessSkin` now
+  normalizes alpha so body-region pixels (head, body, arms, legs) are forced opaque,
+  the overlay layer (hat/jacket) keeps its alpha, and transparent corners outside the
+  skin template get minimal alpha (1/255) to avoid rendering holes. This prevents
+  uploaded skins from rendering invisible players. Only 64x64 and 64x32 PNGs are
+  accepted; non-PNG files and wrong dimensions are rejected. Verified with the
+  corrupted skins in `Downloads/corupt mc skins/` — a blaze skin's opaque pixels
+  went from 48 to 704 after processing, and 64x64 RGBA skins now render body parts
+  correctly.  (skin-facts dd, detail-fact strong/span, hero-meta-item strong/meta-sub,
   table-muted, activity-copy span), and flex/grid parents that hold nowrap
   children got `min-width: 0` so they can shrink.
 - Updated `docs/WEB_FRONTEND.md` with the app-shell scroll architecture, the
