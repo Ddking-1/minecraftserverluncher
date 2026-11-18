@@ -1332,3 +1332,60 @@ remains BLOCKED on DECISION-004/005.
 Manual user action:
 None for GitHub. Optional: add `C:\Program Files\GitHub CLI` to PATH so `gh`
 works from a plain shell.
+
+## 2026-11-18 — ALPHA WEB UI FOUNDATION (TASK BRANCH, UNMERGED)
+
+Agent/model: Buffy (Freebuff) - code agent
+Branch: feat/web-ui-foundation
+Task: Design and implement the foundations of a modern, multi-page Minecraft
+  server web application for Qt 6 WebEngine and modern browsers, with dark/light
+  themes, dedicated views, interactive skin preview, player search, granular
+  admin permissions and a modular multi-server/statistics structure.
+Started: 2026-11-18
+Completed: 2026-11-18
+
+Files:
+- server/web/static/index.html — new SPA shell, boot screen, early theme restore.
+- server/web/static/assets/css/ — tokens, base, layout, components, pages.
+- server/web/static/assets/js/ — config, core modules, mock API/data, stat
+  registry, shell/auth/skin components and the five route views.
+- server/web/static/assets/img/ — two bundled 64x64 demo skins and favicon.
+- server/web/web.go — embedded SPA serving, app-route fallback, legacy 301s,
+  asset 404s and GET/HEAD handling.
+- server/web/web_test.go — rewritten tests for the new serving contract.
+- Deleted the legacy admin.html, dashboard.html, skin-manager.html, app.js,
+  i18n.js, style.css and theme.js.
+- docs/WEB_FRONTEND.md (new), docs/AI_CONTEXT.md, docs/WORK_STATE.md,
+  docs/CHANGELOG.md and this entry.
+
+Tests / checks:
+- Browser (Chromium preview) dark and light review of login, register,
+  dashboard, players, admin, 403, role simulator, matrix and skin panel.
+- Viewports 1280x720, 1024x700, 800x600, 640x700; fixed a real 640 px horizontal
+  overflow caused by the shared `.page` grid track.
+- Invalid and valid login, registration validation/success, demo login, logout,
+  route guards.
+- Skin upload/preview, save, drag/keyboard rotation, reset, overlay toggle;
+  player search; admin rank simulations (owner/admin/moderator/support/player),
+  user search, role assignment/restore, skin approve/reject.
+- Final browser console: no JavaScript errors or failed network requests.
+  Synthetic pointer-capture exceptions were fixed with guarded capture calls.
+- NOT RUN: `gofmt`, `go build ./...`, `go test ./web/...` — the `go` toolchain is
+  not installed/on PATH on this machine. `web.go` and `web_test.go` were
+  reviewed only. Browser tests used the PowerShell static dev server, so the Go
+  handler, embed bundle and CSP middleware were not exercised.
+
+Current status:
+Frontend implementation and visual/functional testing are complete on
+feat/web-ui-foundation. The data/session layer remains an alpha mock; the Go
+backend and its authorization are the next integration boundary.
+
+Next:
+Run the Go checks on a machine with Go, replace the mock provider with the
+authenticated API, enforce granular permissions server-side, then review and
+merge the task branch.
+
+Manual user action:
+None required for the UI work. Optional: install Go or add it to PATH so the Go
+web handler and tests can be compiled and run locally; review/merge the task
+branch after checks.

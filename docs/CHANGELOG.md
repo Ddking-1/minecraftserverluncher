@@ -2,6 +2,31 @@
 
 ## Unreleased
 
+### Alpha web UI foundation (2026-11-18, task branch `feat/web-ui-foundation`)
+
+- Added the multi-page alpha web application under `server/web/static`: a
+  build-free vanilla ES-module SPA with `/login`, `/register`, `/dashboard`,
+  `/players`, `/admin` and a not-found view, history routing, route guards and
+  a responsive Qt-friendly app shell.
+- Added a dark/light design system with localStorage persistence and an early
+  theme restore script, plus responsive layouts from desktop down to 640 px.
+- Added the dashboard with self statistics, modular economy/farm/core stat
+  registries, leaderboards, activity, account state and skin upload with an
+  immediate interactive canvas rotation preview (drag, arrow keys, reset and
+  outer-layer toggle).
+- Added player search/details, a permission-aware admin panel with role and
+  skin-queue management, user search, audit log and a UI-only granular
+  permission simulator (owner/admin/moderator/support/player).
+- Prepared multi-server support through `config.servers` and
+  `core/server-context.js`; one server is enabled for the alpha, so the
+  switcher is hidden while `?server=`/`?instance=` launcher handoff works.
+- Replaced the legacy static HTML/JS bundle with a new `index.html` and embedded
+  SPA serving in `server/web/web.go` (index fallback for app routes, 404 for
+  missing assets, 301 legacy redirects, GET/HEAD only). Rewrote `web_test.go`
+  for the new contract.
+- Added `docs/WEB_FRONTEND.md` with the architecture, extension recipes, test
+  evidence, security notes and known limitations.
+
 ### PR #8 ported: library/asset resolution is implemented (2026-11-17)
 
 - Merged the still-relevant half of PR #8 through the task branch

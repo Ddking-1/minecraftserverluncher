@@ -12,6 +12,25 @@ Minecraft 1.21.11
 Fabric 0.19.2
 Java 24
 
+## Web frontend foundation (task branch, 2026-11-18)
+
+An alpha web UI now lives in `server/web/static` and is embedded by
+`server/web/web.go`. It is a build-free vanilla ES-module SPA with dedicated
+routes `/login`, `/register`, `/dashboard`, `/players` and `/admin`, a dark/light
+theme persisted in `localStorage`, a custom interactive canvas skin viewer, a
+multi-server context (one enabled server for now, launcher handoff via
+`?server=`/`?instance=`) and a registry for plugin statistic modules. The admin
+screen has a granular role/permission model and a UI-only simulator; the client
+is not an authorization boundary.
+
+This work is on `feat/web-ui-foundation` and is **not merged into `master`** yet.
+It uses a local mock data/session provider (`data/api.js`) for the alpha; the
+next integration step is replacing it with the authenticated Go API. See
+`docs/WEB_FRONTEND.md` for the architecture, test evidence and limitations.
+The Go toolchain was not available on the development machine for this task, so
+`web.go`/`web_test.go` were reviewed but not compiled; browser tests used a
+static PowerShell server, not the Go handler/CSP path.
+
 ## Current phase
 
 PHASE 3 — LAUNCHER FEATURE COMPLETION + BACKEND ROBUSTNESS (COMPLETE)

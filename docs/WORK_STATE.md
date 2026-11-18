@@ -1,5 +1,32 @@
 ﻿# WORK STATE
 
+## Active task (2026-11-18) — WEB UI FOUNDATION
+
+Status:
+UNMERGED task branch. A complete multi-page alpha web frontend was added under
+`server/web/static` (vanilla ES-module SPA, no build step) and the existing Go
+web package now embeds it with SPA fallback, legacy redirects and method checks.
+The UI includes dark/light themes, login/register/dashboard/players/admin views,
+player search, an interactive canvas skin preview, multi-server context,
+modular statistics, granular permissions and a UI-only rank simulator.
+
+Branch:
+`feat/web-ui-foundation` (created from `master`; not committed/pushed yet at the
+time this entry was written). Do not continue on `master` for this task.
+
+Verification:
+Browser-tested in Chromium in dark and light mode at 1280x720, 1024x700,
+800x600 and 640x700. Final console run has no JavaScript errors or failed
+network requests. `go` is not on PATH on this machine, so `web.go` and
+`web_test.go` were not compiled/tested; browser tests used the PowerShell static
+server, not the Go CSP/embed path. See `docs/WEB_FRONTEND.md`.
+
+Known limitation / next step:
+Replace the alpha mock provider with the real authenticated Go API and enforce
+the permission model server-side. Run `gofmt`, `go build ./...` and
+`go test ./web/...` from `server/` where Go is installed. Merge the task branch
+after review. No deployment is part of this task.
+
 Current phase:
 PHASE 3 — LAUNCHER FEATURE COMPLETION + BACKEND ROBUSTNESS (COMPLETE)
 
