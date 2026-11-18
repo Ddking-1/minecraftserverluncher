@@ -195,47 +195,75 @@ The shared `.page` grid uses `grid-template-columns: minmax(0, 1fr)` so wide
 tables and chip rows cannot force the document wider than the viewport. This was
 found and fixed during 640 px testing.
 
-## Verification performed (2026-11-18)
+## Verification performed (2026-11-18, Go handler path)
 
-Browser: bundled Chromium through the preview panel, dev server on
-`http://localhost:4173` (PowerShell static SPA fallback, because the old
-`auth-server.exe` embeds the previous frontend).
+Go toolchain: Go 1.26.5 (`go version go1.26.5 windows/amd64`) from the module
+toolchain cache. All Go checks run from `server/`, the Go module root.
+
+Static Go checks (clean):
+
+- `gofmt -l web` — no files need reformatting.
+- `go vet ./web/...` — clean.
+- `go build ./web/...` — compiles.
+- `go test -count=1 ./web/...` — both tests pass
+  (`TestIndexServesSPA`, `TestEmbeddedAssetsAreServed`).
+
+A compiled Go binary was started locally with the embedded frontend and tested
+through the real Go handler and CSP. Configuration used for that run:
+
+- Binary: `_local_test/go-server/server.exe`
+- Listener: `AUTH_LISTEN_ADDR=127.0.0.1:8090`
+- DB: `AUTH_DB_PATH=../_local_test/go-server/auth.db`
+- Skin dir: `AUTH_SKIN_STORAGE_DIR=../_local_test/go-server/skins`
+- Log: `_local_test/go-server/server.log`
+
+HTTP contract verified against that running Go server:
+
+- `GET /`, `/login`, `/register`, `/dashboard`, `/players`, `/admin` — 200
+  `text/html; charset=utf-8`, `index.html` shell, embedded assets served from
+  `/` with correct content types.
+- Favicon: `/favicon.ico` returns 204; `/assets/img/favicon.svg` returns 200
+  with the bundled SVG. The `index.html` now includes
+  `<link rel="icon" type="image/svg+xml" href="/assets/img/favicon.svg">`, so
+  real browsers no longer request a missing `favicon.ico`.
+- Embedded assets: `/assets/css/tokens.css`, `/assets/js/main.js`, `/assets/js/views/admin.js`,
+  `/assets/js/views/dashboard.js`, `/assets/js/views/players.js` and
+  `/assets/img/demo-skin.png` all return 200 with the expected content.
+- Legacy `.html` bookmarks (`/login.html`, `/register.html`, `/dashboard.html`,
+  `/players.html`, `/admin.html`, `/skin-manager.html`) — 301 to the matching
+  SPA route.
+- Missing assets (`/assets/missing.png`) and unknown extensionless `.html`
+  paths (`/nope.html`) — 404.
+- Methods: `POST /login` returns 405.
+- CSP: the `Content-Security-Policy` header is present on the SPA responses.
+
+Browser verification through the real Go origin (`http://127.0.0.1:8090`):
 
 - Visual review in dark and light mode: login, register, dashboard, players,
   admin, 403, role simulator, matrix, skin panel and admin tables.
-- Viewports: 1280x720, 1024x700, 800x600 and 640x700. Checked the sidebar
-  drawer, topbar, dashboard cards, skin panel, auth cards, players and admin
-  tables. No horizontal document overflow after the `.page` fix.
-- Found and fixed two responsive cascade issues: the shared `.page` grid track
-  could be widened by admin tables, and the desktop menu buttons stayed visible
-  because `.icon-btn { display: grid }` overrode their unscoped hide rules.
-  Drawer controls are now scoped to `.topbar` / `.sidebar` and only appear at
-  1024 px and below.
-- Navigation through every route, guest/session redirects, logout, legacy URL
-  redirects on the static dev server.
-- Login: invalid password shows an inline alert; valid `Aurora` login creates a
-  session and opens `/dashboard`.
-- Registration: empty submit marks all fields; a valid registration creates the
-  mock account, logs in and shows zeroed stats. Demo login works.
-- Dashboard: upload of the alternate demo skin refreshes the preview immediately;
-  save enables after upload and writes a queue item; drag/keyboard rotation,
-  reset and outer-layer toggle change the rendered canvas.
-- Players: debounced search (`ste`) filters the list; selecting a player renders
-  details and a second interactive viewer.
-- Admin: owner/admin/moderator/support/player simulations hide or disable
-  actions as defined by the permission model; user search filters rows; role
-  assignment and restore work; skin approve/reject removes pending items and
-  writes audit entries.
-- Console: no JavaScript exceptions or failed network requests in the final
-  runs. Earlier synthetic pointer-capture exceptions were removed by guarding
-  `setPointerCapture` / `releasePointerCapture`.
+- All five app routes, plus direct reloads and client-side SPA navigation
+  (`element.click()`), load correctly with the theme and title preserved.
+- Dashboard: skin upload, immediate canvas refresh, save, drag/keyboard
+  rotation, reset and overlay toggle.
+- Players: debounced search filtering.
+- Admin: owner/admin/moderator/support/player simulations, user search, role
+  assignment and restore, skin approve/reject.
+- Viewports 640x700 and 800x600: no horizontal document overflow.
+- Console: no JavaScript errors, no CSP violations, no failed network requests
+  in the final runs.
+
+Verified earlier through a PowerShell static dev server (browser only, not the
+Go handler):
+
+- Viewports 1280x720, 1024x700, 800x600 and 640x700.
+- Login/register validation, demo login, logout, route guards.
+- Two responsive cascade fixes: the shared `.page` grid track was widened by
+  admin tables, and desktop menu buttons stayed visible because
+  `.icon-btn { display: grid }` overrode unscoped hide rules. Drawer controls
+  are now scoped to `.topbar` / `.sidebar` and only appear at 1024 px and below.
 
 Not verified in this environment:
 
-- `go build ./...` / `go test ./web/...` — the `go` toolchain is not on PATH on
-  this machine, so `web.go` and `web_test.go` were reviewed but not compiled.
-  The browser tests used the PowerShell static server, so the Go SPA handler,
-  CSP middleware, 301/404/405 behavior and `go:embed` bundle were not exercised.
 - Real 64x32 rendering and server-side PNG processing; the interactive test used
   the bundled 64x64 demo skins.
 - Firefox/Safari and older Qt WebEngine versions; the available browser is
@@ -263,10 +291,7 @@ Not verified in this environment:
 1. Wire `data/api.js` to the real Go endpoints and replace mock sessions with the
    backend's authenticated session.
 2. Add backend authorization for the granular permission keys and audit logging.
-3. Run `gofmt`, `go build ./...` and `go test ./web/...` from `server/` on a
-   machine with Go installed; then verify the embedded SPA through the real Go
-   handler and CSP.
-4. Decide whether the next iteration needs slim/classic skin models, animation or
+3. Decide whether the next iteration needs slim/classic skin models, animation or
    capes; keep the canvas renderer if offline Qt support remains a requirement.
-5. Merge the task branch after review; no production deployment is part of this
+4. Merge the task branch after review; no production deployment is part of this
    task.

@@ -1376,14 +1376,17 @@ Tests / checks:
   handler, embed bundle and CSP middleware were not exercised.
 
 Current status:
-Frontend implementation and visual/functional testing are complete on
-feat/web-ui-foundation. The data/session layer remains an alpha mock; the Go
-backend and its authorization are the next integration boundary.
+Frontend implementation, Go checks and browser verification are complete on
+feat/web-ui-foundation. On the development machine the Go web package passed
+\`gofmt\`, \`go vet\`, \`go build ./web/...\` and \`go test -count=1 ./web/...\`,
+and the embedded SPA was verified through the real Go handler on
+\`http://127.0.0.1:8090\` (five routes, embedded assets, favicon, CSP and legacy
+redirects). The data/session layer remains an alpha mock; the Go backend and its
+authorization are the next integration boundary.
 
 Next:
-Run the Go checks on a machine with Go, replace the mock provider with the
-authenticated API, enforce granular permissions server-side, then review and
-merge the task branch.
+Replace the mock provider with the authenticated API, enforce granular
+permissions server-side, then review and merge the task branch.
 
 Manual user action:
 None required for the UI work. Optional: install Go or add it to PATH so the Go

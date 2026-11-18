@@ -13,7 +13,7 @@ func TestIndexServesSPA(t *testing.T) {
 		t.Fatalf("GET / status = %d, want 200", rec.Code)
 	}
 	body := rec.Body.String()
-	for _, want := range []string{"Alpha Network", `id="app"`, "/assets/js/main.js", "/assets/css/tokens.css"} {
+	for _, want := range []string{"Alpha Network", `id="app"`, "/assets/js/main.js", "/assets/css/tokens.css", "/assets/img/favicon.svg"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("index page must contain %q", want)
 		}
@@ -52,9 +52,10 @@ func TestUnknownExtensionlessRouteFallsBackToSPA(t *testing.T) {
 
 func TestEmbeddedAssetsAreServed(t *testing.T) {
 	cases := map[string]string{
-		"/assets/js/main.js":       "import",
-		"/assets/css/tokens.css":   "--accent",
+		"/assets/js/main.js":        "import",
+		"/assets/css/tokens.css":    "--accent",
 		"/assets/js/views/admin.js": "permission",
+		"/assets/img/favicon.svg":   "<svg",
 	}
 	for route, want := range cases {
 		rec := request(t, http.MethodGet, route)

@@ -26,6 +26,17 @@
   for the new contract.
 - Added `docs/WEB_FRONTEND.md` with the architecture, extension recipes, test
   evidence, security notes and known limitations.
+- Fixed a missing favicon link: `server/web/static/index.html` now references
+  `/assets/img/favicon.svg`, so browsers do not request a missing favicon.ico;
+  `web_test.go` asserts the link and the embedded SVG asset.
+- Verified through the real Go handler (Go 1.26.5, compiled from
+  `server/`): `gofmt`, `go vet`, `go build ./web/...` and `go test -count=1
+  ./web/...` pass, and the embedded SPA serves correctly on `http://127.0.0.1:8090`
+  (five app routes, embedded assets, legacy 301s, asset 404s, 405 on POST,
+  CSP header, favicon 204 + SVG 200). Browser verification covered dark/light
+  mode, SPA navigation, deep-link reloads, skin upload/rotation, player search,
+  admin role simulation and 640x700 + 800x600 viewports with no console/CSP/
+  network errors.
 
 ### PR #8 ported: library/asset resolution is implemented (2026-11-17)
 

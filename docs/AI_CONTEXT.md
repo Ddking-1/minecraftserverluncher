@@ -27,9 +27,12 @@ This work is on `feat/web-ui-foundation` and is **not merged into `master`** yet
 It uses a local mock data/session provider (`data/api.js`) for the alpha; the
 next integration step is replacing it with the authenticated Go API. See
 `docs/WEB_FRONTEND.md` for the architecture, test evidence and limitations.
-The Go toolchain was not available on the development machine for this task, so
-`web.go`/`web_test.go` were reviewed but not compiled; browser tests used a
-static PowerShell server, not the Go handler/CSP path.
+The Go toolchain was available on the development machine for this task, so the
+Go web package was compiled and its tests passed (`gofmt`, `go vet`,
+`go build ./web/...`, `go test -count=1 ./web/...`), and the embedded SPA was
+verified through the real Go handler on `http://127.0.0.1:8090` including the
+favicon, CSP and legacy-redirect behavior. Browser tests used the compiled Go
+server, not only the static PowerShell server.
 
 ## Current phase
 

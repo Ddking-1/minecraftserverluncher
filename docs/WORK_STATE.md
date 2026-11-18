@@ -16,16 +16,17 @@ time this entry was written). Do not continue on `master` for this task.
 
 Verification:
 Browser-tested in Chromium in dark and light mode at 1280x720, 1024x700,
-800x600 and 640x700. Final console run has no JavaScript errors or failed
-network requests. `go` is not on PATH on this machine, so `web.go` and
-`web_test.go` were not compiled/tested; browser tests used the PowerShell static
-server, not the Go CSP/embed path. See `docs/WEB_FRONTEND.md`.
+800x600 and 640x700, plus 640x700 and 800x600 through the real Go origin.
+Final console run has no JavaScript errors or failed network requests. The Go
+web package was compiled and its tests passed (\`gofmt\`, \`go vet\`, 
+\`go build ./web/...\`, \`go test -count=1 ./web/...\`), and the embedded SPA
+was verified through the real Go handler on \`http://127.0.0.1:8090\` with the
+favicon, CSP and legacy-redirect behavior. See \`docs/WEB_FRONTEND.md\`.
 
 Known limitation / next step:
 Replace the alpha mock provider with the real authenticated Go API and enforce
-the permission model server-side. Run `gofmt`, `go build ./...` and
-`go test ./web/...` from `server/` where Go is installed. Merge the task branch
-after review. No deployment is part of this task.
+the permission model server-side. Merge the task branch after review. No
+deployment is part of this task.
 
 Current phase:
 PHASE 3 — LAUNCHER FEATURE COMPLETION + BACKEND ROBUSTNESS (COMPLETE)
