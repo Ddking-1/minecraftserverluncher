@@ -327,6 +327,7 @@
   background: var(--surface);
   color: var(--text-soft);
   transition: background var(--fast) var(--ease), border-color var(--fast) var(--ease), color var(--fast) var(--ease);
+  cursor: pointer;
 }
 
 .icon-btn:hover:not(:disabled) {
@@ -335,7 +336,20 @@
   color: var(--text);
 }
 
+.icon-btn:active:not(:disabled) {
+  background: var(--surface-2);
+  transform: scale(0.96);
+}
+
 .icon-btn.is-active {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: var(--accent-border);
+}
+
+/* Toggle buttons expose their pressed state through aria-pressed so the
+   visual stays correct even if a view forgets to toggle the helper class. */
+.icon-btn[aria-pressed="true"] {
   color: var(--accent);
   background: var(--accent-soft);
   border-color: var(--accent-border);
@@ -473,16 +487,28 @@
   font-weight: 650;
   white-space: nowrap;
   transition: background var(--fast) var(--ease), color var(--fast) var(--ease);
+  cursor: pointer;
+  border: 1px solid transparent;
 }
 
-.tab:hover {
+.tab:hover:not(:disabled) {
   color: var(--text);
+}
+
+.tab:active:not(:disabled) {
+  transform: scale(0.97);
 }
 
 .tab.is-active {
   background: var(--surface);
   color: var(--text);
   box-shadow: var(--shadow-xs);
+  border-color: var(--border);
+}
+
+.tab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .lb-panels {
@@ -501,14 +527,24 @@
   border-radius: var(--radius-sm);
   font-size: 12.5px;
   transition: background var(--fast) var(--ease);
+  text-decoration: none;
 }
 
 .lb-row:hover {
   background: var(--surface-2);
 }
 
+.lb-row:active {
+  background: var(--surface-3);
+}
+
 .lb-row.is-current {
   background: var(--accent-soft);
+}
+
+.lb-row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .lb-rank {

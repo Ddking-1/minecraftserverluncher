@@ -120,6 +120,7 @@
   min-width: 116px;
   padding: 0 18px;
   border-left: 1px solid var(--border);
+  min-width: 0;
 }
 
 .hero-meta-item:first-child {
@@ -142,12 +143,16 @@
   font-size: 13px;
   font-weight: 700;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .meta-sub {
   color: var(--text-faint);
   font-size: 10.5px;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .dashboard-grid {
@@ -212,7 +217,7 @@
   display: grid;
   grid-template-columns: 306px minmax(0, 1fr);
   gap: 18px;
-  padding: 18px 24px 24px;
+  padding: 18px 24px 28px;
 }
 
 .skin-side {
@@ -220,6 +225,7 @@
   flex-direction: column;
   gap: 11px;
   min-width: 0;
+  word-wrap: break-word;
 }
 
 .dropzone {
@@ -320,6 +326,9 @@
   font-size: 11px;
   font-weight: 600;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .skin-stage {
@@ -328,7 +337,7 @@
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  background: radial-gradient(circle at 50% 38%, var(--surface-3), var(--surface-2) 68%);
+  background: radial-gradient(circle at 50% 42%, var(--surface-3), var(--surface-2) 76%);
 }
 
 [data-theme="light"] .skin-stage {
@@ -356,6 +365,8 @@
   cursor: grab;
   outline: none;
   touch-action: none;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
 }
 
 .skin-stage canvas:active,
@@ -371,14 +382,17 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 5px 9px;
+  padding: 4px 8px;
   border: 1px solid var(--border);
   border-radius: var(--radius-full);
-  background: var(--surface);
+  background: color-mix(in srgb, var(--surface) 94%, var(--surface-3));
   color: var(--text-faint);
   font-size: 9.5px;
   font-weight: 600;
   pointer-events: none;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.25);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
 }
 
 .stage-tools {
@@ -394,6 +408,7 @@
   width: 32px;
   height: 32px;
   background: var(--surface);
+  border: 1px solid var(--border);
 }
 
 /* leaderboard / activity / account */
@@ -463,6 +478,9 @@
 .activity-copy > span {
   color: var(--text-faint);
   font-size: 9.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .account-list {
@@ -642,16 +660,26 @@
   border: 1px solid transparent;
   border-radius: var(--radius-md);
   text-align: left;
-  transition: background var(--fast) var(--ease), border-color var(--fast) var(--ease);
+  transition: background var(--fast) var(--ease), border-color var(--fast) var(--ease), transform var(--fast) var(--ease);
+  cursor: pointer;
 }
 
-.player-row:hover {
+.player-row:hover:not(:disabled) {
   background: var(--surface-2);
+}
+
+.player-row:active:not(:disabled) {
+  transform: scale(0.99);
 }
 
 .player-row.is-selected {
   border-color: var(--accent-border);
   background: var(--accent-soft);
+}
+
+.player-row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
 
 .player-row-avatar {
@@ -798,11 +826,15 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   background: var(--surface-2);
+  min-width: 0;
 }
 
 .detail-fact span {
   color: var(--text-muted);
   font-size: 10.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .detail-fact strong {
@@ -811,6 +843,8 @@
   font-weight: 700;
   letter-spacing: -0.02em;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .detail-stats {
@@ -994,6 +1028,7 @@
 .kpi-card > div {
   display: grid;
   min-width: 0;
+  min-width: 0;
 }
 
 .kpi-card strong {
@@ -1161,6 +1196,8 @@
   color: var(--text-muted);
   font-size: 10.5px;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .row-actions {

@@ -1079,11 +1079,49 @@ docs/SECURITY.md, docs/BACKLOG.md (feature candidates). linux-ci green.
 
 2026-11-17: API/DB/auth security audit (no critical findings).
 
-## 2026-11-17 — LAUNCHER GUI FEATURES F2/F3/F5/F6/F7/F10
+## 2026-11-18 — WEB UI SCROLL / BUTTON / GRID FIXES (PRIMARY USER REQUEST)
 
-Agent/model: Buffy (Codebuff) - code agent
-Branch: docs/launcher-gui-features (merged to master)
-Task: Implement and verify the six remaining launcher GUI features: crash popup (F2), modpack import with real extraction (F3), RAM slider (F5), offline mode (F6), crash log viewer (F7), news panel (F10).
+Agent/model: Buffy (Freebuff) - code agent
+Branch: feat/web-ui-foundation
+Task: Fix the three primary frontend problems reported for the `feat/web-ui-foundation` branch, verified against the real Go handler at `http://127.0.0.1:8090` across wide, 16:9 and narrow viewports:
+1. App-body scroll confusion — when scrolling, it felt like the menu was scrolling instead of the content. This was the main issue and was made usable.
+2. Button state review and comfort — review what states a button can be in and improve the visible feedback without adding new mechanics.
+3. Responsive grid blocks slipping and long text overflowing — grid/flex blocks and text in cards, facts, tables and meta rows slipping apart or overflowing on unusual aspect ratios.
+
+Started: 2026-11-18
+Completed: 2026-11-18
+
+Files:
+- server/web/static/assets/css/base.css — body is now `overflow: hidden` (was `overflow-x: hidden`, which made `overflow-y` resolve to `auto` and scrolled the whole document); added consistent focus-visible ring for buttons, icon buttons, selects and input wraps; added aria-pressed and disabled spinner handling.
+- server/web/static/assets/css/layout.css — app shell is now the non-scrolling frame (`min-height: 100vh; overflow: hidden`); sidebar is a full-height rail with its own `overflow-y: auto`; app-body is `height: 100vh`; main-scroll is the only vertical scroll container (`flex: 1; min-width: 0; min-height: 0; overflow-y: auto`); auth-layout and plain-shell get internal scroll; auth columns constrained to `height: 100vh`.
+- server/web/static/assets/css/components.css — icon buttons get `:active` feedback; toggle buttons style `[aria-pressed="true"]` directly as a backup for the class-based style; tab, lb-row, player-row get `:active`/`:focus-visible` states.
+- server/web/static/assets/css/pages.css — long-text blocks get `overflow: hidden; text-overflow: ellipsis` and flex/grid parents get `min-width: 0` so they can shrink (skin-facts dd, detail-fact strong/span, hero-meta-item strong/meta-sub, table-muted, activity-copy span, kpi-card div, detail-fact).
+- docs/WEB_FRONTEND.md — updated with the app-shell scroll architecture, the button state model and the responsive grid/text overflow fixes, plus the live verification notes and the one known preview-tab transform limitation.
+- docs/PROGRESS.md (this entry), docs/CHANGELOG.md.
+
+Tests:
+- `cd server && go vet ./web/...` -> clean.
+- `cd server && go build ./web/...` -> compiles.
+- `cd server && go test -count=1 ./web/...` -> pass (ok minecraftserverluncher/server/web).
+- Because the frontend is embedded with `//go:embed static`, the live test binary had to be rebuilt from `server/` with `go build -o _local_test/go-server/server.exe .` — the old pre-built `_local_test/go-server/server.exe` was still serving the previous embedded copy and had to be replaced with the rebuilt one before the CSS changes reached the live handler.
+- Live verification through the rebuilt Go handler at `http://127.0.0.1:8090` against the real handler (not a static file server):
+  - `GET /assets/css/base.css` now returns `overflow: hidden` on `body` (was `overflow-x: hidden`).
+  - Dashboard on 2560x720 (ultra-wide, 3.56:1): body and app-shell are `overflow: hidden` at viewport height; `.main-scroll` is `overflow-y: auto` and is the scroll container; sidebar is a sticky rail that does not scroll with the content.
+  - Dashboard on 1920x1080 (16:9): same shell behavior.
+  - Dashboard on 384x720 (narrow portrait, mobile breakpoint): sidebar is a fixed drawer, `.main-scroll` scrolls the content.
+  - Players, admin and not-found/app routes render with the same shell behavior; the admin data table still scrolls horizontally inside its own `.table-wrap`.
+  - Console: no JavaScript errors during these navigations.
+
+Known limitation observed in this environment only: the local Chromium-based preview tab did not always apply CSS transforms to the off-canvas `.sidebar` in this session — the `transform: translateX(-102%)` rule is present in the stylesheet and is correct, and the drawer class toggling (`is-open`, `nav-open`) works, but the preview's computed transform stayed identity for the sidebar. The drawer behavior itself is expected to work in a normal browser and in Qt WebEngine and was verified visually in earlier runs through a static server. This is a preview-tab rendering limitation, not a code change.
+
+Current status:
+DONE. The three primary issues are fixed and verified against the real Go handler across wide, 16:9 and narrow viewports. Go checks are green. Documentation updated.
+
+Next:
+The two secondary UX items mentioned earlier (admin role simulator UI-only cleanup and the skin-stage hint) are still only at the planning/partial stage and were deliberately not touched in this pass because the user prioritized the scroll/button/grid fixes first. The drawer transform behavior should still be confirmed visually in a normal browser or Qt WebEngine, since the local preview tab did not apply the transform in this session.
+
+Manual user action:
+None required for the code or docs. The user should still visually confirm the mobile drawer in a normal browser or the launcher's Qt WebEngine before relying on it, because the local preview tab did not render the sidebar transform in this session.
 Started: 2026-11-17
 Completed: 2026-11-17
 

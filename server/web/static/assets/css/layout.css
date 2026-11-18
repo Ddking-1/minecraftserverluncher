@@ -4,8 +4,12 @@
   display: grid;
   grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
   min-height: 100vh;
+  overflow: hidden;
 }
 
+/* The sidebar is a full-height rail inside the non-scrolling shell.
+   It only scrolls on its own when the navigation is taller than the
+   viewport; otherwise it stays pinned and the content area scrolls. */
 .sidebar {
   position: sticky;
   top: 0;
@@ -16,8 +20,16 @@
   min-height: 0;
   padding: 20px 14px 16px;
   overflow-y: auto;
+  overscroll-behavior: contain;
   border-right: 1px solid var(--border);
   background: var(--bg-soft);
+}
+
+@media (min-aspect-ratio: 16/9) {
+  .sidebar {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
 }
 
 .sidebar-head {
@@ -253,7 +265,7 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
-  min-height: 100vh;
+  height: 100vh;
 }
 
 .topbar {
@@ -265,15 +277,37 @@
   justify-content: space-between;
   gap: 20px;
   height: var(--topbar-h);
-  padding: 0 clamp(20px, 2.6vw, 36px);
+  padding: 0 clamp(16px, 2.6vw, 36px);
   border-bottom: 1px solid var(--border);
   background: rgba(7, 11, 17, 0.84);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
 }
 
+@media (min-aspect-ratio: 16/9) {
+  .topbar {
+    padding-left: clamp(20px, 3vw, 36px);
+    padding-right: clamp(20px, 3vw, 40px);
+  }
+
+  .topbar-actions {
+    margin-left: auto;
+  }
+}
+
 [data-theme="light"] .topbar {
   background: rgba(242, 246, 251, 0.88);
+}
+
+@media (min-aspect-ratio: 16/9) {
+  .topbar {
+    padding-left: clamp(20px, 3vw, 36px);
+    padding-right: clamp(20px, 3vw, 40px);
+  }
+
+  .topbar-actions {
+    margin-left: auto;
+  }
 }
 
 .topbar-left {
@@ -402,6 +436,10 @@
 
 .main-scroll {
   flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: clamp(20px, 2.6vw, 34px) clamp(20px, 2.6vw, 36px) 44px;
 }
 
@@ -417,6 +455,8 @@
   display: grid;
   grid-template-columns: minmax(0, 1.05fr) minmax(470px, 0.95fr);
   min-height: 100vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .auth-brand {
@@ -449,7 +489,7 @@
   gap: clamp(22px, 4vh, 40px);
   width: 100%;
   max-width: 660px;
-  min-height: 100vh;
+  height: 100vh;
   margin: 0 auto;
   padding: clamp(26px, 4vw, 44px) clamp(26px, 4.5vw, 58px);
 }
@@ -621,9 +661,12 @@
 .auth-side {
   display: flex;
   flex-direction: column;
+  height: 100vh;
   min-height: 100vh;
   padding: clamp(20px, 3vw, 32px) clamp(22px, 4vw, 52px);
   background: var(--bg);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .auth-side-top {
@@ -833,6 +876,8 @@
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 0 clamp(18px, 4vw, 40px);
 }
 

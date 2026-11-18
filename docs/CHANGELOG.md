@@ -29,14 +29,39 @@
 - Fixed a missing favicon link: `server/web/static/index.html` now references
   `/assets/img/favicon.svg`, so browsers do not request a missing favicon.ico;
   `web_test.go` asserts the link and the embedded SVG asset.
-- Verified through the real Go handler (Go 1.26.5, compiled from
-  `server/`): `gofmt`, `go vet`, `go build ./web/...` and `go test -count=1
-  ./web/...` pass, and the embedded SPA serves correctly on `http://127.0.0.1:8090`
-  (five app routes, embedded assets, legacy 301s, asset 404s, 405 on POST,
-  CSP header, favicon 204 + SVG 200). Browser verification covered dark/light
-  mode, SPA navigation, deep-link reloads, skin upload/rotation, player search,
-  admin role simulation and 640x700 + 800x600 viewports with no console/CSP/
-  network errors.
+- Fixed the app-shell scroll confusion: the body is no longer the scroll container;
+  `.app-shell` is the non-scrolling frame, the sidebar is a full-height rail with
+  its own scroll, and `.main-scroll` is the only vertical scroll container for
+  content. Auth and plain shells keep their own internal scroll. Verified against
+  the real Go handler across ultra-wide (2560x720), 16:9 (1920x1080) and narrow
+  portrait (384x720) — the document no longer scrolls, the menu no longer travels
+  with the content, and main content scrolls instead. Because the frontend is
+  embedded with `//go:embed static`, the live test binary had to be rebuilt from
+  `server/` with `go build -o _local_test/go-server/server.exe .` before the CSS
+  changes reached the live handler (the old pre-built binary was still serving the
+  previous embedded copy).
+- Completed a button state review and filled visual gaps without adding new
+  mechanics: tactile `:active` feedback on icon buttons, an ARIA-backed toggle
+  style (`[aria-pressed="true"]`) as a backup for the class-based style, explicit
+  `:focus-visible` rings on buttons/icon buttons/selects/input wraps, and a
+  loading-spinner dim so pending buttons stay clearly disabled.
+- Fixed responsive grid/text overflow so blocks stay together and long text
+  truncates instead of slipping the layout on unusual aspect ratios: the standard
+  `overflow: hidden; text-overflow: ellipsis` pattern was added where needed
+  (skin-facts dd, detail-fact strong/span, hero-meta-item strong/meta-sub,
+  table-muted, activity-copy span), and flex/grid parents that hold nowrap
+  children got `min-width: 0` so they can shrink.
+- Updated `docs/WEB_FRONTEND.md` with the app-shell scroll architecture, the
+  button state model and the responsive grid/text overflow fixes, plus the live
+  verification notes and one known preview-tab transform limitation (the local
+  Chromium preview tab did not apply the off-canvas sidebar transform in this
+  session; the CSS rule and class toggling are correct, and the drawer is expected
+  to work in a normal browser and in Qt WebEngine).
+- Verified through the real Go handler (Go 1.26.5, compiled from `server/`):
+  `go vet ./web/...`, `go build ./web/...` and `go test -count=1 ./web/...` pass,
+  and the embedded SPA serves correctly on `http://127.0.0.1:8090` (five app
+  routes, embedded assets, legacy 301s, asset 404s, 405 on POST, CSP header,
+  favicon 204 + SVG 200).
 
 ### PR #8 ported: library/asset resolution is implemented (2026-11-17)
 

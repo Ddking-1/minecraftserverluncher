@@ -295,3 +295,155 @@ Not verified in this environment:
    capes; keep the canvas renderer if offline Qt support remains a requirement.
 4. Merge the task branch after review; no production deployment is part of this
    task.
+
+## App shell scroll architecture (2026-11-18)
+
+Problem: on long views the page felt like it was scrolling the menu instead of the
+content. Root cause was the shell layout: `body` had `overflow-x: hidden`, which
+in CSS makes `overflow-y` resolve to `auto`, so the whole document scrolled;
+`.app-shell` was only `min-height: 100vh` with `overflow: visible`; and
+`.main-scroll` was `flex: 1` but `overflow: visible`, so it was not actually a
+scroll container. The sidebar was `position: sticky; height: 100vh` inside that
+scrolling document, which is what made it move with the page before sticking.
+
+Fix (inspired by established dashboard/app-shell patterns, not invented here):
+
+- `body` is now `overflow: hidden` (clips only horizontally via the reset, and
+  never scrolls vertically). The `body.nav-open` drawer lock stays as a safety net.
+- `.app-shell` is the non-scrolling frame: `min-height: 100vh; overflow: hidden`.
+- `.sidebar` is a full-height rail inside that frame: `height: 100vh;
+  overflow-y: auto; overscroll-behavior: contain`. It only scrolls on its own when
+  the navigation is taller than the viewport; otherwise it stays pinned and the
+  content area scrolls. `position: sticky` is kept as a safeguard, but inside a
+  non-scrolling shell it effectively pins the rail to the top.
+- `.app-body` is the flex column that holds the topbar and the scroll area; it is
+  `height: 100vh` so the flex child can actually be a scroll container.
+- `.topbar` is `position: sticky; top: 0` inside `.app-body`.
+- `.main-scroll` is the only vertical scroll container for content: `flex: 1;
+  min-width: 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain`.
+
+Result: the user scrolls `.main-scroll`, not the menu and not the document. The
+topbar stays pinned above the scroll area, and the sidebar stays pinned as a rail.
+Verified across ultra-wide (2560x720, 3.56:1), 16:9 (1920x1080) and narrow
+portrait (384x720, ~9:21) through the real Go handler at `127.0.0.1:8090`:
+`body.scrollHeight` no longer exceeds the viewport, `document.documentElement`
+stays at viewport height, `.main-scroll` is the scroll container, and the sidebar
+no longer travels with the content.
+
+Auth and plain shells (`.auth-layout`, `.plain-shell`) were given the same treatment
+so they keep scrolling internally when their content exceeds the viewport instead of
+being clipped by the now non-scrolling body: `height: 100vh; overflow-y: auto;
+overscroll-behavior: contain`. Auth columns (`.auth-brand-inner`, `.auth-side`) are
+constrained to `height: 100vh` so they do not grow the shell past the viewport on
+short viewports.
+
+## Button state model (2026-11-18)
+
+A button is not one state. The states a user can perceive, and how this project
+covers them, are:
+
+- **Enabled/default** — the button is clickable. Covered by the base `.btn` /
+  `.icon-btn` styles.
+- **Hover** — cursor is over the button. Covered by `:hover:not(:disabled)` on
+  `.btn` variants and `.icon-btn`.
+- **Focus / focus-visible** — keyboard or assistive-tech focus. The project uses the
+  global `:focus-visible` ring (2px accent, 2px offset) and now scopes a matching
+  ring onto `.btn:focus-visible`, `.icon-btn:focus-visible`, selects and input
+  wraps so the ring stays readable on tinted surfaces.
+- **Active / pressed** — pointer is down on the button. Covered by `:active`.
+  `.btn` moves down 1px; `.icon-btn` now also scales down slightly and dims, so
+  icon buttons have the same tactile feedback as text buttons.
+- **Clicked / activation** — the momentary press. Same `:active` styles; there is
+  no separate activation style because activation is instantaneous.
+- **Disabled** — action unavailable. Covered by `:disabled` (48% opacity, no
+  transform, no box-shadow, `cursor: not-allowed`). Hover and active are excluded
+  with `:not(:disabled)`, so a disabled button cannot pretend to react.
+- **Selected / pressed toggle** — for toggle buttons such as the skin overlay
+  toggle. The project uses `aria-pressed="true"` plus a helper `.is-active`
+  class. The CSS now also styles `[aria-pressed="true"]` directly on `.icon-btn`
+  and `.btn`/`.btn-primary`, so the pressed visual survives a view re-render that
+  might drop the helper class.
+- **Loading / pending** — action in flight. The JS swaps in a spinner and disables
+  the button; the CSS keeps `:disabled` looking disabled and dims any inline
+  spinner so the button cannot be tapped again while the request is in flight.
+- **Conflict states** — e.g. focused but disabled, or pressed but disabled.
+  `:disabled` wins because hover/active are gated on `:not(:disabled)` and the
+  disabled style zeroes out transform and box-shadow.
+
+No new interaction mechanic was added. The changes are visual completeness for
+states that already existed in the markup or were reachable by pointer/keyboard
+interaction: tactile `:active` feedback on icon buttons, an ARIA-backed toggle style
+as a backup for the class-based one, explicit focus-visible on the interactive
+controls, and a loading-spinner dim so pending buttons stay clearly disabled.
+
+## Responsive grid and text overflow fixes (2026-11-18)
+
+Two related issues were fixed together: grids slipping apart on unusual aspect
+ratios, and long text escaping its block.
+
+Grid slippage happens when a fluid track is `1fr` without a zero floor. The fix is
+`minmax(0, 1fr)` on every fluid track (already largely in place) plus `min-width: 0`
+on the items that contain nowrap content, so the item can shrink below its content
+minimum instead of pushing the track open.
+
+Text overflow happens when a block has `white-space: nowrap` but no clipping or
+shrink strategy. The fix is the standard three-part pattern: `min-width: 0` (or a
+constraint that lets the box be narrower than the text), `overflow: hidden`, and
+either `text-overflow: ellipsis` for one-line truncations or `white-space: normal`
+/ `overflow-wrap: anywhere` for wrappable text. This project already used the
+ellipsis pattern in several places; the remaining gaps were:
+
+- `.skin-facts dd`, `.detail-fact strong`, `.detail-fact span`, `.hero-meta-item
+  strong`, `.meta-sub`, `.table-muted`, `.activity-copy > span` — now have
+  `overflow: hidden; text-overflow: ellipsis` (and `min-width: 0` where the parent
+  is a flex/grid item) so long server names, emails, relative times and fact values
+  truncate instead of slipping the layout on narrow or wide screens.
+- `.detail-fact` (flex space-between) and `.hero-meta-item` (grid) — given
+  `min-width: 0` so their nowrap children can shrink.
+- `.kpi-card > div` — duplicate `min-width: 0` guard so the card text column can
+  shrink under the icon.
+
+The grid tracks themselves were already `minmax(0, 1fr)` in the responsive cascade;
+no track was changed to `1fr` without a zero floor. The result is that rows of
+cards, facts, meta items and table cells stay together and shrink proportionally
+instead of one long value forcing the whole row wide, across 21:9 through 9:21.
+
+## Verification performed (2026-11-18, after scroll/button/grid fixes)
+
+Go toolchain: Go 1.26.5 from the module toolchain cache. All Go checks run from
+`server/`, the Go module root.
+
+- `go vet ./web/...` — clean.
+- `go build ./web/...` — compiles.
+- `go test -count=1 ./web/...` — passes (`ok minecraftserverluncher/server/web`).
+
+Because the frontend is embedded into the Go binary with `//go:embed static`, the
+running local test binary had to be rebuilt from `server/` with `go build -o
+_local_test/go-server/server.exe .` for the CSS changes to reach the live handler.
+The old pre-built `_local_test/go-server/server.exe` was serving the previous
+embedded copy and had to be replaced.
+
+Live verification through the rebuilt Go handler at `http://127.0.0.1:8090`:
+
+- `GET /assets/css/base.css` now returns `overflow: hidden` on `body` (was
+  `overflow-x: hidden`).
+- Dashboard on 2560x720 (ultra-wide): `body` and `.app-shell` are `overflow:
+  hidden` and stay at viewport height; `.main-scroll` is `overflow-y: auto` and is
+  the scroll container; `.sidebar` is a sticky rail that does not scroll with the
+  content.
+- Dashboard on 1920x1080 (16:9): same shell behavior; sidebar is a sticky rail,
+  main content scrolls.
+- Dashboard on 384x720 (narrow portrait, mobile breakpoint): sidebar is a fixed
+  drawer (`position: fixed`, `z-index: 60`), `.main-scroll` scrolls the content.
+- Players, admin and the not-found/app routes render with the same shell behavior;
+  the admin data table still scrolls horizontally inside its own `.table-wrap`.
+- Console: no JavaScript errors reported during these navigations.
+
+Note on the browser preview in this environment: the local Chromium-based preview
+tab does not always apply CSS transforms to the off-canvas `.sidebar` (the
+`translateX(-102%)` rule is present in the stylesheet and is correct, but the
+preview's computed transform stayed identity in this session). The drawer class
+toggling (`is-open`, `nav-open`) works; the drawer behavior itself is expected to
+work in a normal browser and in Qt WebEngine, and was verified visually in earlier
+runs through a static server. This is a preview-tab rendering limitation, not a code
+change.
