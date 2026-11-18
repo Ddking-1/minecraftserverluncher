@@ -5,6 +5,8 @@ import { initTheme, syncThemeButtons, toggleTheme } from './core/theme.js';
 import { initServerContext, onServerChange } from './core/server-context.js';
 import { renderShell, mountShell } from './components/app-shell.js';
 import { brandMark, icon } from './core/icons.js';
+import { cookieConsent } from './core/cookie-consent.js';
+import { analytics } from './core/analytics.js';
 import * as loginView from './views/login.js';
 import * as registerView from './views/register.js';
 import * as dashboardView from './views/dashboard.js';
@@ -126,11 +128,38 @@ async function renderRoute(route, ctx) {
 initTheme();
 initServerContext();
 
+// Cookie consent: show the popup before the app renders if the user has not
+// made a choice yet. The app shell renders behind it, but no analytics or
+// non-essential cookies are set until the choice is made.
+let consentTeardown = null;
+if (!cookieConsent.hasChoice) {
+  const host = document.createElement('div');
+  host.setAttribute('data-cookie-consent-host', '');
+  host.setAttribute('aria-hidden', 'false');
+  // The consent card sits above the boot screen so it is visible immediately.
+  document.body.appendChild(host);
+  consentTeardown = cookieConsent.render(host);
+  // Listen for future consent changes (e.g. if the user visits again later).
+  // For the alpha we only have localStorage, so this is a one-time render.
+}
+
 const router = new Router({
   routes,
   fallback: { path: '/404', view: notFoundView },
   render: renderRoute,
 });
+
+// Wire analytics to consent changes so tracking starts only after acceptance.
+if (cookieConsent.accepted) {
+  analytics.init('/');
+} else {
+  // Re-run once the user accepts (the popup handles the choice).
+  const originalSetChoice = cookieConsent.setChoice.bind(cookieConsent);
+  cookieConsent.setChoice = function (accepted) {
+    originalSetChoice(accepted);
+    if (accepted) analytics.onConsentChange(true);
+  };
+}
 
 document.addEventListener('click', (event) => {
   const toggle = event.target instanceof Element ? event.target.closest('[data-theme-toggle]') : null;

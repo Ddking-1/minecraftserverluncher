@@ -144,6 +144,8 @@ func (s *Server) Handler() http.Handler {
 	public.HandleFunc("POST /api/v1/auth/logout-all", s.handleLogoutAll)
 	public.HandleFunc("POST /api/v1/auth/forgot", s.handleForgotPassword)
 	public.HandleFunc("POST /api/v1/auth/reset", s.handleResetPassword)
+	public.HandleFunc("POST /api/v1/cookie-consent", s.handleCookieConsent)
+	public.HandleFunc("POST /api/v1/analytics/event", s.handleAnalyticsEvent)
 	public.HandleFunc("GET /api/v1/updates/manifest", s.handleUpdatesManifest)
 	public.HandleFunc("GET /api/v1/capabilities", s.handleCapabilities)
 	public.HandleFunc("GET /api/v1/news", s.handleNews)
@@ -224,6 +226,11 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("/api/v1/news", wrap(publicGroup))
 	mux.Handle("/api/v1/proxy/", wrap(publicGroup))
 	mux.Handle("/api/v1/webhooks/", wrap(publicGroup))
+	// Cookie consent and analytics are public endpoints: the consent popup must
+	// be reachable before the user is authenticated, and analytics events must be
+	// accepted from any origin that has consent (the consent cookie gates them).
+	mux.Handle("/api/v1/cookie-consent", wrap(publicGroup))
+	mux.Handle("/api/v1/analytics/event", wrap(publicGroup))
 	mux.Handle("/api/v1/account/", wrap(protectedGroup))
 	// "/api/v1/skins" is an exact pattern; "/api/v1/skins/" is the prefix that
 	// also covers the sub-paths. Both are needed: Go's mux does not redirect a

@@ -182,6 +182,23 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
+
+	// If the user has already accepted cookies, set a session cookie in
+	// addition to the bearer token. The cookie is httpOnly so the JS UI cannot
+	// read it; the UI still sends the bearer token in the Authorization header.
+	if s.ConsultCookieConsent(r) {
+		sessionCookie := &http.Cookie{
+			Name:     "alpha_session",
+			Path:     "/",
+			HttpOnly: true,
+			Secure:   r.TLS != nil,
+					SameSite: http.SameSiteLaxMode,
+				Expires:  time.Now().Add(time.Duration(pair.ExpiresIn) * time.Second),
+			Value:    pair.AccessToken,
+		}
+		http.SetCookie(w, sessionCookie)
+	}
+
 	writeJSON(w, http.StatusOK, pair)
 }
 
