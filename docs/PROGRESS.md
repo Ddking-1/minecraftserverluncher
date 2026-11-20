@@ -1499,3 +1499,8 @@ Checks:
 - User list now includes banned/MC-banned/approved status.
 - Fixed missing admin authorization on account approval and skin approval handlers.
 - Improved admin UI: status column, bans/HWID panels, structured details, accessibility.
+
+## 2026-11-20 - ADVANCED MODERATION ACTIONS
+
+- Extended advanced admin controls to kick, mute, and warn with duration, reason, scope, and device/IP targeting.
+- Added unmute recovery and live E2E verification.

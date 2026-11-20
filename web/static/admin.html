@@ -115,6 +115,32 @@
   </div>
 </div>
 
+<div id="actionModal" class="hidden">
+  <div class="modal-backdrop" onclick="closeActionModal(event)">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="actionTitle" onclick="event.stopPropagation()">
+      <h3 id="actionTitle"></h3>
+      <div class="row"><label for="actionDuration">Duration (minutes, 0=permanent)</label><input type="number" id="actionDuration" value="0" min="0"></div>
+      <div class="row"><label for="actionReason">Reason (shown to player)</label><input type="text" id="actionReason" placeholder="reason" maxlength="500"></div>
+      <div class="row"><label for="actionScope">Scope</label>
+        <select id="actionScope">
+          <option value="mc">Minecraft only</option>
+          <option value="platform">Whole platform</option>
+          <option value="both" selected>Both</option>
+        </select>
+      </div>
+      <div class="row"><label>Targets</label>
+        <label><input type="checkbox" value="account" checked> Account</label>
+        <label><input type="checkbox" value="hwid"> All HWIDs (last 30d)</label>
+        <label><input type="checkbox" value="ip"> IP(s) used (last 30d)</label>
+      </div>
+      <div class="row" style="justify-content:flex-end">
+        <button class="secondary" onclick="closeActionModal()">Cancel</button>
+        <button class="danger" id="actionConfirmBtn" onclick="confirmAction()">Confirm</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="detailsModal" class="hidden">
   <div class="modal-backdrop" onclick="closeDetailsModal(event)">
     <div class="modal" onclick="event.stopPropagation()">
@@ -128,7 +154,7 @@
 </div>
 
 <script>
-let adminToken=''; let bearer=''; let banTargetId=null;
+let adminToken=''; let bearer=''; let banTargetId=null; let actionTargetId=null; let actionType=null;
 
 function authHeaders(){const h={}; if(adminToken) h['X-Admin-Token']=adminToken; if(bearer) h['Authorization']='Bearer '+bearer; return h;}
 function setAuth(){ adminToken=document.getElementById('adminToken').value; bearer=document.getElementById('bearer').value; document.getElementById('loginBox').classList.add('hidden'); document.getElementById('appBox').classList.remove('hidden'); loadUsers(); loadTripwires(); loadInvites(); loadBans(); loadHwidBans(); }
@@ -154,9 +180,13 @@ async function loadUsers(){
     const tdAct=document.createElement('td');
     const bDetails=document.createElement('button'); bDetails.textContent='Details'; bDetails.className='secondary'; bDetails.addEventListener('click',()=>openDetails(u.id));
     const bBan=document.createElement('button'); bBan.textContent='Ban'; bBan.className='danger'; bBan.addEventListener('click',()=>openBanModal(u.id,u.username));
+    const bKick=document.createElement('button'); bKick.textContent='Kick'; bKick.className='danger'; bKick.addEventListener('click',()=>openActionModal('kick',u.id,u.username));
+    const bMute=document.createElement('button'); bMute.textContent='Mute'; bMute.className='secondary'; bMute.addEventListener('click',()=>openActionModal('mute',u.id,u.username));
+    const bWarn=document.createElement('button'); bWarn.textContent='Warn'; bWarn.className='secondary'; bWarn.addEventListener('click',()=>openActionModal('warn',u.id,u.username));
     const bUnban=document.createElement('button'); bUnban.textContent='Unban'; bUnban.className='secondary'; bUnban.addEventListener('click',()=>unbanUser(u.id));
+    const bUnmute=document.createElement('button'); bUnmute.textContent='Unmute'; bUnmute.className='secondary'; bUnmute.addEventListener('click',()=>unmuteUser(u.id));
     const bDel=document.createElement('button'); bDel.textContent='Delete'; bDel.className='danger'; bDel.addEventListener('click',()=>deleteUser(u.id));
-    tdAct.appendChild(bDetails); tdAct.appendChild(bBan); tdAct.appendChild(bUnban); tdAct.appendChild(bDel);
+    tdAct.appendChild(bDetails); tdAct.appendChild(bBan); tdAct.appendChild(bKick); tdAct.appendChild(bMute); tdAct.appendChild(bWarn); tdAct.appendChild(bUnban); tdAct.appendChild(bUnmute); tdAct.appendChild(bDel);
     tr.appendChild(tdId); tr.appendChild(tdName); tr.appendChild(tdStatus); tr.appendChild(tdCreated); tr.appendChild(tdAct);
     tbody.appendChild(tr);
   }
@@ -196,6 +226,47 @@ async function confirmBan(){
   if(!res.ok){ status('ban failed: '+res.status+' '+(data.error||'')); return; }
   status('ban: '+res.status+' '+JSON.stringify(data.counts||{})+' (affected IPs: '+(data.affected_ip_count||0)+')');
   closeBanModal();
+  loadUsers();
+  loadBans();
+}
+
+function openActionModal(type,id,username){
+  actionType=type;
+  actionTargetId=id;
+  const title=type.charAt(0).toUpperCase()+type.slice(1)+' user '+username+' (#'+id+')';
+  document.getElementById('actionTitle').textContent=title;
+  document.getElementById('actionConfirmBtn').textContent=title.split(' ')[0];
+  document.getElementById('actionModal').classList.remove('hidden');
+}
+function closeActionModal(e){ if(e && e.target!==e.currentTarget) return; document.getElementById('actionModal').classList.add('hidden'); }
+
+async function confirmAction(){
+  const targets=[...document.querySelectorAll('#actionModal input[type=checkbox]:checked')].map(c=>c.value);
+  if(targets.length===0){ status('select at least one target'); return; }
+  const duration=parseInt(document.getElementById('actionDuration').value||'0',10);
+  if(!Number.isFinite(duration) || duration<0){ status('duration must be 0 or greater'); return; }
+  const reason=document.getElementById('actionReason').value;
+  if(reason.length>500){ status('reason must be 500 characters or fewer'); return; }
+  const body={
+    duration_minutes: duration,
+    reason: reason,
+    scope: document.getElementById('actionScope').value,
+    targets: targets,
+    lookback_days: 30,
+  };
+  const res=await fetch('/api/admin/users/'+actionTargetId+'/'+actionType,{method:'POST',headers:Object.assign({'Content-Type':'application/json'},authHeaders()),body:JSON.stringify(body)});
+  const data=await res.json().catch(()=>({}));
+  if(!res.ok){ status(actionType+' failed: '+res.status+' '+(data.error||'')); return; }
+  status(actionType+': '+res.status+' '+JSON.stringify(data.counts||{})+' (affected IPs: '+(data.affected_ip_count||0)+')');
+  closeActionModal();
+  loadUsers();
+  loadBans();
+}
+
+async function unmuteUser(id){
+  const res=await fetch('/api/admin/users/'+id+'/unmute',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},authHeaders()),body:JSON.stringify({targets:['account','hwid','ip']})});
+  const data=await res.json().catch(()=>({}));
+  status('unmute '+id+': '+res.status+' '+(data.status||''));
   loadUsers();
   loadBans();
 }
@@ -316,7 +387,7 @@ async function banHwid(){
   await fetch('/api/admin/hwid/ban',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},authHeaders()),body:JSON.stringify({device_id})});
   loadHwidBans();
 }
-document.addEventListener('keydown',(e)=>{ if(e.key==='Escape'){ document.getElementById('banModal').classList.add('hidden'); document.getElementById('detailsModal').classList.add('hidden'); } });
+document.addEventListener('keydown',(e)=>{ if(e.key==='Escape'){ document.getElementById('banModal').classList.add('hidden'); document.getElementById('actionModal').classList.add('hidden'); document.getElementById('detailsModal').classList.add('hidden'); } });
 </script>
 </body>
 </html>

@@ -937,3 +937,16 @@ Done:
 Next:
 - Run `cd server && go test ./...` in Go-capable environment.
 - Manual end-to-end verification of bans/unbans and proxy auth.
+
+## 2026-11-20 - ADVANCED MODERATION ACTIONS
+
+Status:
+GREEN. Backend build, vet, and tests pass. Live E2E verified kick/mute/warn/unmute.
+
+Done:
+- Kick/mute/warn/unmute endpoints and validation.
+- Legacy admin UI extended with new actions and modal.
+- Documentation updated.
+
+Branch:
+feat/advanced-admin-panel

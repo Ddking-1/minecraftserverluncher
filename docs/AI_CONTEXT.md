@@ -353,3 +353,5 @@ Batch (2026-11-17): launcher GUI features F2/F3/F5/F6/F7/F10 implemented and ver
 
 - Admin hardening: validated bans, ban list/delete, proxy MC-scope HWID/IP enforcement,
   user status fields, auth fixes, improved admin UI.
+
+- Advanced moderation: kick, mute, warn and unmute endpoints now mirror advanced ban controls.

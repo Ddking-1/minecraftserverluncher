@@ -857,3 +857,11 @@ Owner: hostile-tester review of F2, F3, F5, F6, F7, F10.
 - Enforced MC-scope HWID/IP bans in proxy authorization.
 - Fixed authorization gaps on approval endpoints.
 - Improved admin UI usability and accessibility.
+
+## 2026-11-20 - ADVANCED MODERATION ACTIONS (KICK/MUTE/WARN)
+
+- Added kick, mute, warn and unmute admin endpoints with the same duration, reason, scope (mc/platform/both) and account/HWID/IP targeting pattern as bans.
+- Reused the bans table for moderation actions (ban_type kick/mute/warn) and added unmute recovery.
+- Kick revokes sessions for platform/both scopes; mute/warn are recorded and queryable.
+- Updated legacy admin UI with Kick, Mute, Warn, Unmute actions and a reusable action modal.
+- Added accessibility improvements (labels, dialog role, escape handling).
