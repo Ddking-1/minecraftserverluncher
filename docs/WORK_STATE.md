@@ -4,7 +4,10 @@ Status: GREEN for Go backend + SPA. go build ./..., go vet ./..., go test ./web/
 
 Done:
 - Modal visibility/focus: openAdvancedModal now adds is-visible class and traps Tab focus (Escape closes), matching confirmDialog.
-- Real-mode data: users mapped with online=true so kick is exercisable against the backend.
+- Real-mode data: users mapped with online=true so kick is exercisable against the backend; `/api/admin/users` now returns `muted` and the SPA maps it so mute/unmute reflects reality.
+- Real mode elevates the effective UI role to owner because the admin token is the authoritative credential; a logged-in player with a valid token no longer sees access denied.
+- Password reset is hidden for real-backend users (no backend endpoint yet) instead of failing.
+- Audit list labels kick/mute/warn/unban actions; invalid-token responses render a persistent role="alert" banner in addition to the toast.
 - A11y/UX: focus trap in advanced modal, visible modal backdrop, consistent keyboard navigation; no console errors in smoke.
 
 Branch: feat/advanced-admin-panel.

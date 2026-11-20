@@ -1504,3 +1504,15 @@ Checks:
 
 - Extended advanced admin controls to kick, mute, and warn with duration, reason, scope, and device/IP targeting.
 - Added unmute recovery and live E2E verification.
+
+## 2026-11-20 — Advanced admin panel finished (feat/advanced-admin-panel)
+
+- Backend advanced ban/kick/mute/warn/unmute with duration, reason, scope and
+  account/HWID/IP targets; MC-scope bans enforced in the proxy; login IP tracked.
+- SPA admin panel wired to `/api/admin/*` with `X-Admin-Token`, token bar and a
+  shared advanced modal (IP account counts + HWID preview); mock fallback kept.
+- Final fixes: modal visibility + Tab focus trap, real-mode `muted` state,
+  real-mode owner elevation, unsupported password reset hidden, audit labels,
+  persistent invalid-token alert.
+- Verified: go build/vet/test (web, api), node --check, browser smoke for ban,
+  kick, mute, warn and invalid token with no console errors.

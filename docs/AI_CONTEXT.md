@@ -172,6 +172,10 @@ NOT "full Prism Launcher + custom layer". See `docs/DECISIONS.md` DECISION-001.
 - Remote: `origin` — private GitHub repository `Ddking-1/minecraftserverluncher`
 - Tracked: governance/state documentation plus the backend under `server/` and
   the launcher core under `launcher/`, all on `master`
+- Active task branch: `feat/advanced-admin-panel` — advanced admin moderation
+  (ban/kick/mute/warn with duration, reason, scope, account/HWID/IP targets),
+  SPA real-backend wiring with `X-Admin-Token`, and a11y/UX fixes. See
+  `docs/WORK_STATE.md` and `docs/CHANGELOG.md`.
 - Untracked by design: `reference/` (DECISION-002) and local tooling state
 - Architecture documentation includes `docs/PRISM_MINIMAL_CORE.md` and
   `docs/PRISM_ARCHITECTURE_REVIEW.md` (DECISION-003/004/005)

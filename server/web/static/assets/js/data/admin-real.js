@@ -27,7 +27,7 @@ export function createRealAdminApi(token) {
     role: 'player',
     status: u.banned ? 'banned' : (u.minecraft_banned ? 'banned' : 'active'),
     online: true,
-    muted: false,
+    muted: !!u.muted,
     lastSeen: u.created_at || new Date().toISOString(),
     banReason: '',
     playtimeHours: 0,

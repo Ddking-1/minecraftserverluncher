@@ -44,6 +44,7 @@ func (s *Server) handleAdminListUsers(w http.ResponseWriter, r *http.Request) {
 		mcBanned, _ := s.db.IsMinecraftBanned(acc.ID)
 		approved, _ := s.db.IsAccountApproved(acc.ID)
 		banned, _, _ := s.db.IsAccountBanned(acc.ID)
+		muteBans, _ := s.db.ActiveBansFor("mute", strconv.FormatInt(acc.ID, 10))
 		users = append(users, map[string]any{
 			"id":               acc.ID,
 			"username":         acc.Username,
@@ -51,6 +52,7 @@ func (s *Server) handleAdminListUsers(w http.ResponseWriter, r *http.Request) {
 			"minecraft_banned": mcBanned,
 			"approved":         approved,
 			"banned":           banned,
+			"muted":            len(muteBans) > 0,
 		})
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"users": users, "total": total})

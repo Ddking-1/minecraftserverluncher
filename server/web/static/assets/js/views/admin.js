@@ -28,6 +28,12 @@ export const meta = {
 };
 
 const ACTION_LABEL = {
+  ban: 'Letiltás',
+  unban: 'Tiltás feloldása',
+  kick: 'Kirúgás',
+  mute: 'Némítás',
+  unmute: 'Némítás feloldása',
+  warn: 'Figyelmeztetés',
   'players.ban': 'Játékos letiltása',
   'players.kick': 'Játékos kirúgása',
   'players.mute': 'Némítás',
@@ -170,7 +176,7 @@ function userRowHtml(user, effectiveRole, actualUser) {
         ${actionButton({ action: 'mute', user, effectiveRole, actualUser, permission: 'players.mute', iconName: 'volume-x', label: user.muted ? 'Némítás feloldása' : 'Némítás', tone: user.muted ? 'is-active' : '' })}
         ${actionButton({ action: 'warn', user, effectiveRole, actualUser, permission: 'players.mute', iconName: 'alert', label: 'Figyelmeztetés', tone: '' })}
         ${actionButton({ action: 'delete', user, effectiveRole, actualUser, permission: 'accounts.delete', iconName: 'trash', label: 'Fiók végleges törlése', tone: 'is-danger' })}
-        ${actionButton({ action: 'password-reset', user, effectiveRole, actualUser, permission: 'accounts.view', iconName: 'key', label: 'Jelszó visszaállítása', tone: '' })}
+        ${user._real ? '' : actionButton({ action: 'password-reset', user, effectiveRole, actualUser, permission: 'accounts.view', iconName: 'key', label: 'Jelszó visszaállítása', tone: '' })}
       </div>
     </td>
   </tr>`;
@@ -374,7 +380,7 @@ export async function render(ctx) {
 
   const adminApi = realMode ? createRealAdminApi(adminToken) : api.admin;
 
-  let users = [], summary = null, queue = [], audit = [], blacklist = [];
+  let users = [], summary = null, queue = [], audit = [], blacklist = [], errorMessage = '';
   try {
     [users, summary, queue, audit, blacklist] = await Promise.all([
       adminApi.listUsers(),
@@ -384,7 +390,8 @@ export async function render(ctx) {
       adminApi.blacklist(),
     ]);
   } catch (e) {
-    toast(e.message || 'Backend admin hiba.', { tone: 'error' });
+    errorMessage = e.message || 'Backend admin hiba.';
+    toast(errorMessage, { tone: 'error' });
     users = []; summary = { total: 0, staff: 0, active: 0, online: 0, banned: 0, pendingSkins: 0 };
     queue = []; audit = []; blacklist = [];
   }
@@ -392,7 +399,7 @@ export async function render(ctx) {
 
   const state = {
     actualUser,
-    effectiveRole: actualUser.role || 'owner',
+    effectiveRole: realMode ? 'owner' : (actualUser.role || 'owner'),
     users,
     summary,
     queue,
@@ -400,6 +407,7 @@ export async function render(ctx) {
     blacklist,
     query: '',
     realMode,
+    errorMessage,
     adminToken,
     adminApi,
   };
@@ -415,8 +423,16 @@ export async function render(ctx) {
     </div>
   </div>`;
 
+  const errorBanner = errorMessage
+    ? `<div class="panel admin-error-banner" role="alert" style="margin-bottom:1rem;border-color:var(--danger-border);color:var(--danger)">
+        <strong>${icon('alert', 14)} Backend hiba</strong>
+        <p style="margin:.35rem 0 0">${esc(errorMessage)} Ellenőrizd az admin tokent, majd töltsd újra az oldalt.</p>
+      </div>`
+    : '';
+
   return `<div class="page page-admin">
     ${tokenBar}
+    ${errorBanner}
     ${!realMode && config.features.permissionSimulator ? simulatorHtml(actualUser, state.effectiveRole) : ''}
     <div id="admin-content">${adminContentHtml(state, actualUser)}</div>
   </div>`;

@@ -879,3 +879,16 @@ Owner: hostile-tester review of F2, F3, F5, F6, F7, F10.
 - Added admin-real.js adapter mirroring the mock api.admin surface (users, summary, audit from bans, ban/unban/kick/mute/warn/unmute, delete).
 - Advanced ban modal now fetches user details and shows device-HWID count and per-IP account counts for the last 30 days.
 - Real-mode smoke verified: ban request with admin token updates the audit list; no console errors.
+
+### Advanced admin panel (2026-11-20, task branch `feat/advanced-admin-panel`)
+
+- Advanced moderation modal for ban, kick, mute and warn: duration, reason,
+  scope (MC/platform/both) and account/HWID/IP targets with 30-day IP account
+  counts and HWID preview.
+- SPA admin view now talks to the real `/api/admin/*` endpoints through an
+  `X-Admin-Token` adapter while keeping the mock-data fallback.
+- Backend: advanced ban/unban/details/IP-accounts/ban-list/delete plus
+  kick/mute/warn/unmute handlers; proxy enforces MC-scope account/HWID/IP bans;
+  login records IPs; `/api/admin/users` reports `muted`.
+- Accessibility/UX: modal fade-in and Tab focus trap, Escape close, persistent
+  invalid-token alert, audit labels, unsupported real-mode actions hidden.
