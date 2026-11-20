@@ -957,3 +957,8 @@ feat/advanced-admin-panel
 - Added warn action and unmute/unban flows.
 - Extended mock API with bans collection and advanced methods.
 - Improved a11y (table scope, modal ARIA).
+
+## 2026-11-20 - SPA real backend wiring
+- SPA admin view now supports real backend mode via stored admin token.
+- Advanced ban modal shows HWID count and per-IP account counts (last 30 days).
+- Verified real-mode ban end-to-end (no console errors).

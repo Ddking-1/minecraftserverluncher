@@ -1,4 +1,6 @@
 import { api } from '../data/api.js';
+import { createRealAdminApi } from '../data/admin-real.js';
+import { storage } from '../core/storage.js';
 import { config } from '../config.js';
 import { esc, formatDate, relativeTime } from '../core/dom.js';
 import { icon } from '../core/icons.js';
@@ -105,7 +107,7 @@ function summaryHtml(summary) {
 function roleSelectHtml(user, effectiveRole, actualUser) {
   const isSelf = user.id === actualUser.id;
   const allowed = assignableRoles(effectiveRole);
-  const canEdit = !isSelf && allowed.includes(user.role) && hasPermission(effectiveRole, 'roles.assign');
+  const canEdit = !isSelf && !user._real && allowed.includes(user.role) && hasPermission(effectiveRole, 'roles.assign');
   const options = canEdit
     ? Array.from(new Set([user.role, ...allowed]))
     : [user.role];
@@ -361,34 +363,61 @@ function adminContentHtml(state, actualUser) {
 }
 
 export async function render(ctx) {
-  const actualUser = ctx.user;
-  if (!hasPermission(actualUser, 'admin.access')) {
+  const actualUser = ctx.user || { id: 'real', username: 'admin', role: 'owner' };
+  const adminToken = storage.get('adminToken') || '';
+  const realMode = !!adminToken;
+
+  if (!realMode && !hasPermission(actualUser, 'admin.access')) {
     ctx.adminState = null;
     return `<div class="page page-admin">${accessDeniedHtml(actualUser)}</div>`;
   }
 
-  const [users, summary, queue, audit, blacklist] = await Promise.all([
-    api.admin.listUsers(),
-    api.admin.summary(),
-    api.admin.skinsQueue(),
-    api.admin.audit(),
-    api.admin.blacklist(),
-  ]);
+  const adminApi = realMode ? createRealAdminApi(adminToken) : api.admin;
+
+  let users = [], summary = null, queue = [], audit = [], blacklist = [];
+  try {
+    [users, summary, queue, audit, blacklist] = await Promise.all([
+      adminApi.listUsers(),
+      adminApi.summary(),
+      adminApi.skinsQueue(),
+      adminApi.audit(),
+      adminApi.blacklist(),
+    ]);
+  } catch (e) {
+    toast(e.message || 'Backend admin hiba.', { tone: 'error' });
+    users = []; summary = { total: 0, staff: 0, active: 0, online: 0, banned: 0, pendingSkins: 0 };
+    queue = []; audit = []; blacklist = [];
+  }
+  if (!summary) summary = { total: users.length, staff: 0, active: users.length, online: 0, banned: 0, pendingSkins: 0 };
 
   const state = {
     actualUser,
-    effectiveRole: actualUser.role,
+    effectiveRole: actualUser.role || 'owner',
     users,
     summary,
     queue,
     audit,
     blacklist,
     query: '',
+    realMode,
+    adminToken,
+    adminApi,
   };
   ctx.adminState = state;
 
+  const tokenBar = `<div class="panel admin-token-bar" style="margin-bottom:1rem">
+    <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+      <span class="panel-eyebrow">Backend admin token</span>
+      <input type="password" id="admin-token-input" placeholder="X-Admin-Token" value="${esc(adminToken)}" style="flex:1;min-width:200px" aria-label="Admin token">
+      <button type="button" class="btn btn-primary btn-sm" id="admin-token-set">Beállítás</button>
+      <button type="button" class="btn btn-ghost btn-sm" id="admin-token-clear">Törlés</button>
+      <span style="font-size:.8rem;opacity:.7">${realMode ? 'Valós backend aktív' : 'Mock mód'}</span>
+    </div>
+  </div>`;
+
   return `<div class="page page-admin">
-    ${config.features.permissionSimulator ? simulatorHtml(actualUser, state.effectiveRole) : ''}
+    ${tokenBar}
+    ${!realMode && config.features.permissionSimulator ? simulatorHtml(actualUser, state.effectiveRole) : ''}
     <div id="admin-content">${adminContentHtml(state, actualUser)}</div>
   </div>`;
 }
@@ -474,13 +503,13 @@ export function mount(root, ctx) {
   };
 
   const refreshData = async () => {
-    state.users = await api.admin.listUsers();
-    state.summary = await api.admin.summary();
+    state.users = await state.adminApi.listUsers();
+    state.summary = await state.adminApi.summary();
     if (hasPermission(state.effectiveRole, 'skins.approve')) {
-      state.queue = await api.admin.skinsQueue();
-      state.blacklist = await api.admin.blacklist();
+      state.queue = await state.adminApi.skinsQueue();
+      state.blacklist = await state.adminApi.blacklist();
     }
-    if (hasPermission(state.effectiveRole, 'audit.view')) state.audit = await api.admin.audit();
+    if (hasPermission(state.effectiveRole, 'audit.view')) state.audit = await state.adminApi.audit();
     rerenderContent();
   };
 
@@ -511,6 +540,7 @@ export function mount(root, ctx) {
             <label><input type="checkbox" value="hwid"> Minden HWID (30 nap)</label>
             <label><input type="checkbox" value="ip"> IP-k (30 nap)</label>
           </div>
+          <div class="form-row" id="adv-preview" style="font-size:.85rem;opacity:.85"><span>Előnézet betöltése…</span></div>
           <div class="modal-actions">
             <button type="button" class="btn btn-ghost" data-adv-cancel>Mégse</button>
             <button type="button" class="btn ${tone === 'danger' ? 'btn-danger' : 'btn-primary'}" data-adv-confirm>${esc(titleMap[action] || action)}</button>
@@ -562,6 +592,29 @@ export function mount(root, ctx) {
       });
       document.addEventListener('keydown', onKeyDown);
       document.body.appendChild(overlay);
+      // Load device/IP preview for real backend mode.
+      const previewEl = overlay.querySelector('#adv-preview');
+      const loadPreview = async () => {
+        if (!previewEl) return;
+        if (!state.realMode) {
+          previewEl.innerHTML = '<span>Mock mód: előnézet nem elérhető.</span>';
+          return;
+        }
+        try {
+          const d = await state.adminApi.userDevices(user.id);
+          const hwids = d.devices_last_30d || [];
+          const ips = d.ips_last_30d || [];
+          previewEl.innerHTML = `
+            <div><strong>HWID-k (30 nap):</strong> ${hwids.length} eszköz</div>
+            <div><strong>IP-k (30 nap):</strong></div>
+            <ul style="margin:.25rem 0 0 1rem;padding:0;list-style:disc">
+              ${ips.map((ip) => `<li>${esc(ip.ip)} — ${esc(ip.accounts_last_30d)} fiók használta</li>`).join('') || '<li>nincs</li>'}
+            </ul>`;
+        } catch (e) {
+          previewEl.innerHTML = `<span>Előnézet hiba: ${esc(e.message || '')}</span>`;
+        }
+      };
+      loadPreview();
       confirmBtn.focus();
     });
   };
@@ -585,7 +638,7 @@ export function mount(root, ctx) {
         });
         if (!confirmed) return;
         try {
-          await api.admin.unbanUser(user.id, ['account', 'hwid', 'ip']);
+          await state.adminApi.unbanUser(user.id, ['account', 'hwid', 'ip']);
           await refreshData();
           toast(`${user.username} tiltása feloldva.`, { tone: 'success', title: 'Tiltás feloldva' });
         } catch (error) {
@@ -596,7 +649,7 @@ export function mount(root, ctx) {
       const params = await openAdvancedModal('ban', user);
       if (!params) return;
       try {
-        await api.admin.banUser(user.id, params);
+        await state.adminApi.banUser(user.id, params);
         await refreshData();
         toast(`${user.username} letiltva.`, { tone: 'warning', title: 'Letiltás' });
       } catch (error) {
@@ -614,7 +667,7 @@ export function mount(root, ctx) {
       const params = await openAdvancedModal('kick', user);
       if (!params) return;
       try {
-        await api.admin.kickUser(user.id, params);
+        await state.adminApi.kickUser(user.id, params);
         await refreshData();
         toast(`${user.username} eltávolítva a szerverről.`, { tone: 'success', title: 'Kirúgás' });
       } catch (error) {
@@ -634,7 +687,7 @@ export function mount(root, ctx) {
         });
         if (!confirmed) return;
         try {
-          await api.admin.unmuteUser(user.id, ['account', 'hwid', 'ip']);
+          await state.adminApi.unmuteUser(user.id, ['account', 'hwid', 'ip']);
           await refreshData();
           toast(`${user.username} némítása feloldva.`, { tone: 'success', title: 'Némítás' });
         } catch (error) {
@@ -645,7 +698,7 @@ export function mount(root, ctx) {
       const params = await openAdvancedModal('mute', user);
       if (!params) return;
       try {
-        await api.admin.muteUser(user.id, params);
+        await state.adminApi.muteUser(user.id, params);
         await refreshData();
         toast(`${user.username} némítva.`, { tone: 'success', title: 'Némítás' });
       } catch (error) {
@@ -659,7 +712,7 @@ export function mount(root, ctx) {
       const params = await openAdvancedModal('warn', user);
       if (!params) return;
       try {
-        await api.admin.warnUser(user.id, params);
+        await state.adminApi.warnUser(user.id, params);
         await refreshData();
         toast(`${user.username} figyelmeztetve.`, { tone: 'info', title: 'Figyelmeztetés' });
       } catch (error) {
@@ -678,7 +731,7 @@ export function mount(root, ctx) {
       });
       if (!confirmed) return;
       try {
-        await api.admin.deleteUser(user.id);
+        await state.adminApi.deleteUser(user.id);
         await refreshData();
         toast(`${user.username} fiókja törölve.`, { tone: 'success', title: 'Fiók törölve' });
       } catch (error) {
@@ -696,10 +749,10 @@ export function mount(root, ctx) {
       if (!hasPermission(state.effectiveRole, 'skins.approve')) return;
       const decision = action === 'skin-approve' ? 'approved' : 'rejected';
       try {
-        state.queue = await api.admin.reviewSkin(button.dataset.skinId, decision);
-        state.summary = await api.admin.summary();
-        state.audit = await api.admin.audit();
-        state.blacklist = await api.admin.blacklist();
+        state.queue = await state.adminApi.reviewSkin(button.dataset.skinId, decision);
+        state.summary = await state.adminApi.summary();
+        state.audit = await state.adminApi.audit();
+        state.blacklist = await state.adminApi.blacklist();
         rerenderContent();
         toast(decision === 'approved' ? 'Skin jóváhagyva (auto-elfogadva a jövőben).' : 'Skin elutasítva (minden játékosról lekerült).', {
           tone: decision === 'approved' ? 'success' : 'info',
@@ -714,8 +767,8 @@ export function mount(root, ctx) {
     if (action === 'blacklist-remove') {
       if (!hasPermission(state.effectiveRole, 'skins.approve')) return;
       try {
-        await api.admin.removeFromBlacklist(button.dataset.hash);
-        state.blacklist = await api.admin.blacklist();
+        await state.adminApi.removeFromBlacklist(button.dataset.hash);
+        state.blacklist = await state.adminApi.blacklist();
         rerenderContent();
         toast('A skin visszavonva a tiltólistáról.', { tone: 'success', title: 'Blacklist' });
       } catch (error) {
@@ -736,7 +789,7 @@ export function mount(root, ctx) {
       });
       if (!confirmed) return;
       try {
-        const result = await api.admin.resetPassword(user.id);
+        const result = await state.adminApi.resetPassword(user.id);
         await refreshData();
         // Show the temp password once.
         await confirmDialog({
@@ -776,7 +829,7 @@ export function mount(root, ctx) {
     }
 
     try {
-      await api.admin.setRole(user.id, nextRole);
+      await state.adminApi.setRole(user.id, nextRole);
       await refreshData();
       toast(`${user.username} új rangja: ${ROLES[nextRole].label}.`, { tone: 'success', title: 'Rang módosítva' });
     } catch (error) {
@@ -792,6 +845,24 @@ export function mount(root, ctx) {
   };
 
   initSkinViewers();
+
+  const tokenInput = root.querySelector('#admin-token-input');
+  const tokenSetBtn = root.querySelector('#admin-token-set');
+  const tokenClearBtn = root.querySelector('#admin-token-clear');
+  if (tokenSetBtn) {
+    tokenSetBtn.addEventListener('click', () => {
+      const val = (tokenInput && tokenInput.value || '').trim();
+      if (val) storage.set('adminToken', val);
+      else storage.remove('adminToken');
+      ctx.navigate('/admin');
+    });
+  }
+  if (tokenClearBtn) {
+    tokenClearBtn.addEventListener('click', () => {
+      storage.remove('adminToken');
+      ctx.navigate('/admin');
+    });
+  }
 
   root.addEventListener('click', onClick);
   root.addEventListener('change', onChange);

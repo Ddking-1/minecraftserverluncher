@@ -872,3 +872,10 @@ Owner: hostile-tester review of F2, F3, F5, F6, F7, F10.
 - Added warn action button and unmute/unban flows in the SPA admin view.
 - Extended the mock data layer with a bans collection and advanced action methods.
 - Improved table header accessibility (scope="col") and modal ARIA attributes.
+
+## 2026-11-20 - SPA ADMIN REAL BACKEND WIRING & IP/HWID BAN PREVIEW
+
+- Wired the SPA admin panel to the real /api/admin/* endpoints using an X-Admin-Token stored in localStorage, with a token bar to set/clear it.
+- Added admin-real.js adapter mirroring the mock api.admin surface (users, summary, audit from bans, ban/unban/kick/mute/warn/unmute, delete).
+- Advanced ban modal now fetches user details and shows device-HWID count and per-IP account counts for the last 30 days.
+- Real-mode smoke verified: ban request with admin token updates the audit list; no console errors.
