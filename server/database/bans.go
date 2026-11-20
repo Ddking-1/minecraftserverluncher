@@ -170,11 +170,16 @@ func (db *DB) ActiveBansFor(banType, target string) ([]BanRecord, error) {
 		var bt, scope, tgt, reason string
 		var acc sql.NullInt64
 		var dur int
-		var expires, created string
+		var expires sql.NullString
+		var created string
 		if err := rows.Scan(&id, &bt, &scope, &tgt, &acc, &reason, &dur, &expires, &created); err != nil {
 			return nil, err
 		}
-		r := parseBanRow(id, bt, scope, tgt, acc, reason, dur, expires, created)
+		expiresStr := ""
+		if expires.Valid {
+			expiresStr = expires.String
+		}
+		r := parseBanRow(id, bt, scope, tgt, acc, reason, dur, expiresStr, created)
 		if r.IsActive() {
 			out = append(out, r)
 		}
@@ -253,11 +258,16 @@ func (db *DB) ListBans(limit int) ([]BanRecord, error) {
 		var bt, scope, tgt, reason string
 		var acc sql.NullInt64
 		var dur int
-		var expires, created string
+		var expires sql.NullString
+		var created string
 		if err := rows.Scan(&id, &bt, &scope, &tgt, &acc, &reason, &dur, &expires, &created); err != nil {
 			return nil, err
 		}
-		out = append(out, parseBanRow(id, bt, scope, tgt, acc, reason, dur, expires, created))
+		expiresStr := ""
+		if expires.Valid {
+			expiresStr = expires.String
+		}
+		out = append(out, parseBanRow(id, bt, scope, tgt, acc, reason, dur, expiresStr, created))
 	}
 	return out, rows.Err()
 }

@@ -94,7 +94,7 @@
     <div class="modal" onclick="event.stopPropagation()">
       <h3>Ban user <span id="banUserName"></span></h3>
       <div class="row"><label>Duration (minutes, 0=permanent)</label><input type="number" id="banDuration" value="0" min="0"></div>
-      <div class="row"><label>Reason (shown to player)</label><input type="text" id="banReason" placeholder="reason"></div>
+      <div class="row"><label>Reason (shown to player)</label><input type="text" id="banReason" placeholder="reason" maxlength="500"></div>
       <div class="row"><label>Scope</label>
         <select id="banScope">
           <option value="mc">Minecraft only</option>
@@ -179,18 +179,25 @@ function closeBanModal(e){ if(e && e.target!==e.currentTarget) return; document.
 
 async function confirmBan(){
   const targets=[...document.querySelectorAll('#banModal input[type=checkbox]:checked')].map(c=>c.value);
+  if(targets.length===0){ status('select at least one ban target'); return; }
+  const duration=parseInt(document.getElementById('banDuration').value||'0',10);
+  if(!Number.isFinite(duration) || duration<0){ status('duration must be 0 or greater'); return; }
+  const reason=document.getElementById('banReason').value;
+  if(reason.length>500){ status('reason must be 500 characters or fewer'); return; }
   const body={
-    duration_minutes: parseInt(document.getElementById('banDuration').value||'0',10),
-    reason: document.getElementById('banReason').value,
+    duration_minutes: duration,
+    reason: reason,
     scope: document.getElementById('banScope').value,
     targets: targets,
     lookback_days: 30,
   };
   const res=await fetch('/api/admin/users/'+banTargetId+'/ban',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},authHeaders()),body:JSON.stringify(body)});
   const data=await res.json().catch(()=>({}));
-  status('ban: '+res.status+' '+JSON.stringify(data.counts||{}));
+  if(!res.ok){ status('ban failed: '+res.status+' '+(data.error||'')); return; }
+  status('ban: '+res.status+' '+JSON.stringify(data.counts||{})+' (affected IPs: '+(data.affected_ip_count||0)+')');
   closeBanModal();
   loadUsers();
+  loadBans();
 }
 
 async function unbanUser(id){

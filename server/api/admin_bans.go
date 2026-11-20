@@ -97,7 +97,9 @@ func (s *Server) handleAdminBanUser(w http.ResponseWriter, r *http.Request) {
 			for _, d := range devs {
 				aid := id
 				_, _ = s.db.CreateBan("hwid", req.Scope, d.DeviceID, &aid, reason, req.DurationMinutes)
-				_ = s.db.BanHWID(d.DeviceID)
+				if req.Scope == "platform" || req.Scope == "both" {
+					_ = s.db.BanHWID(d.DeviceID)
+				}
 				n++
 			}
 			if req.Scope == "platform" || req.Scope == "both" {
@@ -345,12 +347,12 @@ func (s *Server) handleAdminDeleteBan(w http.ResponseWriter, r *http.Request) {
 // accountHasMCBan reports whether an account is blocked from Minecraft by an
 // account, HWID or IP ban with mc/both scope.
 func (s *Server) accountHasMCBan(accountID int64) bool {
-	if banned, _, scope := s.db.IsAccountBanned(accountID); banned && (scope == "mc" || scope == "both") {
+	if banned, _, scope := s.db.IsAccountBanned(accountID); banned && (scope == "mc" || scope == "platform" || scope == "both") {
 		return true
 	}
 	devs, _ := s.db.DevicesByAccountSince(accountID, time.Now().UTC().AddDate(0, 0, -3650))
 	for _, d := range devs {
-		if banned, _, scope := s.db.IsHWIDBannedNew(d.DeviceID); banned && (scope == "mc" || scope == "both") {
+		if banned, _, scope := s.db.IsHWIDBannedNew(d.DeviceID); banned && (scope == "mc" || scope == "platform" || scope == "both") {
 			return true
 		}
 		if legacy, _ := s.db.IsHWIDBanned(d.DeviceID); legacy {
@@ -358,7 +360,7 @@ func (s *Server) accountHasMCBan(accountID int64) bool {
 		}
 	}
 	for _, ip := range distinctIPsForAccount(s.db, accountID, 3650) {
-		if banned, _, scope := s.db.IsIPBanned(ip); banned && (scope == "mc" || scope == "both") {
+		if banned, _, scope := s.db.IsIPBanned(ip); banned && (scope == "mc" || scope == "platform" || scope == "both") {
 			return true
 		}
 	}
