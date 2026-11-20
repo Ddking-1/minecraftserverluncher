@@ -211,8 +211,8 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 			Path:     "/",
 			HttpOnly: true,
 			Secure:   r.TLS != nil,
-					SameSite: http.SameSiteLaxMode,
-				Expires:  time.Now().Add(time.Duration(pair.ExpiresIn) * time.Second),
+			SameSite: http.SameSiteLaxMode,
+			Expires:  time.Now().Add(time.Duration(pair.ExpiresIn) * time.Second),
 			Value:    pair.AccessToken,
 		}
 		http.SetCookie(w, sessionCookie)
@@ -299,5 +299,3 @@ func (s *Server) handleStartServer(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "server started"})
 }
-
-

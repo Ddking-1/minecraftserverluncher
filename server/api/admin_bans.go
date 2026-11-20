@@ -145,11 +145,11 @@ func (s *Server) handleAdminBanUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{
-		"status":              "banned",
-		"account":             acc.Username,
-		"counts":              counts,
+		"status":               "banned",
+		"account":              acc.Username,
+		"counts":               counts,
 		"affected_ip_accounts": dedup,
-		"affected_ip_count":   len(dedup),
+		"affected_ip_count":    len(dedup),
 	})
 }
 
@@ -227,10 +227,10 @@ func (s *Server) handleAdminUserDetails(w http.ResponseWriter, r *http.Request) 
 	devOut := make([]map[string]any, 0, len(devs))
 	for _, d := range devs {
 		devOut = append(devOut, map[string]any{
-			"id":         d.ID,
-			"device_id":  d.DeviceID,
-			"name":       d.DeviceName,
-			"last_seen":  d.LastSeen.UTC().Format(time.RFC3339),
+			"id":        d.ID,
+			"device_id": d.DeviceID,
+			"name":      d.DeviceName,
+			"last_seen": d.LastSeen.UTC().Format(time.RFC3339),
 		})
 	}
 	ips := distinctIPsForAccount(s.db, id, 30)
@@ -251,9 +251,9 @@ func (s *Server) handleAdminUserDetails(w http.ResponseWriter, r *http.Request) 
 	}
 	mcBanned, _ := s.db.IsMinecraftBanned(id)
 	writeJSON(w, http.StatusOK, map[string]any{
-		"id":        acc.ID,
-		"username":  acc.Username,
-		"created_at": acc.CreatedAt.UTC().Format(time.RFC3339),
+		"id":               acc.ID,
+		"username":         acc.Username,
+		"created_at":       acc.CreatedAt.UTC().Format(time.RFC3339),
 		"minecraft_banned": mcBanned,
 		"devices_last_30d": devOut,
 		"ips_last_30d":     ipOut,

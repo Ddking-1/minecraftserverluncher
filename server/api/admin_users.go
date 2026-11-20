@@ -76,6 +76,7 @@ func (s *Server) handleAdminDeleteUser(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
 }
+
 // ---------------------------------------------------------------------------
 // Invite allowlist management (beta registration)
 // ---------------------------------------------------------------------------

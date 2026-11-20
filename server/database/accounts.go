@@ -64,13 +64,13 @@ type Account struct {
 
 // Device is a client device associated with an account.
 type Device struct {
-	ID        int64
-	AccountID int64
-	DeviceID  string // client-generated stable device identifier
+	ID         int64
+	AccountID  int64
+	DeviceID   string // client-generated stable device identifier
 	DeviceName string
-	PublicKey string // optional registered device key (reserved)
-	CreatedAt time.Time
-	LastSeen  time.Time
+	PublicKey  string // optional registered device key (reserved)
+	CreatedAt  time.Time
+	LastSeen   time.Time
 }
 
 // Session is a login session bound to an account and (optionally) a device.
@@ -178,7 +178,7 @@ func (db *DB) Ping() error { return db.sql.Ping() }
 
 // SQL returns the underlying database handle for advanced operations such as
 // connection pool tuning. The wrapper still owns migration and model methods.
-func (db *DB) SQL() *sql.DB { return db.sql }	// QueryContext executes a query with the request context.
+func (db *DB) SQL() *sql.DB { return db.sql } // QueryContext executes a query with the request context.
 func (db *DB) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
 	return db.sql.QueryContext(ctx, query, args...)
 }
@@ -191,7 +191,6 @@ func (db *DB) ExecContext(ctx context.Context, query string, args ...any) (sql.R
 // pingContextContext is unused but present to satisfy the context import
 // until it is needed by a real context-aware helper.
 var _ = func() { _ = context.Background() }
-
 
 // migrate applies the schema idempotently.
 func (db *DB) migrate() error {
@@ -1125,7 +1124,6 @@ func (db *DB) RemoveAccountRole(accountID, roleID int64) error {
 	}
 	return nil
 }
-
 
 // AccountRoles returns every role assigned to an account, ordered by name.
 func (db *DB) AccountRoles(accountID int64) ([]Role, error) {
