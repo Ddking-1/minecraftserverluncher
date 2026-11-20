@@ -355,3 +355,6 @@ Batch (2026-11-17): launcher GUI features F2/F3/F5/F6/F7/F10 implemented and ver
   user status fields, auth fixes, improved admin UI.
 
 - Advanced moderation: kick, mute, warn and unmute endpoints now mirror advanced ban controls.
+
+## 2026-11-20 - SPA admin advanced actions
+- Ported advanced ban/kick/mute/warn modal into SPA admin view.

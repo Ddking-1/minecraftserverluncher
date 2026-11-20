@@ -865,3 +865,10 @@ Owner: hostile-tester review of F2, F3, F5, F6, F7, F10.
 - Kick revokes sessions for platform/both scopes; mute/warn are recorded and queryable.
 - Updated legacy admin UI with Kick, Mute, Warn, Unmute actions and a reusable action modal.
 - Added accessibility improvements (labels, dialog role, escape handling).
+
+## 2026-11-20 - SPA ADMIN ADVANCED ACTIONS & ACCESSIBILITY
+
+- Ported the advanced ban/kick/mute/warn modal (duration, reason, scope, account/HWID/IP targets) into the SPA admin view.
+- Added warn action button and unmute/unban flows in the SPA admin view.
+- Extended the mock data layer with a bans collection and advanced action methods.
+- Improved table header accessibility (scope="col") and modal ARIA attributes.

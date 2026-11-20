@@ -350,44 +350,117 @@ export const api = {
       return this.listUsers();
     },
 
-    async setBanned(userId, banned) {
+    async banUser(userId, opts = {}) {
       await sleep(140);
       const db = loadDb();
       const user = mustFindUser(db, userId);
-      user.status = banned ? 'banned' : 'active';
-      user.online = banned ? false : user.online;
-      if (banned) user.banReason = 'Admin által eltiltva';
-      else delete user.banReason;
-      pushAudit(
-        db,
-        currentActor(db),
-        'players.ban',
-        user.username,
-        banned ? 'Fiók letiltva' : 'Tiltás feloldva',
-      );
+      const duration = Number(opts.durationMinutes) || 0;
+      const reason = String(opts.reason || '').trim() || 'Admin által eltiltva';
+      const scope = opts.scope || 'both';
+      const targets = Array.isArray(opts.targets) && opts.targets.length ? opts.targets : ['account'];
+      const now = new Date();
+      const expires = duration > 0 ? new Date(now.getTime() + duration * 60000).toISOString() : null;
+      db.bans = Array.isArray(db.bans) ? db.bans : [];
+      if (targets.includes('account')) {
+        user.status = 'banned';
+        user.online = false;
+        user.banReason = reason;
+        db.bans.push({ id: `bn-${Date.now().toString(36)}-a`, type: 'ban', scope, target: String(user.id), targetKind: 'account', reason, durationMinutes: duration, expiresAt: expires, createdAt: now.toISOString(), accountId: user.id, active: true });
+      }
+      if (targets.includes('hwid')) {
+        db.bans.push({ id: `bn-${Date.now().toString(36)}-h`, type: 'ban', scope, target: `hwid:${user.id}`, targetKind: 'hwid', reason, durationMinutes: duration, expiresAt: expires, createdAt: now.toISOString(), accountId: user.id, active: true });
+      }
+      if (targets.includes('ip')) {
+        db.bans.push({ id: `bn-${Date.now().toString(36)}-i`, type: 'ban', scope, target: `ip:${user.id}`, targetKind: 'ip', reason, durationMinutes: duration, expiresAt: expires, createdAt: now.toISOString(), accountId: user.id, active: true });
+      }
+      pushAudit(db, currentActor(db), 'players.ban', user.username, `${reason} (${scope}, ${targets.join(',')})`);
       saveDb(db);
       return this.listUsers();
     },
 
-    async setMuted(userId, muted) {
+    async unbanUser(userId, targets) {
       await sleep(120);
       const db = loadDb();
       const user = mustFindUser(db, userId);
-      user.muted = Boolean(muted);
-      pushAudit(db, currentActor(db), 'players.mute', user.username, muted ? 'Némítás bekapcsolva' : 'Némítás feloldva');
+      const t = Array.isArray(targets) && targets.length ? targets : ['account', 'hwid', 'ip'];
+      if (t.includes('account')) {
+        user.status = 'active';
+        delete user.banReason;
+      }
+      db.bans = (db.bans || []).filter((b) => !(b.accountId === user.id && (b.targetKind === 'account' ? t.includes('account') : b.targetKind === 'hwid' ? t.includes('hwid') : t.includes('ip'))));
+      pushAudit(db, currentActor(db), 'players.ban', user.username, 'Tiltás feloldva');
       saveDb(db);
       return this.listUsers();
     },
 
-    async kickUser(userId) {
+    async kickUser(userId, opts = {}) {
       await sleep(120);
       const db = loadDb();
       const user = mustFindUser(db, userId);
       if (!user.online) throw new Error('A játékos nincs online.');
+      const reason = String(opts.reason || '').trim() || 'Kirúgva a szerverről';
+      const scope = opts.scope || 'both';
+      const targets = Array.isArray(opts.targets) && opts.targets.length ? opts.targets : ['account'];
       user.online = false;
-      pushAudit(db, currentActor(db), 'players.kick', user.username, 'Játékos kirúgva a szerverről');
+      db.bans = Array.isArray(db.bans) ? db.bans : [];
+      db.bans.push({ id: `kc-${Date.now().toString(36)}`, type: 'kick', scope, target: String(user.id), targetKind: 'account', reason, durationMinutes: 0, expiresAt: null, createdAt: new Date().toISOString(), accountId: user.id, active: false });
+      pushAudit(db, currentActor(db), 'players.kick', user.username, `${reason} (${scope}, ${targets.join(',')})`);
       saveDb(db);
       return this.listUsers();
+    },
+
+    async muteUser(userId, opts = {}) {
+      await sleep(120);
+      const db = loadDb();
+      const user = mustFindUser(db, userId);
+      const duration = Number(opts.durationMinutes) || 0;
+      const reason = String(opts.reason || '').trim() || 'Némítás bekapcsolva';
+      const scope = opts.scope || 'both';
+      const targets = Array.isArray(opts.targets) && opts.targets.length ? opts.targets : ['account'];
+      const now = new Date();
+      const expires = duration > 0 ? new Date(now.getTime() + duration * 60000).toISOString() : null;
+      user.muted = true;
+      db.bans = Array.isArray(db.bans) ? db.bans : [];
+      db.bans.push({ id: `mu-${Date.now().toString(36)}`, type: 'mute', scope, target: String(user.id), targetKind: 'account', reason, durationMinutes: duration, expiresAt: expires, createdAt: now.toISOString(), accountId: user.id, active: true });
+      pushAudit(db, currentActor(db), 'players.mute', user.username, `${reason} (${scope}, ${targets.join(',')})`);
+      saveDb(db);
+      return this.listUsers();
+    },
+
+    async unmuteUser(userId, targets) {
+      await sleep(120);
+      const db = loadDb();
+      const user = mustFindUser(db, userId);
+      user.muted = false;
+      const t = Array.isArray(targets) && targets.length ? targets : ['account', 'hwid', 'ip'];
+      db.bans = (db.bans || []).filter((b) => !(b.accountId === user.id && b.type === 'mute' && (b.targetKind === 'account' ? t.includes('account') : b.targetKind === 'hwid' ? t.includes('hwid') : t.includes('ip'))));
+      pushAudit(db, currentActor(db), 'players.mute', user.username, 'Némítás feloldva');
+      saveDb(db);
+      return this.listUsers();
+    },
+
+    async warnUser(userId, opts = {}) {
+      await sleep(120);
+      const db = loadDb();
+      const user = mustFindUser(db, userId);
+      const reason = String(opts.reason || '').trim() || 'Figyelmeztetés';
+      const scope = opts.scope || 'both';
+      const targets = Array.isArray(opts.targets) && opts.targets.length ? opts.targets : ['account'];
+      db.bans = Array.isArray(db.bans) ? db.bans : [];
+      db.bans.push({ id: `wn-${Date.now().toString(36)}`, type: 'warn', scope, target: String(user.id), targetKind: 'account', reason, durationMinutes: Number(opts.durationMinutes) || 0, expiresAt: null, createdAt: new Date().toISOString(), accountId: user.id, active: false });
+      pushAudit(db, currentActor(db), 'players.warn', user.username, `${reason} (${scope}, ${targets.join(',')})`);
+      saveDb(db);
+      return this.listUsers();
+    },
+
+    // Backwards-compatible aliases used by older callers.
+    async setBanned(userId, banned) {
+      if (banned) return this.banUser(userId, { targets: ['account'] });
+      return this.unbanUser(userId, ['account']);
+    },
+    async setMuted(userId, muted) {
+      if (muted) return this.muteUser(userId, { targets: ['account'] });
+      return this.unmuteUser(userId, ['account']);
     },
 
     async deleteUser(userId) {

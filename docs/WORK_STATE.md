@@ -950,3 +950,10 @@ Done:
 
 Branch:
 feat/advanced-admin-panel
+
+## 2026-11-20 - SPA ADMIN ADVANCED ACTIONS
+
+- Ported advanced ban/kick/mute/warn modal into SPA admin view (duration, reason, scope, targets).
+- Added warn action and unmute/unban flows.
+- Extended mock API with bans collection and advanced methods.
+- Improved a11y (table scope, modal ARIA).

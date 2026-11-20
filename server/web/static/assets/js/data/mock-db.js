@@ -201,6 +201,7 @@ export function createSeedDb() {
     ],
     skinWhitelist: [],
     skinBlacklist: [],
+    bans: [],
     audit: [
       {
         id: 'au-1',
@@ -255,6 +256,7 @@ export function loadDb() {
     stored.users.forEach((u) => { if (u.mustChangePassword === undefined) u.mustChangePassword = false; });
     if (!Array.isArray(stored.skinWhitelist)) stored.skinWhitelist = [];
     if (!Array.isArray(stored.skinBlacklist)) stored.skinBlacklist = [];
+    if (!Array.isArray(stored.bans)) stored.bans = [];
     stored.skinsQueue.forEach((s) => { if (!s.skinHash) s.skinHash = s.id; });
     cached = stored;
     return cached;

@@ -29,6 +29,7 @@ const ACTION_LABEL = {
   'players.ban': 'Játékos letiltása',
   'players.kick': 'Játékos kirúgása',
   'players.mute': 'Némítás',
+  'players.warn': 'Figyelmeztetés',
   'roles.assign': 'Rang kiosztás',
   'accounts.delete': 'Fiók törlése',
   'skins.approve': 'Skin jóváhagyás',
@@ -165,6 +166,7 @@ function userRowHtml(user, effectiveRole, actualUser) {
         ${actionButton({ action: 'ban', user, effectiveRole, actualUser, permission: 'players.ban', iconName: 'ban', label: banned ? 'Letiltás feloldása' : 'Játékos letiltása', tone: banned ? 'is-warning' : 'is-danger' })}
         ${actionButton({ action: 'kick', user, effectiveRole, actualUser, permission: 'players.kick', iconName: 'logout', label: 'Kirúgás a szerverről', forceDisabled: !user.online, forceTitle: 'A játékos nincs online' })}
         ${actionButton({ action: 'mute', user, effectiveRole, actualUser, permission: 'players.mute', iconName: 'volume-x', label: user.muted ? 'Némítás feloldása' : 'Némítás', tone: user.muted ? 'is-active' : '' })}
+        ${actionButton({ action: 'warn', user, effectiveRole, actualUser, permission: 'players.mute', iconName: 'alert', label: 'Figyelmeztetés', tone: '' })}
         ${actionButton({ action: 'delete', user, effectiveRole, actualUser, permission: 'accounts.delete', iconName: 'trash', label: 'Fiók végleges törlése', tone: 'is-danger' })}
         ${actionButton({ action: 'password-reset', user, effectiveRole, actualUser, permission: 'accounts.view', iconName: 'key', label: 'Jelszó visszaállítása', tone: '' })}
       </div>
@@ -197,7 +199,7 @@ function usersHtml(state, actualUser) {
     <div class="table-wrap">
       <table class="data-table admin-table">
         <thead>
-          <tr><th>Játékos</th><th>Rang</th><th>Állapot</th><th class="hide-sm">Utolsó belépés</th><th class="actions-col">Műveletek</th></tr>
+          <tr><th scope="col">Játékos</th><th scope="col">Rang</th><th scope="col">Állapot</th><th scope="col" class="hide-sm">Utolsó belépés</th><th scope="col" class="actions-col">Műveletek</th></tr>
         </thead>
         <tbody>
           ${state.users.map((user) => userRowHtml(user, state.effectiveRole, actualUser)).join('')}
@@ -484,6 +486,86 @@ export function mount(root, ctx) {
 
   const findUser = (id) => state.users.find((user) => user.id === id);
 
+  const openAdvancedModal = (action, user) => {
+    return new Promise((resolve) => {
+      const titleMap = { ban: 'Letiltás', kick: 'Kirúgás', mute: 'Némítás', warn: 'Figyelmeztetés' };
+      const tone = action === 'ban' || action === 'kick' ? 'danger' : 'primary';
+      const overlay = document.createElement('div');
+      overlay.className = 'modal-backdrop';
+      overlay.setAttribute('role', 'dialog');
+      overlay.setAttribute('aria-modal', 'true');
+      overlay.setAttribute('aria-labelledby', 'adv-modal-title');
+      overlay.innerHTML = `
+        <div class="modal" onclick="event.stopPropagation()">
+          <h2 id="adv-modal-title">${esc(titleMap[action] || action)} · ${esc(user.username)}</h2>
+          <div class="form-row"><label for="adv-duration">Időtartam (perc, 0 = végleges)</label><input type="number" id="adv-duration" value="0" min="0"></div>
+          <div class="form-row"><label for="adv-reason">Indok (a játékosnak megjelenik)</label><input type="text" id="adv-reason" maxlength="500" placeholder="indok"></div>
+          <div class="form-row"><label for="adv-scope">Hatókör</label>
+            <select id="adv-scope">
+              <option value="mc">Csak Minecraft</option>
+              <option value="platform">Teljes platform</option>
+              <option value="both" selected>Mindkettő</option>
+            </select></div>
+          <div class="form-row"><span>Célpontok</span>
+            <label><input type="checkbox" value="account" checked> Fiók</label>
+            <label><input type="checkbox" value="hwid"> Minden HWID (30 nap)</label>
+            <label><input type="checkbox" value="ip"> IP-k (30 nap)</label>
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn btn-ghost" data-adv-cancel>Mégse</button>
+            <button type="button" class="btn ${tone === 'danger' ? 'btn-danger' : 'btn-primary'}" data-adv-confirm>${esc(titleMap[action] || action)}</button>
+          </div>
+        </div>`;
+      const previousFocus = document.activeElement;
+      const cancelBtn = overlay.querySelector('[data-adv-cancel]');
+      const confirmBtn = overlay.querySelector('[data-adv-confirm]');
+      const close = (result) => {
+        if (!overlay.isConnected) return;
+        document.removeEventListener('keydown', onKeyDown);
+        overlay.remove();
+        if (previousFocus && typeof previousFocus.focus === 'function') previousFocus.focus();
+        resolve(result);
+      };
+      const onKeyDown = (event) => {
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          close(null);
+        }
+      };
+      cancelBtn.addEventListener('click', () => close(null));
+      confirmBtn.addEventListener('click', () => {
+        const targets = [...overlay.querySelectorAll('input[type=checkbox]:checked')].map((c) => c.value);
+        if (targets.length === 0) {
+          toast('Válassz legalább egy célpontot.', { tone: 'warning' });
+          return;
+        }
+        const duration = parseInt(overlay.querySelector('#adv-duration').value || '0', 10);
+        if (!Number.isFinite(duration) || duration < 0) {
+          toast('Az időtartam 0 vagy nagyobb legyen.', { tone: 'warning' });
+          return;
+        }
+        const reason = overlay.querySelector('#adv-reason').value;
+        if (reason.length > 500) {
+          toast('Az indok max 500 karakter.', { tone: 'warning' });
+          return;
+        }
+        close({
+          durationMinutes: duration,
+          reason,
+          scope: overlay.querySelector('#adv-scope').value,
+          targets,
+          lookbackDays: 30,
+        });
+      });
+      overlay.addEventListener('click', (event) => {
+        if (event.target === overlay) close(null);
+      });
+      document.addEventListener('keydown', onKeyDown);
+      document.body.appendChild(overlay);
+      confirmBtn.focus();
+    });
+  };
+
   const handleUserAction = async (action, button) => {
     const user = findUser(button.dataset.userId);
     if (!user) return;
@@ -494,25 +576,31 @@ export function mount(root, ctx) {
 
     if (action === 'ban') {
       if (!hasPermission(state.effectiveRole, 'players.ban')) return;
-      const banned = user.status !== 'banned';
-      const confirmed = await confirmDialog({
-        title: banned ? 'Fiók letiltása' : 'Tiltás feloldása',
-        message: banned
-          ? `${user.username} fiókja letiltásra kerül. A játékos a tiltás ideje alatt nem tud belépni.`
-          : `${user.username} tiltása feloldásra kerül, a fiók újra használható.`,
-        confirmLabel: banned ? 'Letiltás' : 'Feloldás',
-        tone: banned ? 'danger' : 'primary',
-      });
-      if (!confirmed) return;
-      try {
-        await api.admin.setBanned(user.id, banned);
-        await refreshData();
-        toast(banned ? `${user.username} letiltva.` : `${user.username} tiltása feloldva.`, {
-          tone: banned ? 'warning' : 'success',
-          title: 'Művelet végrehajtva',
+      if (user.status === 'banned') {
+        const confirmed = await confirmDialog({
+          title: 'Tiltás feloldása',
+          message: `${user.username} tiltása feloldásra kerül, a fiók újra használható.`,
+          confirmLabel: 'Feloldás',
+          tone: 'primary',
         });
+        if (!confirmed) return;
+        try {
+          await api.admin.unbanUser(user.id, ['account', 'hwid', 'ip']);
+          await refreshData();
+          toast(`${user.username} tiltása feloldva.`, { tone: 'success', title: 'Tiltás feloldva' });
+        } catch (error) {
+          toast(error.message || 'A feloldás nem sikerült.', { tone: 'error' });
+        }
+        return;
+      }
+      const params = await openAdvancedModal('ban', user);
+      if (!params) return;
+      try {
+        await api.admin.banUser(user.id, params);
+        await refreshData();
+        toast(`${user.username} letiltva.`, { tone: 'warning', title: 'Letiltás' });
       } catch (error) {
-        toast(error.message || 'A művelet nem sikerült.', { tone: 'error' });
+        toast(error.message || 'A letiltás nem sikerült.', { tone: 'error' });
       }
       return;
     }
@@ -523,8 +611,10 @@ export function mount(root, ctx) {
         toast('A játékos nincs online.', { tone: 'warning' });
         return;
       }
+      const params = await openAdvancedModal('kick', user);
+      if (!params) return;
       try {
-        await api.admin.kickUser(user.id);
+        await api.admin.kickUser(user.id, params);
         await refreshData();
         toast(`${user.username} eltávolítva a szerverről.`, { tone: 'success', title: 'Kirúgás' });
       } catch (error) {
@@ -535,15 +625,45 @@ export function mount(root, ctx) {
 
     if (action === 'mute') {
       if (!hasPermission(state.effectiveRole, 'players.mute')) return;
-      try {
-        await api.admin.setMuted(user.id, !user.muted);
-        await refreshData();
-        toast(user.muted ? `${user.username} némítása feloldva.` : `${user.username} némítva.`, {
-          tone: 'success',
-          title: 'Némítás',
+      if (user.muted) {
+        const confirmed = await confirmDialog({
+          title: 'Némítás feloldása',
+          message: `${user.username} némítása feloldásra kerül.`,
+          confirmLabel: 'Feloldás',
+          tone: 'primary',
         });
+        if (!confirmed) return;
+        try {
+          await api.admin.unmuteUser(user.id, ['account', 'hwid', 'ip']);
+          await refreshData();
+          toast(`${user.username} némítása feloldva.`, { tone: 'success', title: 'Némítás' });
+        } catch (error) {
+          toast(error.message || 'A feloldás nem sikerült.', { tone: 'error' });
+        }
+        return;
+      }
+      const params = await openAdvancedModal('mute', user);
+      if (!params) return;
+      try {
+        await api.admin.muteUser(user.id, params);
+        await refreshData();
+        toast(`${user.username} némítva.`, { tone: 'success', title: 'Némítás' });
       } catch (error) {
         toast(error.message || 'A némítás nem sikerült.', { tone: 'error' });
+      }
+      return;
+    }
+
+    if (action === 'warn') {
+      if (!hasPermission(state.effectiveRole, 'players.mute')) return;
+      const params = await openAdvancedModal('warn', user);
+      if (!params) return;
+      try {
+        await api.admin.warnUser(user.id, params);
+        await refreshData();
+        toast(`${user.username} figyelmeztetve.`, { tone: 'info', title: 'Figyelmeztetés' });
+      } catch (error) {
+        toast(error.message || 'A figyelmeztetés nem sikerült.', { tone: 'error' });
       }
       return;
     }
