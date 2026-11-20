@@ -925,3 +925,15 @@ Done:
 Next:
 - Run `cd server && go test ./...` in an environment with Go.
 - Verify end-to-end ban flows.
+
+## Active task update (2026-11-20) — ADVANCED ADMIN PANEL HARDENING
+
+Status:
+Second hardening pass completed; still no Go toolchain available for build/tests.
+
+Done:
+- Validation, session revocation, ban list/delete, proxy enforcement, auth fixes, UI improvements.
+
+Next:
+- Run `cd server && go test ./...` in Go-capable environment.
+- Manual end-to-end verification of bans/unbans and proxy auth.

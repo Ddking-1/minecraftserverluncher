@@ -45,12 +45,30 @@ func (s *Server) handleAdminBanUser(w http.ResponseWriter, r *http.Request) {
 	if len(req.Targets) == 0 {
 		req.Targets = []string{"account"}
 	}
+	for _, t := range req.Targets {
+		if t != "account" && t != "hwid" && t != "ip" {
+			writeError(w, http.StatusBadRequest, "invalid target")
+			return
+		}
+	}
+	if req.DurationMinutes < 0 {
+		writeError(w, http.StatusBadRequest, "invalid duration")
+		return
+	}
 	if req.LookbackDays <= 0 {
 		req.LookbackDays = 30
+	}
+	if req.LookbackDays > 365 {
+		writeError(w, http.StatusBadRequest, "invalid lookback_days")
+		return
 	}
 	reason := strings.TrimSpace(req.Reason)
 	if reason == "" {
 		reason = "banned by admin"
+	}
+	if len(reason) > 500 {
+		writeError(w, http.StatusBadRequest, "reason too long")
+		return
 	}
 	since := time.Now().UTC().AddDate(0, 0, -req.LookbackDays)
 
@@ -82,6 +100,9 @@ func (s *Server) handleAdminBanUser(w http.ResponseWriter, r *http.Request) {
 				_ = s.db.BanHWID(d.DeviceID)
 				n++
 			}
+			if req.Scope == "platform" || req.Scope == "both" {
+				_ = s.db.RevokeAllSessions(id)
+			}
 			counts["hwid"] = n
 		}
 	}
@@ -103,6 +124,11 @@ func (s *Server) handleAdminBanUser(w http.ResponseWriter, r *http.Request) {
 				// affected accounts
 				accs, _ := s.db.AccountsByIP(ip, req.LookbackDays)
 				affectedIPAccounts = append(affectedIPAccounts, accs...)
+			}
+			if req.Scope == "platform" || req.Scope == "both" {
+				for _, aid := range affectedIPAccounts {
+					_ = s.db.RevokeAllSessions(aid)
+				}
 			}
 			counts["ip"] = n
 		}
@@ -254,4 +280,87 @@ func (s *Server) handleAdminIPAccounts(w http.ResponseWriter, r *http.Request) {
 	}
 	n, _ := s.db.CountAccountsByIP(ip, 30)
 	writeJSON(w, http.StatusOK, map[string]any{"ip": ip, "accounts": out, "count": n})
+}
+
+func (s *Server) handleAdminListBans(w http.ResponseWriter, r *http.Request) {
+	if !s.adminAuthorized(w, r) {
+		return
+	}
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	if limit <= 0 {
+		limit = 200
+	}
+	bans, err := s.db.ListBans(limit)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+	out := make([]map[string]any, 0, len(bans))
+	for _, b := range bans {
+		item := map[string]any{
+			"id":               b.ID,
+			"type":             b.BanType,
+			"scope":            b.Scope,
+			"target":           b.Target,
+			"reason":           b.Reason,
+			"duration_minutes": b.DurationMinutes,
+			"expires_at":       b.ExpiresAt,
+			"created_at":       b.CreatedAt.UTC().Format(time.RFC3339),
+			"active":           b.IsActive(),
+		}
+		if b.AccountID != nil {
+			item["account_id"] = *b.AccountID
+		}
+		out = append(out, item)
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"bans": out, "total": len(out)})
+}
+
+func (s *Server) handleAdminDeleteBan(w http.ResponseWriter, r *http.Request) {
+	if !s.adminAuthorized(w, r) {
+		return
+	}
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil || id <= 0 {
+		writeError(w, http.StatusBadRequest, "invalid ban id")
+		return
+	}
+	// Find the ban to remove related legacy entries where applicable.
+	bans, _ := s.db.ListBans(10000)
+	for _, b := range bans {
+		if b.ID == id {
+			if b.BanType == "hwid" {
+				_ = s.db.UnbanHWID(b.Target)
+			}
+			break
+		}
+	}
+	if _, err := s.db.SQL().Exec(`DELETE FROM bans WHERE id = ?`, id); err != nil {
+		writeError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "unbanned"})
+}
+
+// accountHasMCBan reports whether an account is blocked from Minecraft by an
+// account, HWID or IP ban with mc/both scope.
+func (s *Server) accountHasMCBan(accountID int64) bool {
+	if banned, _, scope := s.db.IsAccountBanned(accountID); banned && (scope == "mc" || scope == "both") {
+		return true
+	}
+	devs, _ := s.db.DevicesByAccountSince(accountID, time.Now().UTC().AddDate(0, 0, -3650))
+	for _, d := range devs {
+		if banned, _, scope := s.db.IsHWIDBannedNew(d.DeviceID); banned && (scope == "mc" || scope == "both") {
+			return true
+		}
+		if legacy, _ := s.db.IsHWIDBanned(d.DeviceID); legacy {
+			return true
+		}
+	}
+	for _, ip := range distinctIPsForAccount(s.db, accountID, 3650) {
+		if banned, _, scope := s.db.IsIPBanned(ip); banned && (scope == "mc" || scope == "both") {
+			return true
+		}
+	}
+	return false
 }

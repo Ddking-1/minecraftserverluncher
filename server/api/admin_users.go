@@ -41,10 +41,16 @@ func (s *Server) handleAdminListUsers(w http.ResponseWriter, r *http.Request) {
 
 	users := make([]map[string]any, 0, len(accounts))
 	for _, acc := range accounts {
+		mcBanned, _ := s.db.IsMinecraftBanned(acc.ID)
+		approved, _ := s.db.IsAccountApproved(acc.ID)
+		banned, _, _ := s.db.IsAccountBanned(acc.ID)
 		users = append(users, map[string]any{
-			"id":         acc.ID,
-			"username":   acc.Username,
-			"created_at": acc.CreatedAt.UTC().Format(time.RFC3339),
+			"id":               acc.ID,
+			"username":         acc.Username,
+			"created_at":       acc.CreatedAt.UTC().Format(time.RFC3339),
+			"minecraft_banned": mcBanned,
+			"approved":         approved,
+			"banned":           banned,
 		})
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"users": users, "total": total})
@@ -331,6 +337,9 @@ func (s *Server) handleAdminGrantPermission(w http.ResponseWriter, r *http.Reque
 
 // handleAdminAccountApproval sets the approved flag for an account.
 func (s *Server) handleAdminAccountApproval(w http.ResponseWriter, r *http.Request) {
+	if !s.adminAuthorized(w, r) {
+		return
+	}
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil || id <= 0 {
 		writeError(w, http.StatusBadRequest, "invalid user id")
@@ -355,6 +364,9 @@ func (s *Server) handleAdminAccountApproval(w http.ResponseWriter, r *http.Reque
 
 // handleAdminSkinApproval sets the approval flag for a skin file id.
 func (s *Server) handleAdminSkinApproval(w http.ResponseWriter, r *http.Request) {
+	if !s.adminAuthorized(w, r) {
+		return
+	}
 	id := r.PathValue("id")
 	if id == "" {
 		writeError(w, http.StatusBadRequest, "invalid skin id")

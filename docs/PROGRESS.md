@@ -1489,3 +1489,13 @@ Checks:
   MC-scope bans block proxy joins.
 - Admin UI: ban modal (duration/reason/scope/targets), user details modal,
   unban/delete/details actions, invites management.
+
+### Advanced admin panel hardening (2026-11-20)
+
+- Added validation for ban targets, duration, reason length and lookback.
+- Ban now revokes sessions for platform/both scopes across affected IP accounts.
+- Added ban list and delete endpoints; exposed GET/DELETE /api/admin/bans.
+- Proxy authorization now honors account, HWID and IP MC-scope bans.
+- User list now includes banned/MC-banned/approved status.
+- Fixed missing admin authorization on account approval and skin approval handlers.
+- Improved admin UI: status column, bans/HWID panels, structured details, accessibility.

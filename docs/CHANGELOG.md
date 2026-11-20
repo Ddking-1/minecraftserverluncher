@@ -849,3 +849,11 @@ Owner: hostile-tester review of F2, F3, F5, F6, F7, F10.
 - Added duration/reason/scope/targeted ban support for accounts, HWIDs and IPs.
 - Added IP usage tracking and IP->accounts admin view.
 - Updated admin dashboard UI with ban modal and user details.
+
+### Advanced admin panel hardening (2026-11-20)
+
+- Hardened ban validation and session revocation.
+- Added ban list/delete endpoints.
+- Enforced MC-scope HWID/IP bans in proxy authorization.
+- Fixed authorization gaps on approval endpoints.
+- Improved admin UI usability and accessibility.

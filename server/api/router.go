@@ -205,6 +205,8 @@ func (s *Server) Handler() http.Handler {
 	admin.HandleFunc("POST /api/admin/users/{id}/unban", s.handleAdminUnbanUser)
 	admin.HandleFunc("GET /api/admin/users/{id}/details", s.handleAdminUserDetails)
 	admin.HandleFunc("GET /api/admin/ip-accounts", s.handleAdminIPAccounts)
+	admin.HandleFunc("GET /api/admin/bans", s.handleAdminListBans)
+	admin.HandleFunc("DELETE /api/admin/bans/{id}", s.handleAdminDeleteBan)
 	admin.HandleFunc("POST /api/admin/skins/{id}/approve", s.handleAdminSkinApproval)
 	admin.HandleFunc("GET /api/admin/tripwires", s.handleAdminTripwires)
 	admin.HandleFunc("GET /api/admin/invites", s.handleAdminListInvites)

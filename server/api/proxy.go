@@ -52,8 +52,8 @@ func (s *Server) handleProxyAuth(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "denied"})
 		return
 	}
-	// Advanced MC-scope bans.
-	if b, _, scope := s.db.IsAccountBanned(accountID); b && (scope == "mc" || scope == "both") {
+	// Advanced MC-scope bans (account, HWID and IP history).
+	if s.accountHasMCBan(accountID) {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "denied"})
 		return
 	}

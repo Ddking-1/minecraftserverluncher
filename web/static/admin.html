@@ -20,6 +20,11 @@
   .modal { background:#161b22; padding:20px; border-radius:10px; width:520px; max-width:95vw; border:1px solid #30363d; }
   .modal h3 { margin-top:0; }
   .small { font-size:12px; color:#8b949e; }
+  button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px solid #3fb950; outline-offset:2px; }
+  button { min-height:32px; }
+  .status-ok { color:#3fb950; }
+  .status-bad { color:#f85149; }
+  .modal { max-height:90vh; overflow:auto; }
 </style>
 </head>
 <body>
@@ -31,7 +36,7 @@
     <input type="text" id="bearer" placeholder="Bearer access token (optional)">
     <button onclick="setAuth()">Set Auth</button>
   </div>
-  <p id="status"></p>
+  <p id="status" role="status" aria-live="polite"></p>
 </div>
 
 <div id="appBox" class="hidden">
@@ -42,8 +47,20 @@
       <button onclick="loadUsers()">Refresh</button>
     </div>
     <table id="usersTable"><thead><tr>
-      <th>ID</th><th>Username</th><th>Created</th><th>Actions</th>
+      <th>ID</th><th>Username</th><th>Status</th><th>Created</th><th>Actions</th>
     </tr></thead><tbody></tbody></table>
+  </div>
+
+  <div class="card">
+    <h2>Bans</h2>
+    <div class="row"><button class="secondary" onclick="loadBans()">Refresh</button></div>
+    <table id="bansTable"><thead><tr><th>ID</th><th>Type</th><th>Scope</th><th>Target</th><th>Reason</th><th>Active</th><th></th></tr></thead><tbody></tbody></table>
+  </div>
+
+  <div class="card">
+    <h2>HWID bans</h2>
+    <div class="row"><input type="text" id="hwidValue" placeholder="device id"><button onclick="banHwid()">Ban</button><button class="secondary" onclick="loadHwidBans()">Refresh</button></div>
+    <table id="hwidTable"><thead><tr><th>Device ID</th><th></th></tr></thead><tbody></tbody></table>
   </div>
 
   <div class="card">
@@ -114,7 +131,7 @@
 let adminToken=''; let bearer=''; let banTargetId=null;
 
 function authHeaders(){const h={}; if(adminToken) h['X-Admin-Token']=adminToken; if(bearer) h['Authorization']='Bearer '+bearer; return h;}
-function setAuth(){ adminToken=document.getElementById('adminToken').value; bearer=document.getElementById('bearer').value; document.getElementById('loginBox').classList.add('hidden'); document.getElementById('appBox').classList.remove('hidden'); loadUsers(); loadTripwires(); loadInvites(); }
+function setAuth(){ adminToken=document.getElementById('adminToken').value; bearer=document.getElementById('bearer').value; document.getElementById('loginBox').classList.add('hidden'); document.getElementById('appBox').classList.remove('hidden'); loadUsers(); loadTripwires(); loadInvites(); loadBans(); loadHwidBans(); }
 function status(msg){ document.getElementById('status').textContent=msg; }
 
 async function loadUsers(){
@@ -127,6 +144,12 @@ async function loadUsers(){
     const tr=document.createElement('tr');
     const tdId=document.createElement('td'); tdId.textContent=u.id;
     const tdName=document.createElement('td'); tdName.textContent=u.username;
+    const tdStatus=document.createElement('td');
+    const badges=[];
+    if(u.banned) badges.push('Banned');
+    if(u.minecraft_banned) badges.push('MC banned');
+    if(u.approved===false) badges.push('Unapproved');
+    tdStatus.textContent=badges.length?badges.join(', '):'OK';
     const tdCreated=document.createElement('td'); tdCreated.textContent=u.created_at||'';
     const tdAct=document.createElement('td');
     const bDetails=document.createElement('button'); bDetails.textContent='Details'; bDetails.className='secondary'; bDetails.addEventListener('click',()=>openDetails(u.id));
@@ -134,7 +157,7 @@ async function loadUsers(){
     const bUnban=document.createElement('button'); bUnban.textContent='Unban'; bUnban.className='secondary'; bUnban.addEventListener('click',()=>unbanUser(u.id));
     const bDel=document.createElement('button'); bDel.textContent='Delete'; bDel.className='danger'; bDel.addEventListener('click',()=>deleteUser(u.id));
     tdAct.appendChild(bDetails); tdAct.appendChild(bBan); tdAct.appendChild(bUnban); tdAct.appendChild(bDel);
-    tr.appendChild(tdId); tr.appendChild(tdName); tr.appendChild(tdCreated); tr.appendChild(tdAct);
+    tr.appendChild(tdId); tr.appendChild(tdName); tr.appendChild(tdStatus); tr.appendChild(tdCreated); tr.appendChild(tdAct);
     tbody.appendChild(tr);
   }
   if(!res.ok) status('users: '+res.status);
@@ -181,15 +204,22 @@ async function openDetails(id){
   const d=await res.json().catch(()=>({}));
   const body=document.getElementById('detailsBody');
   body.innerHTML='';
-  const pre=document.createElement('pre'); pre.style.whiteSpace='pre-wrap'; pre.textContent=JSON.stringify(d,null,2);
-  body.appendChild(pre);
-  if(d.ips_last_30d){
-    for(const ip of d.ips_last_30d){
-      const btn=document.createElement('button'); btn.className='secondary'; btn.textContent='Accounts on '+ip.ip+' ('+ip.accounts_last_30d+')';
-      btn.addEventListener('click',()=>loadIPAccounts(ip.ip));
-      body.appendChild(btn);
-    }
+  const title=document.createElement('h4'); title.textContent=(d.username||'User')+' #'+(d.id||id); body.appendChild(title);
+  const meta=document.createElement('p'); meta.className='small'; meta.textContent='Created: '+(d.created_at||'')+' | MC banned: '+(d.minecraft_banned?'yes':'no'); body.appendChild(meta);
+  const devicesTitle=document.createElement('h5'); devicesTitle.textContent='Devices (last 30 days)'; body.appendChild(devicesTitle);
+  const devList=document.createElement('ul');
+  for(const dev of (d.devices_last_30d||[])){ devList.appendChild(Object.assign(document.createElement('li'),{textContent:dev.device_id+' ('+(dev.name||'')+') last seen '+dev.last_seen})); }
+  body.appendChild(devList);
+  const ipsTitle=document.createElement('h5'); ipsTitle.textContent='IPs (last 30 days)'; body.appendChild(ipsTitle);
+  for(const ip of (d.ips_last_30d||[])){
+    const btn=document.createElement('button'); btn.className='secondary'; btn.textContent=ip.ip+' ('+ip.accounts_last_30d+' accounts)';
+    btn.addEventListener('click',()=>loadIPAccounts(ip.ip));
+    body.appendChild(btn);
   }
+  const bansTitle=document.createElement('h5'); bansTitle.textContent='Bans'; body.appendChild(bansTitle);
+  const banList=document.createElement('ul');
+  for(const b of (d.bans||[])){ banList.appendChild(Object.assign(document.createElement('li'),{textContent:(b.type||'')+' / '+(b.scope||'')+' / '+(b.target||'')+' - '+(b.reason||'')})); }
+  body.appendChild(banList);
   document.getElementById('detailsModal').classList.remove('hidden');
 }
 function closeDetailsModal(e){ if(e && e.target!==e.currentTarget) return; document.getElementById('detailsModal').classList.add('hidden'); }
@@ -248,6 +278,38 @@ async function removeInvite(id){
   status('remove invite: '+res.status);
   loadInvites();
 }
+async function loadBans(){
+  const res=await fetch('/api/admin/bans',{headers:authHeaders()});
+  const data=await res.json().catch(()=>({}));
+  const tbody=document.querySelector('#bansTable tbody'); tbody.innerHTML='';
+  for(const b of (data.bans||[])){
+    const tr=document.createElement('tr');
+    for(const v of [b.id,b.type,b.scope,b.target,b.reason,b.active?'yes':'no']){const td=document.createElement('td'); td.textContent=(v==null?'':v); tr.appendChild(td);}
+    const td=document.createElement('td');
+    const btn=document.createElement('button'); btn.textContent='Unban'; btn.className='secondary'; btn.addEventListener('click',async()=>{await fetch('/api/admin/bans/'+b.id,{method:'DELETE',headers:authHeaders()}); loadBans();});
+    td.appendChild(btn); tr.appendChild(td);
+    tbody.appendChild(tr);
+  }
+}
+async function loadHwidBans(){
+  const res=await fetch('/api/admin/hwid/bans',{headers:authHeaders()});
+  const data=await res.json().catch(()=>({}));
+  const tbody=document.querySelector('#hwidTable tbody'); tbody.innerHTML='';
+  for(const hwid of (data.bans||[])){
+    const tr=document.createElement('tr');
+    const td1=document.createElement('td'); td1.textContent=hwid; tr.appendChild(td1);
+    const td2=document.createElement('td');
+    const btn=document.createElement('button'); btn.textContent='Unban'; btn.className='secondary'; btn.addEventListener('click',async()=>{await fetch('/api/admin/hwid/unban',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},authHeaders()),body:JSON.stringify({device_id:hwid})}); loadHwidBans();});
+    td2.appendChild(btn); tr.appendChild(td2);
+    tbody.appendChild(tr);
+  }
+}
+async function banHwid(){
+  const device_id=document.getElementById('hwidValue').value;
+  await fetch('/api/admin/hwid/ban',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},authHeaders()),body:JSON.stringify({device_id})});
+  loadHwidBans();
+}
+document.addEventListener('keydown',(e)=>{ if(e.key==='Escape'){ document.getElementById('banModal').classList.add('hidden'); document.getElementById('detailsModal').classList.add('hidden'); } });
 </script>
 </body>
 </html>
