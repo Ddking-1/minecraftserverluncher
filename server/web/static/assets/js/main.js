@@ -9,6 +9,7 @@ import { cookieConsent } from './core/cookie-consent.js';
 import { analytics } from './core/analytics.js';
 import * as loginView from './views/login.js';
 import * as registerView from './views/register.js';
+import * as changePasswordView from './views/change-password.js';
 import * as dashboardView from './views/dashboard.js';
 import * as playersView from './views/players.js';
 import * as adminView from './views/admin.js';
@@ -20,6 +21,7 @@ const routes = [
   { path: '/', redirect: () => (api.getCurrentUser() ? '/dashboard' : '/login') },
   { path: '/login', view: loginView },
   { path: '/register', view: registerView },
+  { path: '/change-password', view: changePasswordView },
   { path: '/dashboard', view: dashboardView },
   { path: '/players', view: playersView },
   { path: '/admin', view: adminView },

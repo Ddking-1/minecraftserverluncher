@@ -824,3 +824,108 @@
   color: var(--text);
   background: var(--surface-2);
 }
+/* appended styles */
+
+.password-criteria {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 12px;
+  font-size: 12px;
+}
+.password-criteria li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-faint);
+  transition: color 160ms ease;
+}
+.password-criteria li.is-ok {
+  color: var(--success, #3fb950);
+}
+.password-criteria li svg {
+  flex: 0 0 auto;
+}
+
+.password-meter {
+  display: flex;
+  gap: 4px;
+  margin-top: 8px;
+  align-items: center;
+}
+.password-meter span {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--surface-3, rgba(255,255,255,0.08));
+  transition: background 160ms ease;
+}
+.password-meter[data-strength="1"] span:nth-child(-n+1) { background: var(--danger, #f85149); }
+.password-meter[data-strength="2"] span:nth-child(-n+2) { background: var(--warning, #d29922); }
+.password-meter[data-strength="3"] span:nth-child(-n+3) { background: var(--warning, #d29922); }
+.password-meter[data-strength="4"] span:nth-child(-n+4) { background: var(--success, #3fb950); }
+.password-meter[data-strength="5"] span:nth-child(-n+5) { background: var(--success, #3fb950); }
+.password-meter em {
+  margin-left: 8px;
+  font-style: normal;
+  font-size: 11px;
+  color: var(--text-soft);
+  white-space: nowrap;
+}
+
+.skin-queue-row-3d {
+  display: grid;
+  grid-template-columns: 128px 1fr auto;
+  gap: 12px;
+  align-items: center;
+}
+.skin-3d-preview {
+  width: 128px;
+  height: 160px;
+  border-radius: 8px;
+  background: var(--surface-2, rgba(255,255,255,0.04));
+  border: 1px solid var(--border, rgba(255,255,255,0.08));
+  cursor: grab;
+}
+.skin-3d-preview:active { cursor: grabbing; }
+
+.rejected-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.rejected-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--surface-2, rgba(255,255,255,0.04));
+  border: 1px solid var(--border, rgba(255,255,255,0.08));
+}
+.rejected-hash {
+  font-family: monospace;
+  font-size: 12px;
+  color: var(--text-soft);
+  word-break: break-all;
+}
+
+@media (max-width: 760px) {
+  .skin-queue-row-3d {
+    grid-template-columns: 1fr;
+  }
+  .skin-3d-preview {
+    width: 100%;
+    max-width: 160px;
+    margin: 0 auto;
+  }
+  .password-criteria {
+    grid-template-columns: 1fr;
+  }
+}

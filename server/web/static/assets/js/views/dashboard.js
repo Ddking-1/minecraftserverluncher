@@ -340,7 +340,7 @@ export function mount(root, ctx) {
     saveButton.innerHTML = '<span class="spinner" aria-hidden="true"></span> Mentés…';
     try {
       await api.updateSkin(pendingSkin);
-      toast('A skin mentve. Az admin jóváhagyás után jelenik meg mindenhol.', { tone: 'success', title: 'Skin mentve' });
+      toast('A skin mentve és azonnal alkalmazva. Ha új skin, admin jóváhagyásra vár.', { tone: 'success', title: 'Skin mentve' });
       ctx.refresh();
     } catch (error) {
       toast(error.message || 'A skin mentése nem sikerült.', { tone: 'error' });

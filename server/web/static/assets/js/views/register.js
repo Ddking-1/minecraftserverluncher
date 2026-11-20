@@ -1,4 +1,4 @@
-import { api } from '../data/api.js';
+import { api, passwordStrength, passwordStrengthScore } from '../data/api.js';
 import { icon } from '../core/icons.js';
 import { toast } from '../core/toast.js';
 import { authLayout, fieldError, mountAuthLayout, setButtonLoading } from '../components/auth-layout.js';
@@ -9,15 +9,17 @@ export const meta = {
   guestOnly: true,
 };
 
-const STRENGTH_LABELS = ['Túl rövid', 'Gyenge', 'Közepes', 'Erős'];
+const STRENGTH_LABELS = ['Túl rövid', 'Gyenge', 'Közepes', 'Jó', 'Erős', 'Kiváló'];
+const CRITERIA = [
+  { key: 'minLength8', label: 'Legalább 8 karakter' },
+  { key: 'hasNumber', label: 'Tartalmaz számot' },
+  { key: 'hasUpper', label: 'Tartalmaz nagybetűt' },
+  { key: 'minLength10', label: 'Legalább 10 karakter' },
+  { key: 'hasSpecial', label: 'Tartalmaz speciális karaktert' },
+];
 
 function strengthOf(password) {
-  if (!password || password.length < 8) return 0;
-  let score = 1;
-  if (password.length >= 12) score += 1;
-  if (/[A-Z]/.test(password) && /[a-z]/.test(password)) score += 1;
-  if (/\d/.test(password) || /[^A-Za-z0-9]/.test(password)) score += 1;
-  return Math.min(3, score);
+  return passwordStrengthScore(password);
 }
 
 export function render() {
@@ -56,8 +58,11 @@ export function render() {
           <input id="password" name="password" type="password" autocomplete="new-password" placeholder="Legalább 8 karakter" required>
           <button type="button" class="reveal-btn" data-action="toggle-password" data-target="password" aria-label="Jelszó megjelenítése">${icon('eye', 17)}</button>
         </div>
+        <ul class="password-criteria" id="password-criteria" aria-live="polite">
+          ${CRITERIA.map((c) => `<li data-criterion="${c.key}">${c.label}</li>`).join('')}
+        </ul>
         <div class="password-meter" aria-hidden="true">
-          <span></span><span></span><span></span><span></span>
+          <span></span><span></span><span></span><span></span><span></span>
           <em>Erősség: <b data-strength-label>Túl rövid</b></em>
         </div>
         <p class="field-error" data-error-for="password" hidden></p>
@@ -102,10 +107,16 @@ export function mount(root, ctx) {
   };
 
   const updateStrength = () => {
-    const score = strengthOf(password.value);
+    const s = passwordStrength(password.value);
+    CRITERIA.forEach((c) => {
+      const li = root.querySelector(`[data-criterion="${c.key}"]`);
+      if (!li) return;
+      li.classList.toggle('is-ok', s[c.key]);
+    });
+    const score = passwordStrengthScore(password.value);
     meter.dataset.strength = String(score);
     meter.querySelectorAll('span').forEach((bar, index) => {
-      bar.classList.toggle('is-filled', index <= score && Boolean(password.value));
+      bar.classList.toggle('is-filled', index < score && Boolean(password.value));
     });
     strengthLabel.textContent = STRENGTH_LABELS[score] || STRENGTH_LABELS[0];
   };

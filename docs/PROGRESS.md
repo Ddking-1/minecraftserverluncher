@@ -1444,3 +1444,37 @@ Tests: `go test -count=1 ./...` passes (all packages), `go vet ./...` clean,
 `go build ./...` clean.
 
 Manual user action: none required.
+
+## 2026-11-19 - SKIN APPROVAL + PASSWORD RESET (feat/skin-approval-password-reset)
+
+Status: GREEN. Skin approval flow and password reset implemented in the alpha web SPA
+plus a backend pending-approval row for new skin uploads.
+
+Done:
+- `server/web/static/assets/js/data/mock-db.js`: DB_VERSION 2, `skinWhitelist`/
+  `skinBlacklist`, `mustChangePassword` seed field and migration.
+- `server/web/static/assets/js/data/api.js`: `skinHash`, `passwordStrength`/
+  `passwordStrengthScore`, `updateSkin` (auto-apply + pending queue for new skins),
+  `reviewSkin` (whitelist/blacklist + reset all affected users on reject),
+  `rejectedSkins`/`removeFromBlacklist`/`removeFromWhitelist`/`whitelist`/`blacklist`,
+  `admin.resetPassword` (random 12-char temp password, mustChangePassword=true),
+  `api.changePassword`, `selfProfile`/`login` carry `mustChangePassword`.
+  `updateSkin` now refuses blacklisted skins.
+- `server/web/static/assets/js/views/dashboard.js`: toast updated (auto-apply).
+- `server/web/static/assets/js/views/admin.js`: 3D SkinViewer preview in queue,
+  rejected-skins panel with revoke, password-reset button per user, init/destroy viewers.
+- `server/web/static/assets/js/views/login.js`: mustChangePassword -> /change-password redirect.
+- `server/web/static/assets/js/views/register.js`: 5 criteria + strength meter.
+- `server/web/static/assets/js/views/change-password.js`: new view (5 criteria).
+- `server/web/static/assets/js/main.js`: change-password route + import.
+- `server/web/static/assets/css/components.css`: password-criteria, password-meter,
+  skin-3d-preview, rejected-list styles.
+- `server/api/skins_handler.go`: pending approval row inserted after upload so
+  non-owner reads fail closed; back-compat skins without a row stay approved.
+
+Checks:
+- JS syntax: all touched files pass `node --check`.
+- Go: `go vet ./...` and `go test ./...` pass (all packages).
+- Browser: login, register (5 criteria checklist), admin (3D canvas, password reset,
+  rejected skins panel, blacklist revoke), change-password (5 criteria) verified;
+  password reset + Nova login redirect to /change-password verified end-to-end.

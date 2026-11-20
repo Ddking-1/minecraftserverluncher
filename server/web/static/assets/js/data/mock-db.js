@@ -12,7 +12,7 @@ import { storage } from '../core/storage.js';
 export const DEMO_SKIN = '/assets/img/demo-skin.png';
 export const SEED_PASSWORD = 'alpha1234';
 const DB_KEY = 'mock-db';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 export function mockHash(password) {
   const text = `alpha-mock::${password}`;
@@ -166,6 +166,7 @@ export function createSeedDb() {
       ...user,
       passwordHash: mockHash(SEED_PASSWORD),
       skin: DEMO_SKIN,
+      mustChangePassword: false,
     })),
     stats: {
       'alpha-main': Object.fromEntries(
@@ -198,6 +199,8 @@ export function createSeedDb() {
         skin: DEMO_SKIN,
       },
     ],
+    skinWhitelist: [],
+    skinBlacklist: [],
     audit: [
       {
         id: 'au-1',
@@ -248,6 +251,11 @@ export function loadDb() {
   if (cached) return cached;
   const stored = storage.getJSON(DB_KEY);
   if (stored && stored.version === DB_VERSION && Array.isArray(stored.users)) {
+    // migrate: ensure new fields exist
+    stored.users.forEach((u) => { if (u.mustChangePassword === undefined) u.mustChangePassword = false; });
+    if (!Array.isArray(stored.skinWhitelist)) stored.skinWhitelist = [];
+    if (!Array.isArray(stored.skinBlacklist)) stored.skinBlacklist = [];
+    stored.skinsQueue.forEach((s) => { if (!s.skinHash) s.skinHash = s.id; });
     cached = stored;
     return cached;
   }

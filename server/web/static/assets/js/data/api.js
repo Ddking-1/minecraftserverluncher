@@ -1,4 +1,30 @@
 import { loadDb, saveDb, DEMO_SKIN, SEED_PASSWORD, mockHash } from './mock-db.js';
+
+function skinHash(dataUrl) {
+  const text = String(dataUrl || '');
+  let hash = 2166136261;
+  for (let i = 0; i < text.length; i += 8) {
+    hash ^= text.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `skh-${(hash >>> 0).toString(16)}`;
+}
+
+export function passwordStrength(password) {
+  const p = String(password || '');
+  return {
+    minLength8: p.length >= 8,
+    hasNumber: /\d/.test(p),
+    hasUpper: /[A-Z]/.test(p),
+    minLength10: p.length >= 10,
+    hasSpecial: /[^A-Za-z0-9]/.test(p),
+  };
+}
+
+export function passwordStrengthScore(password) {
+  const s = passwordStrength(password);
+  return Object.values(s).filter(Boolean).length;
+}
 import { storage } from '../core/storage.js';
 import { sleep } from '../core/dom.js';
 import { ROLES, ROLE_ORDER, roleDefinition } from '../core/permissions.js';
@@ -46,6 +72,7 @@ function selfProfile(user) {
     emailVerified: user.emailVerified,
     twoFactor: user.twoFactor,
     skin: user.skin || DEMO_SKIN,
+    mustChangePassword: Boolean(user.mustChangePassword),
   };
 }
 
@@ -127,6 +154,7 @@ export const api = {
     }
 
     user.lastSeen = new Date().toISOString();
+    // mustChangePassword flag is preserved on the session profile; the UI checks it.
     saveDb(db);
     setSession(user.id);
     return selfProfile(user);
@@ -195,6 +223,24 @@ export const api = {
     storage.remove(SESSION_KEY);
   },
 
+  async changePassword(oldPassword, newPassword) {
+    await sleep(160);
+    const db = loadDb();
+    const session = getSession();
+    if (!session) throw new Error('Nincs aktív munkamenet.');
+    const user = mustFindUser(db, session.userId);
+    if (user.passwordHash !== mockHash(String(oldPassword || ''))) {
+      throw new Error('A jelenlegi jelszó hibás.');
+    }
+    if (String(newPassword || '').length < 8) {
+      throw new Error('Az új jelszónak legalább 8 karakter hosszúnak kell lennie.');
+    }
+    user.passwordHash = mockHash(newPassword);
+    user.mustChangePassword = false;
+    saveDb(db);
+    return selfProfile(user);
+  },
+
   async listPlayers({ query = '', serverId = 'alpha-main' } = {}) {
     await sleep(140);
     const db = loadDb();
@@ -233,15 +279,31 @@ export const api = {
     const session = getSession();
     if (!session) throw new Error('Nincs aktív munkamenet.');
     const user = mustFindUser(db, session.userId);
+    const hash = skinHash(dataUrl);
+    // Rejected skins are blocked for everyone: never apply them.
+    if (db.skinBlacklist.includes(hash)) {
+      // Reset anyone still carrying it (defensive) and refuse the upload.
+      db.users.forEach((u) => { if (skinHash(u.skin) === hash) u.skin = DEMO_SKIN; });
+      saveDb(db);
+      throw new Error('Ez a skin el van utasítva, nem használható.');
+    }
+    // Auto-accept: the skin is applied immediately to the user and the server.
     user.skin = dataUrl;
-    db.skinsQueue.unshift({
-      id: `sk-${Date.now().toString(36)}`,
-      userId: user.id,
-      fileName: 'feltoltes.png',
-      submittedAt: new Date().toISOString(),
-      status: 'pending',
-      skin: dataUrl,
-    });
+    // If the skin is brand new (not yet whitelisted or blacklisted), it enters
+    // the admin review queue. Approved skins become auto-accepted forever;
+    // rejected skins are blocked for everyone.
+    const known = db.skinWhitelist.includes(hash) || db.skinBlacklist.includes(hash);
+    if (!known) {
+      db.skinsQueue.unshift({
+        id: `sk-${Date.now().toString(36)}`,
+        userId: user.id,
+        fileName: 'feltoltes.png',
+        submittedAt: new Date().toISOString(),
+        status: 'pending',
+        skin: dataUrl,
+        skinHash: hash,
+      });
+    }
     saveDb(db);
     return selfProfile(user);
   },
@@ -341,6 +403,23 @@ export const api = {
       return this.listUsers();
     },
 
+    async resetPassword(userId) {
+      await sleep(160);
+      const db = loadDb();
+      const user = mustFindUser(db, userId);
+      // Generate a random temporary password.
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%';
+      let temp = '';
+      for (let i = 0; i < 12; i += 1) {
+        temp += chars[Math.floor(Math.random() * chars.length)];
+      }
+      user.passwordHash = mockHash(temp);
+      user.mustChangePassword = true;
+      pushAudit(db, currentActor(db), 'accounts.password-reset', user.username, 'Ideiglenes jelszó generálva');
+      saveDb(db);
+      return { tempPassword: temp, username: user.username };
+    },
+
     async skinsQueue() {
       await sleep(100);
       const db = loadDb();
@@ -357,9 +436,22 @@ export const api = {
       const item = db.skinsQueue.find((entry) => entry.id === id);
       if (!item) throw new Error('A skin nem található.');
       item.status = decision;
+      item.reviewedAt = new Date().toISOString();
+      item.reviewedBy = currentActor(db);
+      const hash = item.skinHash || skinHash(item.skin);
+      item.skinHash = hash;
       const user = findById(db, item.userId);
-      if (decision === 'approved' && user) {
-        user.skin = item.skin;
+      if (decision === 'approved') {
+        if (!db.skinWhitelist.includes(hash)) db.skinWhitelist.push(hash);
+        db.skinBlacklist = db.skinBlacklist.filter((h) => h !== hash);
+        if (user) user.skin = item.skin;
+      } else {
+        if (!db.skinBlacklist.includes(hash)) db.skinBlacklist.push(hash);
+        db.skinWhitelist = db.skinWhitelist.filter((h) => h !== hash);
+        // Rejected: strip the skin from every player and reset to the default.
+        db.users.forEach((u) => {
+          if (skinHash(u.skin) === hash) u.skin = DEMO_SKIN;
+        });
       }
       pushAudit(
         db,
@@ -370,6 +462,39 @@ export const api = {
       );
       saveDb(db);
       return this.skinsQueue();
+    },
+
+    async rejectedSkins() {
+      await sleep(80);
+      const db = loadDb();
+      return db.skinBlacklist.map((hash) => ({ hash, skin: null }));
+    },
+
+    async removeFromBlacklist(hash) {
+      await sleep(120);
+      const db = loadDb();
+      db.skinBlacklist = db.skinBlacklist.filter((h) => h !== hash);
+      saveDb(db);
+      return db.skinBlacklist;
+    },
+
+    async removeFromWhitelist(hash) {
+      await sleep(120);
+      const db = loadDb();
+      db.skinWhitelist = db.skinWhitelist.filter((h) => h !== hash);
+      saveDb(db);
+      return db.skinWhitelist;
+    },
+
+    async whitelist() {
+      await sleep(60);
+      const db = loadDb();
+      return [...db.skinWhitelist];
+    },
+    async blacklist() {
+      await sleep(60);
+      const db = loadDb();
+      return [...db.skinBlacklist];
     },
 
     async audit() {

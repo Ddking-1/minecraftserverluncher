@@ -80,6 +80,10 @@ export function mount(root, ctx) {
 
   const finishLogin = (user) => {
     toast(`Üdv vissza, ${user.username}!`, { tone: 'success', title: 'Sikeres belépés' });
+    if (user.mustChangePassword) {
+      ctx.navigate('/change-password');
+      return;
+    }
     ctx.navigate(safeNext(ctx.query));
   };
 

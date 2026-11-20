@@ -873,3 +873,37 @@ Remaining:
 ## 2026-11-17 — CLEANUP (SplashScreen)
 
 Removed unused `launcher/gui/SplashScreen.cpp/.h`. No references; build/tests unaffected.
+
+## Active task (2026-11-19) — SKIN APPROVAL + PASSWORD RESET
+
+Status:
+GREEN. Skin approval flow and password reset implemented in the alpha web SPA plus a
+backend pending-approval row for new skin uploads. Branch not committed/pushed yet.
+
+Branch:
+`feat/skin-approval-password-reset` (created from `master`).
+
+Done:
+- Mock DB v2: skinWhitelist/skinBlacklist, mustChangePassword seed field + migration.
+- api.js: skinHash, passwordStrength/passwordStrengthScore, updateSkin (auto-apply +
+  pending queue for new skins, refuses blacklisted skins), reviewSkin (whitelist/
+  blacklist + reset all affected users on reject), rejectedSkins/removeFromBlacklist/
+  removeFromWhitelist/whitelist/blacklist, admin.resetPassword (random 12-char temp),
+  api.changePassword, selfProfile/login carry mustChangePassword.
+- Admin view: 3D SkinViewer preview in queue, rejected-skins panel with revoke,
+  password-reset button per user, init/destroy viewers.
+- Login view: mustChangePassword -> /change-password redirect.
+- Register view: 5 criteria + strength meter.
+- New change-password view (5 criteria).
+- main.js: change-password route.
+- components.css: password-criteria, password-meter, skin-3d-preview, rejected-list.
+- skins_handler.go: pending approval row inserted after upload (fail-closed read).
+
+Checks:
+- JS syntax: all touched files pass `node --check`.
+- Go: `go vet ./...` and `go test ./...` pass (all packages).
+- Browser verified end-to-end (login, register, admin, change-password, password reset flow).
+
+Known limitation / next step:
+Replace the alpha mock provider with the authenticated Go API and enforce permissions
+server-side. Merge after review.

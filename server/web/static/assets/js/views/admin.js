@@ -14,6 +14,7 @@ import {
   roleDefinition,
 } from '../core/permissions.js';
 import { avatar, emptyState, roleBadge } from '../components/ui.js';
+import { SkinViewer } from '../components/skin-viewer.js';
 import { confirmDialog } from '../core/modal.js';
 import { toast } from '../core/toast.js';
 
@@ -165,6 +166,7 @@ function userRowHtml(user, effectiveRole, actualUser) {
         ${actionButton({ action: 'kick', user, effectiveRole, actualUser, permission: 'players.kick', iconName: 'logout', label: 'Kirúgás a szerverről', forceDisabled: !user.online, forceTitle: 'A játékos nincs online' })}
         ${actionButton({ action: 'mute', user, effectiveRole, actualUser, permission: 'players.mute', iconName: 'volume-x', label: user.muted ? 'Némítás feloldása' : 'Némítás', tone: user.muted ? 'is-active' : '' })}
         ${actionButton({ action: 'delete', user, effectiveRole, actualUser, permission: 'accounts.delete', iconName: 'trash', label: 'Fiók végleges törlése', tone: 'is-danger' })}
+        ${actionButton({ action: 'password-reset', user, effectiveRole, actualUser, permission: 'accounts.view', iconName: 'key', label: 'Jelszó visszaállítása', tone: '' })}
       </div>
     </td>
   </tr>`;
@@ -254,7 +256,7 @@ function skinsHtml(queue) {
       <div>
         <span class="panel-eyebrow">Tartalom</span>
         <h3>Skin jóváhagyás</h3>
-        <p>${pending.length} feltöltés vár döntésre.</p>
+        <p>${pending.length} feltöltés vár döntésre. A 3D előnézetben forgathatod a skint.</p>
       </div>
       <span class="icon-box">${icon('image', 18)}</span>
     </div>
@@ -263,8 +265,8 @@ function skinsHtml(queue) {
         ? `<div class="skin-queue">
             ${pending
               .map(
-                (item) => `<div class="skin-queue-row">
-                  ${avatar({ username: item.username, skin: item.skin }, 'sm')}
+                (item) => `<div class="skin-queue-row skin-queue-row-3d">
+                  <canvas class="skin-3d-preview" data-skin-canvas="${esc(item.id)}" width="128" height="160" aria-label="${esc(item.username)} skin 3D előnézete"></canvas>
                   <div class="skin-queue-copy">
                     <strong>${esc(item.username)}</strong>
                     <span>${esc(item.fileName)} · ${esc(relativeTime(item.submittedAt))}</span>
@@ -277,8 +279,31 @@ function skinsHtml(queue) {
               )
               .join('')}
           </div>
-          <p class="table-note">${icon('info', 13)} Jóváhagyás után a skin bekerül a játékos profiljába.</p>`
+          <p class="table-note">${icon('info', 13)} Jóváhagyás után a skin auto-elfogadottá válik. Elutasítás esetén minden játékosról lekerül.</p>`
         : emptyState({ iconName: 'check', title: 'Nincs függőben lévő skin', text: 'Minden feltöltés elbírálásra került.' })
+    }
+  </section>`;
+}
+
+function rejectedSkinsHtml(blacklist) {
+  return `<section class="panel admin-rejected-skins">
+    <div class="panel-head">
+      <div>
+        <span class="panel-eyebrow">Tartalom</span>
+        <h3>Elutasított skinek (blacklist)</h3>
+        <p>${blacklist.length} hash van tiltólistán. Itt visszavonhatod a döntést.</p>
+      </div>
+      <span class="icon-box">${icon('ban', 18)}</span>
+    </div>
+    ${
+      blacklist.length
+        ? `<ul class="rejected-list">
+            ${blacklist.map((hash) => `<li class="rejected-item">
+              <code class="rejected-hash">${esc(hash)}</code>
+              <button type="button" class="btn btn-ghost btn-sm" data-admin-action="blacklist-remove" data-hash="${esc(hash)}">Visszavonás</button>
+            </li>`).join('')}
+          </ul>`
+        : emptyState({ iconName: 'check', title: 'Üres a tiltólista', text: 'Nincs elutasított skin.' })
     }
   </section>`;
 }
@@ -327,6 +352,7 @@ function adminContentHtml(state, actualUser) {
     ${matrixHtml(role)}
     <div class="admin-grid">
       ${hasPermission(role, 'skins.approve') ? skinsHtml(state.queue) : ''}
+      ${hasPermission(role, 'skins.approve') ? rejectedSkinsHtml(state.blacklist || []) : ''}
       ${hasPermission(role, 'audit.view') ? auditHtml(state.audit) : ''}
     </div>
   `;
@@ -339,11 +365,12 @@ export async function render(ctx) {
     return `<div class="page page-admin">${accessDeniedHtml(actualUser)}</div>`;
   }
 
-  const [users, summary, queue, audit] = await Promise.all([
+  const [users, summary, queue, audit, blacklist] = await Promise.all([
     api.admin.listUsers(),
     api.admin.summary(),
     api.admin.skinsQueue(),
     api.admin.audit(),
+    api.admin.blacklist(),
   ]);
 
   const state = {
@@ -353,6 +380,7 @@ export async function render(ctx) {
     summary,
     queue,
     audit,
+    blacklist,
     query: '',
   };
   ctx.adminState = state;
@@ -413,18 +441,43 @@ export function mount(root, ctx) {
     if (empty) empty.hidden = visible > 0;
   };
 
+  const skinViewers = [];
+  const destroySkinViewers = () => {
+    skinViewers.forEach((v) => { try { v.destroy(); } catch (e) {} });
+    skinViewers.length = 0;
+  };
+  const initSkinViewers = () => {
+    destroySkinViewers();
+    content.querySelectorAll('[data-skin-canvas]').forEach((canvas) => {
+      const id = canvas.dataset.skinCanvas;
+      const item = (state.queue || []).find((q) => q.id === id);
+      if (!item) return;
+      try {
+        const viewer = new SkinViewer(canvas, { skinUrl: item.skin, autoRotate: true });
+        skinViewers.push(viewer);
+      } catch (e) {
+        console.error('skin viewer init failed', e);
+      }
+    });
+  };
+
   const rerenderContent = () => {
+    destroySkinViewers();
     content.innerHTML = adminContentHtml(state, state.actualUser);
     const search = content.querySelector('#admin-user-search');
     if (search) search.value = state.query;
     applySearch();
     syncSimulator();
+    initSkinViewers();
   };
 
   const refreshData = async () => {
     state.users = await api.admin.listUsers();
     state.summary = await api.admin.summary();
-    if (hasPermission(state.effectiveRole, 'skins.approve')) state.queue = await api.admin.skinsQueue();
+    if (hasPermission(state.effectiveRole, 'skins.approve')) {
+      state.queue = await api.admin.skinsQueue();
+      state.blacklist = await api.admin.blacklist();
+    }
     if (hasPermission(state.effectiveRole, 'audit.view')) state.audit = await api.admin.audit();
     rerenderContent();
   };
@@ -526,13 +579,55 @@ export function mount(root, ctx) {
         state.queue = await api.admin.reviewSkin(button.dataset.skinId, decision);
         state.summary = await api.admin.summary();
         state.audit = await api.admin.audit();
+        state.blacklist = await api.admin.blacklist();
         rerenderContent();
-        toast(decision === 'approved' ? 'Skin jóváhagyva.' : 'Skin elutasítva.', {
+        toast(decision === 'approved' ? 'Skin jóváhagyva (auto-elfogadva a jövőben).' : 'Skin elutasítva (minden játékosról lekerült).', {
           tone: decision === 'approved' ? 'success' : 'info',
           title: 'Skin döntés',
         });
       } catch (error) {
         toast(error.message || 'A döntés nem sikerült.', { tone: 'error' });
+      }
+      return;
+    }
+
+    if (action === 'blacklist-remove') {
+      if (!hasPermission(state.effectiveRole, 'skins.approve')) return;
+      try {
+        await api.admin.removeFromBlacklist(button.dataset.hash);
+        state.blacklist = await api.admin.blacklist();
+        rerenderContent();
+        toast('A skin visszavonva a tiltólistáról.', { tone: 'success', title: 'Blacklist' });
+      } catch (error) {
+        toast(error.message || 'A visszavonás nem sikerült.', { tone: 'error' });
+      }
+      return;
+    }
+
+    if (action === 'password-reset') {
+      if (!hasPermission(state.effectiveRole, 'accounts.view')) return;
+      const user = findUser(button.dataset.userId);
+      if (!user) return;
+      const confirmed = await confirmDialog({
+        title: 'Jelszó visszaállítása',
+        message: `${user.username} fiókjához ideiglenes jelszó generálódik. A felhasználónak belépés után új jelszót kell beállítania.`,
+        confirmLabel: 'Visszaállítás',
+        tone: 'primary',
+      });
+      if (!confirmed) return;
+      try {
+        const result = await api.admin.resetPassword(user.id);
+        await refreshData();
+        // Show the temp password once.
+        await confirmDialog({
+          title: 'Ideiglenes jelszó',
+          message: `Felhasználó: ${result.username}\nIdeiglenes jelszó: ${result.tempPassword}\n\nKüldd el a felhasználónak biztonságos csatornán. Belépés után kötelező új jelszót beállítani.`,
+          confirmLabel: 'Rendben',
+          tone: 'primary',
+        });
+        toast(`${user.username} jelszava visszaállítva.`, { tone: 'success', title: 'Jelszó reset' });
+      } catch (error) {
+        toast(error.message || 'A visszaállítás nem sikerült.', { tone: 'error' });
       }
       return;
     }
@@ -576,11 +671,14 @@ export function mount(root, ctx) {
     applySearch();
   };
 
+  initSkinViewers();
+
   root.addEventListener('click', onClick);
   root.addEventListener('change', onChange);
   root.addEventListener('input', onInput);
 
   return () => {
+    destroySkinViewers();
     root.removeEventListener('click', onClick);
     root.removeEventListener('change', onChange);
     root.removeEventListener('input', onInput);

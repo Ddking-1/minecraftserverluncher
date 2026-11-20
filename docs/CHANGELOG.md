@@ -830,3 +830,16 @@ Owner: hostile-tester review of F2, F3, F5, F6, F7, F10.
 ### Cleanup (2026-11-17)
 
 - Removed completely unused `launcher/gui/SplashScreen.cpp` and `SplashScreen.h` (no references anywhere in code or tests).
+
+### Skin approval + password reset (2026-11-19)
+
+- Web alpha: skin upload auto-applies to user/web/server; new skins enter admin
+  review queue; approve makes them auto-accepted, reject blocks them for everyone
+  and resets affected users to the default skin. Admin queue shows interactive 3D
+  preview; rejected-skins sub-panel allows revoking a decision.
+- Web alpha: password reset button per user generates a random 12-char temp
+  password and forces a change on next login; new change-password view and
+  register view show 5 security criteria (8+ chars, number, uppercase, 10+ chars,
+  special char) with a strength meter.
+- Backend: new skin uploads insert a pending approval row so non-owner reads
+  fail closed; back-compat skins without a row stay approved.

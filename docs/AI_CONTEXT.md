@@ -27,6 +27,12 @@ This work is on `feat/web-ui-foundation` and is **not merged into `master`** yet
 It uses a local mock data/session provider (`data/api.js`) for the alpha; the
 next integration step is replacing it with the authenticated Go API. See
 `docs/WEB_FRONTEND.md` for the architecture, test evidence and limitations.
+
+A follow-up task branch `feat/skin-approval-password-reset` extends the alpha
+web UI with a skin approval flow (auto-apply, pending admin review, whitelist/
+blacklist, 3D preview, rejected-skins revocation) and a password reset flow
+(random temp password + forced change, 5-criteria strength meter). Backend:
+new skin uploads insert a pending approval row. See `docs/WORK_STATE.md`.
 The Go toolchain was available on the development machine for this task, so the
 Go web package was compiled and its tests passed (`gofmt`, `go vet`,
 `go build ./web/...`, `go test -count=1 ./web/...`), and the embedded SPA was
