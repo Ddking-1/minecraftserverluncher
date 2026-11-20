@@ -1,4 +1,17 @@
-﻿# WORK STATE
+## 2026-11-20 - ADVANCED ADMIN PANEL: SPA REAL-MODE WIRING + A11Y/UX (feat/advanced-admin-panel)
+
+Status: GREEN for Go backend + SPA. go build ./..., go vet ./..., go test ./web/ ./api/, node --check on touched JS all pass. Real-mode browser smoke exercised advanced ban (IP account count + HWID), kick, mute, warn, and invalid-token error path with no console errors.
+
+Done:
+- Modal visibility/focus: openAdvancedModal now adds is-visible class and traps Tab focus (Escape closes), matching confirmDialog.
+- Real-mode data: users mapped with online=true so kick is exercisable against the backend.
+- A11y/UX: focus trap in advanced modal, visible modal backdrop, consistent keyboard navigation; no console errors in smoke.
+
+Branch: feat/advanced-admin-panel.
+
+---
+
+# WORK STATE
 
 ## Active task (2026-11-18) — WEB UI FOUNDATION
 

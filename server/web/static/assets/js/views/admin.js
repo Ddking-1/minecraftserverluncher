@@ -552,7 +552,8 @@ export function mount(root, ctx) {
       const close = (result) => {
         if (!overlay.isConnected) return;
         document.removeEventListener('keydown', onKeyDown);
-        overlay.remove();
+        overlay.classList.remove('is-visible');
+        window.setTimeout(() => overlay.remove(), 160);
         if (previousFocus && typeof previousFocus.focus === 'function') previousFocus.focus();
         resolve(result);
       };
@@ -560,7 +561,17 @@ export function mount(root, ctx) {
         if (event.key === 'Escape') {
           event.preventDefault();
           close(null);
+          return;
         }
+        if (event.key !== 'Tab') return;
+        const focusables = [...overlay.querySelectorAll('button, input, select, textarea, [tabindex]:not([tabindex="-1"])')].filter((el) => !el.disabled);
+        if (focusables.length === 0) return;
+        const index = focusables.indexOf(document.activeElement);
+        event.preventDefault();
+        const next = event.shiftKey
+          ? (index <= 0 ? focusables.length - 1 : index - 1)
+          : (index === focusables.length - 1 ? 0 : index + 1);
+        focusables[next].focus();
       };
       cancelBtn.addEventListener('click', () => close(null));
       confirmBtn.addEventListener('click', () => {
@@ -592,6 +603,7 @@ export function mount(root, ctx) {
       });
       document.addEventListener('keydown', onKeyDown);
       document.body.appendChild(overlay);
+      window.requestAnimationFrame(() => overlay.classList.add('is-visible'));
       // Load device/IP preview for real backend mode.
       const previewEl = overlay.querySelector('#adv-preview');
       const loadPreview = async () => {
