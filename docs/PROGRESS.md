@@ -1478,3 +1478,14 @@ Checks:
 - Browser: login, register (5 criteria checklist), admin (3D canvas, password reset,
   rejected skins panel, blacklist revoke), change-password (5 criteria) verified;
   password reset + Nova login redirect to /change-password verified end-to-end.
+
+### Advanced admin panel (2026-11-20)
+
+- Backend: new `bans` and `account_login_ips` tables; advanced ban endpoint
+  `POST /api/admin/users/{id}/ban` supports duration, reason, scope (mc/platform/both)
+  and targets (account, all HWIDs seen in last 30 days, IPs used in last 30 days).
+  Returns affected IP account count. Unban, user details and IP->accounts endpoints added.
+- Login/register now record IP observations; platform-scope bans block login;
+  MC-scope bans block proxy joins.
+- Admin UI: ban modal (duration/reason/scope/targets), user details modal,
+  unban/delete/details actions, invites management.

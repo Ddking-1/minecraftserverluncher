@@ -335,6 +335,29 @@ CREATE TABLE IF NOT EXISTS skin_file_approvals (
     reviewer    TEXT    NOT NULL DEFAULT '',
     reviewed_at TEXT    NOT NULL DEFAULT ''
 );
+
+CREATE TABLE IF NOT EXISTS account_login_ips (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    ip         TEXT    NOT NULL,
+    seen_at    TEXT    NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_login_ips_account ON account_login_ips(account_id);
+CREATE INDEX IF NOT EXISTS idx_login_ips_ip ON account_login_ips(ip);
+
+CREATE TABLE IF NOT EXISTS bans (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    ban_type         TEXT    NOT NULL,
+    scope            TEXT    NOT NULL DEFAULT 'both',
+    target           TEXT    NOT NULL,
+    account_id       INTEGER,
+    reason           TEXT    NOT NULL DEFAULT '',
+    duration_minutes INTEGER NOT NULL DEFAULT 0,
+    expires_at       TEXT,
+    created_at       TEXT    NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_bans_type_target ON bans(ban_type, target);
+CREATE INDEX IF NOT EXISTS idx_bans_account ON bans(account_id);
 `
 	if _, err := db.sql.Exec(schema); err != nil {
 		return fmt.Errorf("database: migrate: %w", err)

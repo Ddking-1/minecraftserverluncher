@@ -99,6 +99,8 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	_ = s.db.RecordLoginIP(acc.ID, clientIPForTripwire(r))
+
 	pair, err := s.issueSession(w, acc.ID, req.DeviceID, req.DeviceName)
 	if err != nil {
 		return
@@ -167,7 +169,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if the device ID is banned
+	// Legacy HWID ban check.
 	isBanned, err := s.db.IsHWIDBanned(req.DeviceID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "internal error")
@@ -178,10 +180,27 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Advanced ban checks (platform scope blocks login).
+	if banned, reason, scope := s.db.IsAccountBanned(acc.ID); banned && (scope == "platform" || scope == "both") {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "account banned: " + reason})
+		return
+	}
+	if banned, reason, scope := s.db.IsHWIDBannedNew(req.DeviceID); banned && (scope == "platform" || scope == "both") {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "hardware banned: " + reason})
+		return
+	}
+	ip := clientIPForTripwire(r)
+	if banned, reason, scope := s.db.IsIPBanned(ip); banned && (scope == "platform" || scope == "both") {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "ip banned: " + reason})
+		return
+	}
+
 	pair, err := s.issueSession(w, acc.ID, req.DeviceID, req.DeviceName)
 	if err != nil {
 		return
 	}
+
+	_ = s.db.RecordLoginIP(acc.ID, clientIPForTripwire(r))
 
 	// If the user has already accepted cookies, set a session cookie in
 	// addition to the bearer token. The cookie is httpOnly so the JS UI cannot

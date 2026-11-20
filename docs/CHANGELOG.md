@@ -843,3 +843,9 @@ Owner: hostile-tester review of F2, F3, F5, F6, F7, F10.
   special char) with a strength meter.
 - Backend: new skin uploads insert a pending approval row so non-owner reads
   fail closed; back-compat skins without a row stay approved.
+
+### Advanced admin panel (2026-11-20)
+
+- Added duration/reason/scope/targeted ban support for accounts, HWIDs and IPs.
+- Added IP usage tracking and IP->accounts admin view.
+- Updated admin dashboard UI with ban modal and user details.

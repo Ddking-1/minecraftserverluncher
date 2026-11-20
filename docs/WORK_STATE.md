@@ -907,3 +907,21 @@ Checks:
 Known limitation / next step:
 Replace the alpha mock provider with the authenticated Go API and enforce permissions
 server-side. Merge after review.
+
+## Active task (2026-11-20) — ADVANCED ADMIN PANEL
+
+Status:
+In progress on branch feat/advanced-admin-panel. Backend + UI changes added; Go
+build/tests could not be run locally (no Go toolchain in this environment).
+
+Branch:
+feat/advanced-admin-panel
+
+Done:
+- Database: bans + account_login_ips tables and helpers.
+- API: advanced ban/unban/details/IP-accounts endpoints and login enforcement.
+- Admin UI: ban modal, details modal, invites management.
+
+Next:
+- Run `cd server && go test ./...` in an environment with Go.
+- Verify end-to-end ban flows.

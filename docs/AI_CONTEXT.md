@@ -346,3 +346,7 @@ Batch (2026-11-17): launcher GUI features F2/F3/F5/F6/F7/F10 implemented and ver
   and emits the friendly text.
 
 - Cleanup: removed unused SplashScreen component (no references); build/tests unaffected.
+
+- Advanced admin panel: ban records (account/hwid/ip) with duration, reason and
+  scope (mc/platform/both); login IP tracking; platform bans block login,
+  MC bans block proxy joins. New admin endpoints and updated admin UI.

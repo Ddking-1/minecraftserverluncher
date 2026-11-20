@@ -1,137 +1,253 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Admin Dashboard</title>
-    <style>
-        body { background: #111; color: #eee; font-family: Arial, sans-serif; margin: 0; padding: 20px; }
-        h1, h2 { color: #3FB950; }
-        .row { display: flex; gap: 10px; margin: 10px 0; flex-wrap: wrap; align-items: center; }
-        input, button { padding: 6px 10px; }
-        button { background: #3FB950; color: #fff; border: none; cursor: pointer; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { border: 1px solid #333; padding: 6px; text-align: left; font-size: 13px; }
-        .card { background: #1a1a1a; padding: 15px; border-radius: 6px; margin-bottom: 20px; }
-        #status { margin: 10px 0; color: #f88; }
-        .hidden { display: none; }
-    </style>
+<meta charset="UTF-8">
+<title>Admin Dashboard</title>
+<style>
+  body { background:#0d1117; color:#e6edf3; font-family: system-ui, Arial, sans-serif; margin:0; padding:20px; }
+  h1,h2,h3 { color:#3fb950; }
+  .row { display:flex; gap:10px; margin:10px 0; flex-wrap:wrap; align-items:center; }
+  input,select,textarea,button { padding:6px 10px; border-radius:6px; border:1px solid #30363d; background:#161b22; color:#e6edf3; }
+  button { background:#238636; color:#fff; border:none; cursor:pointer; }
+  button.danger { background:#da3633; }
+  button.secondary { background:#30363d; }
+  table { width:100%; border-collapse:collapse; margin-top:10px; }
+  th,td { border:1px solid #30363d; padding:6px; text-align:left; font-size:13px; }
+  .card { background:#161b22; padding:15px; border-radius:8px; margin-bottom:20px; border:1px solid #30363d; }
+  #status { margin:10px 0; color:#f85149; }
+  .hidden { display:none; }
+  .modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,.6); display:flex; align-items:center; justify-content:center; z-index:1000; }
+  .modal { background:#161b22; padding:20px; border-radius:10px; width:520px; max-width:95vw; border:1px solid #30363d; }
+  .modal h3 { margin-top:0; }
+  .small { font-size:12px; color:#8b949e; }
+</style>
 </head>
 <body>
-    <h1>Admin Dashboard</h1>
-    <div id="loginBox" class="card">
-        <h2>Login (admin token or user bearer)</h2>
-        <div class="row">
-            <input type="password" id="adminToken" placeholder="X-Admin-Token (optional)">
-            <input type="text" id="bearer" placeholder="Bearer access token (optional)">
-            <button onclick="setAuth()">Set Auth</button>
-        </div>
-        <p id="status"></p>
+<h1>Admin Dashboard</h1>
+<div id="loginBox" class="card">
+  <h2>Login</h2>
+  <div class="row">
+    <input type="password" id="adminToken" placeholder="X-Admin-Token (optional)">
+    <input type="text" id="bearer" placeholder="Bearer access token (optional)">
+    <button onclick="setAuth()">Set Auth</button>
+  </div>
+  <p id="status"></p>
+</div>
+
+<div id="appBox" class="hidden">
+  <div class="card">
+    <h2>Users</h2>
+    <div class="row">
+      <input type="text" id="userSearch" placeholder="search">
+      <button onclick="loadUsers()">Refresh</button>
     </div>
+    <table id="usersTable"><thead><tr>
+      <th>ID</th><th>Username</th><th>Created</th><th>Actions</th>
+    </tr></thead><tbody></tbody></table>
+  </div>
 
-    <div id="appBox" class="hidden">
-        <div class="card">
-            <h2>Users</h2>
-            <div class="row">
-                <input type="text" id="userSearch" placeholder="search">
-                <button onclick="loadUsers()">Refresh</button>
-            </div>
-            <table id="usersTable"><thead><tr><th>ID</th><th>Username</th><th>Actions</th></tr></thead><tbody></tbody></table>
-        </div>
+  <div class="card">
+    <h2>Tripwires</h2>
+    <button onclick="loadTripwires()">Refresh</button>
+    <table id="tripTable"><thead><tr><th>ID</th><th>Kind</th><th>Detail</th><th>IP</th><th>Account</th><th>When</th></tr></thead><tbody></tbody></table>
+  </div>
 
-        <div class="card">
-            <h2>Tripwires</h2>
-            <button onclick="loadTripwires()">Refresh</button>
-            <table id="tripTable"><thead><tr><th>ID</th><th>Kind</th><th>Detail</th><th>IP</th><th>Account</th><th>When</th></tr></thead><tbody></tbody></table>
-        </div>
-
-        <div class="card">
-            <h2>Skin approval</h2>
-            <div class="row">
-                <input type="text" id="skinId" placeholder="skin id">
-                <button onclick="approveSkin(true)">Approve</button>
-                <button onclick="approveSkin(false)">Reject</button>
-            </div>
-        </div>
+  <div class="card">
+    <h2>Skin approval</h2>
+    <div class="row">
+      <input type="text" id="skinId" placeholder="skin id">
+      <button onclick="approveSkin(true)">Approve</button>
+      <button onclick="approveSkin(false)">Reject</button>
     </div>
+  </div>
 
-    <script>
-        let adminToken = '';
-        let bearer = '';
+  <div class="card">
+    <h2>Invites</h2>
+    <div class="row">
+      <input type="text" id="inviteIdent" placeholder="identifier">
+      <button onclick="addInvite()">Add</button>
+      <button class="secondary" onclick="loadInvites()">Refresh</button>
+    </div>
+    <table id="inviteTable"><thead><tr><th>ID</th><th>Identifier</th><th>When</th><th></th></tr></thead><tbody></tbody></table>
+  </div>
+</div>
 
-        function authHeaders() {
-            const h = {};
-            if (adminToken) h['X-Admin-Token'] = adminToken;
-            if (bearer) h['Authorization'] = 'Bearer ' + bearer;
-            return h;
-        }
+<div id="banModal" class="hidden">
+  <div class="modal-backdrop" onclick="closeBanModal(event)">
+    <div class="modal" onclick="event.stopPropagation()">
+      <h3>Ban user <span id="banUserName"></span></h3>
+      <div class="row"><label>Duration (minutes, 0=permanent)</label><input type="number" id="banDuration" value="0" min="0"></div>
+      <div class="row"><label>Reason (shown to player)</label><input type="text" id="banReason" placeholder="reason"></div>
+      <div class="row"><label>Scope</label>
+        <select id="banScope">
+          <option value="mc">Minecraft only</option>
+          <option value="platform">Whole platform</option>
+          <option value="both" selected>Both</option>
+        </select>
+      </div>
+      <div class="row"><label>Targets</label>
+        <label><input type="checkbox" value="account" checked> Account</label>
+        <label><input type="checkbox" value="hwid"> All HWIDs (last 30d)</label>
+        <label><input type="checkbox" value="ip"> IP(s) used (last 30d)</label>
+      </div>
+      <div class="row" style="justify-content:flex-end">
+        <button class="secondary" onclick="closeBanModal()">Cancel</button>
+        <button class="danger" onclick="confirmBan()">Ban</button>
+      </div>
+    </div>
+  </div>
+</div>
 
-        function setAuth() {
-            adminToken = document.getElementById('adminToken').value;
-            bearer = document.getElementById('bearer').value;
-            document.getElementById('loginBox').classList.add('hidden');
-            document.getElementById('appBox').classList.remove('hidden');
-            loadUsers();
-            loadTripwires();
-        }
+<div id="detailsModal" class="hidden">
+  <div class="modal-backdrop" onclick="closeDetailsModal(event)">
+    <div class="modal" onclick="event.stopPropagation()">
+      <h3>User details</h3>
+      <div id="detailsBody"></div>
+      <div class="row" style="justify-content:flex-end">
+        <button class="secondary" onclick="closeDetailsModal()">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
 
-        async function loadUsers() {
-            const q = document.getElementById('userSearch').value;
-            const res = await fetch('/api/admin/users' + (q ? '?q=' + encodeURIComponent(q) : ''), { headers: authHeaders() });
-            const data = await res.json().catch(() => ({}));
-            const tbody = document.querySelector('#usersTable tbody');
-            tbody.innerHTML = '';
-            const users = data.users || [];
-            for (const u of users) {
-                const tr = document.createElement('tr');
-                const tdId = document.createElement('td'); tdId.textContent = u.id;
-                const tdName = document.createElement('td'); tdName.textContent = u.username;
-                const tdAct = document.createElement('td');
-                const b1 = document.createElement('button'); b1.textContent = 'Approve'; b1.addEventListener('click', () => approveAccount(u.id, true));
-                const b2 = document.createElement('button'); b2.textContent = 'Revoke'; b2.addEventListener('click', () => approveAccount(u.id, false));
-                tdAct.appendChild(b1); tdAct.appendChild(b2);
-                tr.appendChild(tdId); tr.appendChild(tdName); tr.appendChild(tdAct);
-                tbody.appendChild(tr);
-            }
-            if (!res.ok) document.getElementById('status').textContent = 'users: ' + res.status;
-        }
+<script>
+let adminToken=''; let bearer=''; let banTargetId=null;
 
-        async function approveAccount(id, approved) {
-            const res = await fetch('/api/admin/users/' + id + '/approve', {
-                method: 'POST',
-                headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
-                body: JSON.stringify({ approved })
-            });
-            document.getElementById('status').textContent = 'account ' + id + ': ' + res.status;
-        }
+function authHeaders(){const h={}; if(adminToken) h['X-Admin-Token']=adminToken; if(bearer) h['Authorization']='Bearer '+bearer; return h;}
+function setAuth(){ adminToken=document.getElementById('adminToken').value; bearer=document.getElementById('bearer').value; document.getElementById('loginBox').classList.add('hidden'); document.getElementById('appBox').classList.remove('hidden'); loadUsers(); loadTripwires(); loadInvites(); }
+function status(msg){ document.getElementById('status').textContent=msg; }
 
-        async function loadTripwires() {
-            const res = await fetch('/api/admin/tripwires', { headers: authHeaders() });
-            const data = await res.json().catch(() => ({}));
-            const tbody = document.querySelector('#tripTable tbody');
-            tbody.innerHTML = '';
-            const events = data.events || [];
-            for (const e of events) {
-                const tr = document.createElement('tr');
-                for (const v of [e.id, e.kind, e.detail, e.ip, e.account_id, e.created_at]) {
-                    const td = document.createElement('td'); td.textContent = (v == null ? '' : v);
-                    tr.appendChild(td);
-                }
-                tbody.appendChild(tr);
-            }
-            if (!res.ok) document.getElementById('status').textContent = 'tripwires: ' + res.status;
-        }
+async function loadUsers(){
+  const q=document.getElementById('userSearch').value;
+  const res=await fetch('/api/admin/users'+(q?'?q='+encodeURIComponent(q):''),{headers:authHeaders()});
+  const data=await res.json().catch(()=>({}));
+  const tbody=document.querySelector('#usersTable tbody'); tbody.innerHTML='';
+  const users=data.users||[];
+  for(const u of users){
+    const tr=document.createElement('tr');
+    const tdId=document.createElement('td'); tdId.textContent=u.id;
+    const tdName=document.createElement('td'); tdName.textContent=u.username;
+    const tdCreated=document.createElement('td'); tdCreated.textContent=u.created_at||'';
+    const tdAct=document.createElement('td');
+    const bDetails=document.createElement('button'); bDetails.textContent='Details'; bDetails.className='secondary'; bDetails.addEventListener('click',()=>openDetails(u.id));
+    const bBan=document.createElement('button'); bBan.textContent='Ban'; bBan.className='danger'; bBan.addEventListener('click',()=>openBanModal(u.id,u.username));
+    const bUnban=document.createElement('button'); bUnban.textContent='Unban'; bUnban.className='secondary'; bUnban.addEventListener('click',()=>unbanUser(u.id));
+    const bDel=document.createElement('button'); bDel.textContent='Delete'; bDel.className='danger'; bDel.addEventListener('click',()=>deleteUser(u.id));
+    tdAct.appendChild(bDetails); tdAct.appendChild(bBan); tdAct.appendChild(bUnban); tdAct.appendChild(bDel);
+    tr.appendChild(tdId); tr.appendChild(tdName); tr.appendChild(tdCreated); tr.appendChild(tdAct);
+    tbody.appendChild(tr);
+  }
+  if(!res.ok) status('users: '+res.status);
+}
 
-        async function approveSkin(approved) {
-            const id = document.getElementById('skinId').value;
-            const res = await fetch('/api/admin/skins/' + encodeURIComponent(id) + '/approve', {
-                method: 'POST',
-                headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
-                body: JSON.stringify({ approved })
-            });
-            document.getElementById('status').textContent = 'skin ' + id + ': ' + res.status;
-        }
-    </script>
+async function deleteUser(id){
+  if(!confirm('Delete user '+id+'?')) return;
+  const res=await fetch('/api/admin/users/'+id,{method:'DELETE',headers:authHeaders()});
+  status('delete '+id+': '+res.status);
+  loadUsers();
+}
+
+function openBanModal(id, username){
+  banTargetId=id;
+  document.getElementById('banUserName').textContent=username+' (#'+id+')';
+  document.getElementById('banModal').classList.remove('hidden');
+}
+function closeBanModal(e){ if(e && e.target!==e.currentTarget) return; document.getElementById('banModal').classList.add('hidden'); }
+
+async function confirmBan(){
+  const targets=[...document.querySelectorAll('#banModal input[type=checkbox]:checked')].map(c=>c.value);
+  const body={
+    duration_minutes: parseInt(document.getElementById('banDuration').value||'0',10),
+    reason: document.getElementById('banReason').value,
+    scope: document.getElementById('banScope').value,
+    targets: targets,
+    lookback_days: 30,
+  };
+  const res=await fetch('/api/admin/users/'+banTargetId+'/ban',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},authHeaders()),body:JSON.stringify(body)});
+  const data=await res.json().catch(()=>({}));
+  status('ban: '+res.status+' '+JSON.stringify(data.counts||{}));
+  closeBanModal();
+  loadUsers();
+}
+
+async function unbanUser(id){
+  const res=await fetch('/api/admin/users/'+id+'/unban',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},authHeaders()),body:JSON.stringify({targets:['account','hwid','ip']})});
+  status('unban '+id+': '+res.status);
+  loadUsers();
+}
+
+async function openDetails(id){
+  const res=await fetch('/api/admin/users/'+id+'/details',{headers:authHeaders()});
+  const d=await res.json().catch(()=>({}));
+  const body=document.getElementById('detailsBody');
+  body.innerHTML='';
+  const pre=document.createElement('pre'); pre.style.whiteSpace='pre-wrap'; pre.textContent=JSON.stringify(d,null,2);
+  body.appendChild(pre);
+  if(d.ips_last_30d){
+    for(const ip of d.ips_last_30d){
+      const btn=document.createElement('button'); btn.className='secondary'; btn.textContent='Accounts on '+ip.ip+' ('+ip.accounts_last_30d+')';
+      btn.addEventListener('click',()=>loadIPAccounts(ip.ip));
+      body.appendChild(btn);
+    }
+  }
+  document.getElementById('detailsModal').classList.remove('hidden');
+}
+function closeDetailsModal(e){ if(e && e.target!==e.currentTarget) return; document.getElementById('detailsModal').classList.add('hidden'); }
+
+async function loadIPAccounts(ip){
+  const res=await fetch('/api/admin/ip-accounts?ip='+encodeURIComponent(ip),{headers:authHeaders()});
+  const data=await res.json().catch(()=>({}));
+  alert('IP '+ip+': '+data.count+' accounts\n'+(data.accounts||[]).map(a=>a.username).join(', '));
+}
+
+async function loadTripwires(){
+  const res=await fetch('/api/admin/tripwires',{headers:authHeaders()});
+  const data=await res.json().catch(()=>({}));
+  const tbody=document.querySelector('#tripTable tbody'); tbody.innerHTML='';
+  for(const e of (data.events||[])){
+    const tr=document.createElement('tr');
+    for(const v of [e.id,e.kind,e.detail,e.ip,e.account_id,e.created_at]){
+      const td=document.createElement('td'); td.textContent=(v==null?'':v); tr.appendChild(td);
+    }
+    tbody.appendChild(tr);
+  }
+  if(!res.ok) status('tripwires: '+res.status);
+}
+
+async function approveSkin(approved){
+  const id=document.getElementById('skinId').value;
+  const res=await fetch('/api/admin/skins/'+encodeURIComponent(id)+'/approve',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},authHeaders()),body:JSON.stringify({approved})});
+  status('skin '+id+': '+res.status);
+}
+
+async function loadInvites(){
+  const res=await fetch('/api/admin/invites',{headers:authHeaders()});
+  const data=await res.json().catch(()=>({}));
+  const tbody=document.querySelector('#inviteTable tbody'); tbody.innerHTML='';
+  for(const inv of (data.invites||[])){
+    const tr=document.createElement('tr');
+    const c1=document.createElement('td'); c1.textContent=inv.id;
+    const c2=document.createElement('td'); c2.textContent=inv.identifier;
+    const c3=document.createElement('td'); c3.textContent=inv.created_at;
+    const c4=document.createElement('td');
+    const b=document.createElement('button'); b.textContent='Remove'; b.className='danger';
+    b.addEventListener('click',()=>removeInvite(inv.id));
+    c4.appendChild(b);
+    tr.appendChild(c1); tr.appendChild(c2); tr.appendChild(c3); tr.appendChild(c4);
+    tbody.appendChild(tr);
+  }
+}
+async function addInvite(){
+  const ident=document.getElementById('inviteIdent').value;
+  const res=await fetch('/api/admin/invites',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},authHeaders()),body:JSON.stringify({identifier:ident})});
+  status('invite: '+res.status);
+  loadInvites();
+}
+async function removeInvite(id){
+  const res=await fetch('/api/admin/invites/'+id,{method:'DELETE',headers:authHeaders()});
+  status('remove invite: '+res.status);
+  loadInvites();
+}
+</script>
 </body>
 </html>
-EOF
-echo done
