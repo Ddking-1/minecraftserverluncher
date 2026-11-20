@@ -1534,3 +1534,13 @@ Checks:
   (alice's two devices + dave who shared one; carol/bob allowed; new device
   allowed), IP ban (alice + carol; bob/dave allowed; UI count 2), and mc-scope
   reason `Griefing spawn` duration 90 through to the proxy.
+
+## 2026-11-21 - Real backend admin endpoints + immutable audit + alpha v2
+
+- audit_log table + RecordAudit/ListAudit; ban deletion no longer erases history.
+- Admin password reset endpoint + real adapter wiring.
+- Skin approval queue endpoint + real adapter wiring.
+- Role management real adapter wiring (admin role grant/revoke).
+- admin.js unhidden password-reset and role select in real mode.
+- alpha-v2 selector .bat + web/launcher scripts; MC server capped at 2GB with G1GC tuning.
+- Backend binary rebuilt.

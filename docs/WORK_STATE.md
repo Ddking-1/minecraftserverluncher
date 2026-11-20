@@ -999,3 +999,21 @@ feat/advanced-admin-panel
 - SPA admin view now supports real backend mode via stored admin token.
 - Advanced ban modal shows HWID count and per-IP account counts (last 30 days).
 - Verified real-mode ban end-to-end (no console errors).
+
+## 2026-11-21 - REAL BACKEND ADMIN ENDPOINTS + IMMUTABLE AUDIT + ALPHA V2
+
+Status:
+GREEN. go build/vet/test pass; node --check pass.
+
+Done:
+- Added immutable `audit_log` table + RecordAudit/ListAudit DB methods; DELETE bans no longer erases audit.
+- Added `POST /api/admin/users/{id}/reset-password` (temp password, bcrypt hash, session revoke) returning {username, temp_password}.
+- Added `GET /api/admin/audit` and `GET /api/admin/skins/pending` endpoints.
+- Wired admin-real.js: setRole, reviewSkin, skinsQueue, resetPassword, audit now call real backend.
+- Removed _real gating in admin.js role select and password-reset button.
+- Rebuilt backend binary into _local_test/backend.
+- Created alpha-v2/ with run_alpha.bat selector (web vs launcher), run_web.ps1, run_launcher.ps1 (MC max 2GB RAM optimized JVM flags).
+- Created root run_alpha_test.bat.
+
+Branch:
+feat/advanced-admin-panel

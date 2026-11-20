@@ -364,3 +364,6 @@ Batch (2026-11-17): launcher GUI features F2/F3/F5/F6/F7/F10 implemented and ver
 
 ## 2026-11-20 - SPA admin advanced actions
 - Ported advanced ban/kick/mute/warn modal into SPA admin view.
+
+## 2026-11-21 update
+Real backend admin endpoints now cover role management, skin approval, password reset, and immutable audit history. SPA admin view enables these in real mode. Alpha v2 test harness added with web/launcher selector and 2GB-optimized MC server.

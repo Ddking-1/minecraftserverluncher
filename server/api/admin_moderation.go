@@ -184,6 +184,7 @@ func (s *Server) handleAdminModerationAction(actionType string, w http.ResponseW
 		}
 	}
 
+	_ = s.db.RecordAudit("admin", "players."+actionType, acc.Username, reason)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"status":               actionStatus(actionType),
 		"account":              acc.Username,

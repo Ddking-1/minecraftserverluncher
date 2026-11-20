@@ -909,3 +909,11 @@ Owner: hostile-tester review of F2, F3, F5, F6, F7, F10.
   action, the exact identifier, scope, duration and reason.
 - Added `TestAdminBanScopeIsolation` covering account, HWID and IP isolation,
   shared hardware/IP, missing last-month data and MC reason/duration.
+
+## 2026-11-21
+- Added immutable audit_log table and endpoints; audit survives ban deletion.
+- Added admin password reset backend endpoint.
+- Added pending skins list endpoint.
+- Wired real admin adapter for roles, skin approval, password reset, audit.
+- Unhid role management and password reset in real mode.
+- Added alpha-v2 test selector and optimized MC server for 2GB RAM.

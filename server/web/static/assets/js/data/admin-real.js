@@ -40,35 +40,67 @@ export function createRealAdminApi(token) {
     async listUsers() {
       const data = await req('/api/admin/users');
       const users = (data && data.users) || [];
-      return users.map(mapUser);
+      // Resolve backend RBAC roles per user so the role selector reflects reality.
+      const withRoles = await Promise.all(users.map(async (u) => {
+        try {
+          const r = await req(`/api/admin/users/${u.id}/roles`);
+          const roles = (r && r.roles) || [];
+          return { ...u, _roles: roles };
+        } catch (e) {
+          return { ...u, _roles: [] };
+        }
+      }));
+      return withRoles.map((u) => {
+        const mapped = mapUser(u);
+        if (Array.isArray(u._roles) && u._roles.includes('admin')) mapped.role = 'admin';
+        return mapped;
+      });
     },
     async summary() {
       const users = await this.listUsers();
       const banned = users.filter((u) => u.status === 'banned').length;
+      let pendingSkins = 0;
+      try { const q = await this.skinsQueue(); pendingSkins = q.length; } catch (e) {}
       return {
         total: users.length,
-        staff: 0,
+        staff: users.filter((u) => u.role !== 'player').length,
         active: users.length - banned,
         online: 0,
         banned,
-        pendingSkins: 0,
+        pendingSkins,
       };
     },
-    async skinsQueue() { return []; },
-    async blacklist() { return []; },
-    async audit() {
-      const data = await req('/api/admin/bans?limit=20');
-      const bans = (data && data.bans) || [];
-      return bans.map((b) => {
-        const duration = b.duration_minutes > 0 ? `${b.duration_minutes} perc` : 'végleges';
+    async skinsQueue() {
+      const data = await req('/api/admin/skins/pending');
+      const pending = (data && data.skins) || [];
+      let users = [];
+      try { users = await this.listUsers(); } catch (e) {}
+      const byId = new Map(users.map((u) => [String(u.id), u]));
+      return pending.map((p) => {
+        const ownerId = String(p.skin_id || '').split('-')[0];
+        const user = byId.get(ownerId);
         return {
-          actor: 'Admin',
-          action: b.type || b.ban_type || 'ban',
-          target: b.target != null ? String(b.target) : (b.account_id != null ? String(b.account_id) : ''),
-          detail: `${b.scope || ''} · ${duration} · ${b.reason || ''}`.trim(),
-          at: b.created_at || new Date().toISOString(),
+          id: p.skin_id,
+          userId: ownerId,
+          username: user ? user.username : 'ismeretlen',
+          fileName: 'skin.png',
+          submittedAt: p.reviewed_at || new Date().toISOString(),
+          status: 'pending',
+          skin: `/api/v1/skin-files/${p.skin_id}`,
         };
       });
+    },
+    async blacklist() { return []; },
+    async audit() {
+      const data = await req('/api/admin/audit?limit=50');
+      const entries = (data && data.entries) || [];
+      return entries.map((e) => ({
+        actor: e.actor || 'Admin',
+        action: e.action || 'audit',
+        target: e.target != null ? String(e.target) : '',
+        detail: e.detail || '',
+        at: e.created_at || new Date().toISOString(),
+      }));
     },
     async banUser(userId, params) {
       const body = {
@@ -142,10 +174,36 @@ export function createRealAdminApi(token) {
     async deleteUser(userId) {
       return req(`/api/admin/users/${userId}`, { method: 'DELETE', headers: headers() });
     },
-    async setRole() { throw new Error('Role management not available in real backend mode'); },
-    async reviewSkin() { return []; },
+    async setRole(userId, role) {
+      const isAdminRole = role !== 'player';
+      if (isAdminRole) {
+        return req(`/api/admin/users/${userId}/roles`, {
+          method: 'POST',
+          headers: jsonHeaders(),
+          body: JSON.stringify({ role: 'admin' }),
+        });
+      }
+      try {
+        await req(`/api/admin/users/${userId}/roles/admin`, { method: 'DELETE', headers: headers() });
+      } catch (e) { /* ignore */ }
+      return { status: 'revoked' };
+    },
+    async reviewSkin(id, decision) {
+      return req(`/api/admin/skins/${id}/approve`, {
+        method: 'POST',
+        headers: jsonHeaders(),
+        body: JSON.stringify({ approved: decision === 'approved' }),
+      });
+    },
     async removeFromBlacklist() { return; },
-    async resetPassword() { throw new Error('Not available'); },
+    async resetPassword(userId) {
+      const data = await req(`/api/admin/users/${userId}/reset-password`, {
+        method: 'POST',
+        headers: jsonHeaders(),
+        body: JSON.stringify({}),
+      });
+      return { username: data.username, tempPassword: data.temp_password };
+    },
     async userDevices(userId) {
       const data = await req(`/api/admin/users/${userId}/details`);
       return data;

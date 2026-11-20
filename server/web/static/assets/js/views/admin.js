@@ -116,7 +116,7 @@ function summaryHtml(summary) {
 function roleSelectHtml(user, effectiveRole, actualUser) {
   const isSelf = user.id === actualUser.id;
   const allowed = assignableRoles(effectiveRole);
-  const canEdit = !isSelf && !user._real && allowed.includes(user.role) && hasPermission(effectiveRole, 'roles.assign');
+  const canEdit = !isSelf && allowed.includes(user.role) && hasPermission(effectiveRole, 'roles.assign');
   const options = canEdit
     ? Array.from(new Set([user.role, ...allowed]))
     : [user.role];
@@ -188,7 +188,7 @@ function userRowHtml(user, effectiveRole, actualUser) {
         ${actionButton({ action: 'mute', user, effectiveRole, actualUser, permission: 'players.mute', iconName: 'volume-x', label: user.muted ? 'Némítás feloldása' : 'Némítás', tone: user.muted ? 'is-active' : '' })}
         ${actionButton({ action: 'warn', user, effectiveRole, actualUser, permission: 'players.mute', iconName: 'alert', label: 'Figyelmeztetés', tone: '' })}
         ${actionButton({ action: 'delete', user, effectiveRole, actualUser, permission: 'accounts.delete', iconName: 'trash', label: 'Fiók végleges törlése', tone: 'is-danger' })}
-        ${user._real ? '' : actionButton({ action: 'password-reset', user, effectiveRole, actualUser, permission: 'accounts.view', iconName: 'key', label: 'Jelszó visszaállítása', tone: '' })}
+        ${actionButton({ action: 'password-reset', user, effectiveRole, actualUser, permission: 'accounts.view', iconName: 'key', label: 'Jelszó visszaállítása', tone: '' })}
       </div>
     </td>
   </tr>`;

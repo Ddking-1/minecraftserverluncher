@@ -357,6 +357,17 @@ CREATE TABLE IF NOT EXISTS bans (
 );
 CREATE INDEX IF NOT EXISTS idx_bans_type_target ON bans(ban_type, target);
 CREATE INDEX IF NOT EXISTS idx_bans_account ON bans(account_id);
+
+CREATE TABLE IF NOT EXISTS audit_log (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    actor      TEXT    NOT NULL DEFAULT '',
+    action     TEXT    NOT NULL,
+    target     TEXT    NOT NULL DEFAULT '',
+    detail     TEXT    NOT NULL DEFAULT '',
+    created_at TEXT    NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_audit_log_created ON audit_log(created_at);
+CREATE INDEX IF NOT EXISTS idx_audit_log_action ON audit_log(action);
 `
 	if _, err := db.sql.Exec(schema); err != nil {
 		return fmt.Errorf("database: migrate: %w", err)

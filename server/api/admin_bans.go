@@ -146,6 +146,7 @@ func (s *Server) handleAdminBanUser(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	_ = s.db.RecordAudit("admin", "players.ban", acc.Username, reason)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"status":               "banned",
 		"account":              acc.Username,
