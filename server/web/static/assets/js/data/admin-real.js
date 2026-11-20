@@ -59,13 +59,16 @@ export function createRealAdminApi(token) {
     async audit() {
       const data = await req('/api/admin/bans?limit=20');
       const bans = (data && data.bans) || [];
-      return bans.map((b) => ({
-        actor: 'Admin',
-        action: b.type || b.ban_type || 'ban',
-        target: (b.account_id != null ? String(b.account_id) : (b.target || '')),
-        detail: `${b.scope || ''} · ${b.reason || ''}`.trim(),
-        at: b.created_at || new Date().toISOString(),
-      }));
+      return bans.map((b) => {
+        const duration = b.duration_minutes > 0 ? `${b.duration_minutes} perc` : 'végleges';
+        return {
+          actor: 'Admin',
+          action: b.type || b.ban_type || 'ban',
+          target: b.target != null ? String(b.target) : (b.account_id != null ? String(b.account_id) : ''),
+          detail: `${b.scope || ''} · ${duration} · ${b.reason || ''}`.trim(),
+          at: b.created_at || new Date().toISOString(),
+        };
+      });
     },
     async banUser(userId, params) {
       const body = {

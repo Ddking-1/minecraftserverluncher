@@ -174,7 +174,9 @@ NOT "full Prism Launcher + custom layer". See `docs/DECISIONS.md` DECISION-001.
   the launcher core under `launcher/`, all on `master`
 - Active task branch: `feat/advanced-admin-panel` — advanced admin moderation
   (ban/kick/mute/warn with duration, reason, scope, account/HWID/IP targets),
-  SPA real-backend wiring with `X-Admin-Token`, and a11y/UX fixes. See
+  SPA real-backend wiring with `X-Admin-Token`, a11y/UX fixes, and proven
+  account/HWID/IP ban-scope isolation (`TestAdminBanScopeIsolation`). The
+  proxy returns the stored ban reason/duration and Velocity displays it. See
   `docs/WORK_STATE.md` and `docs/CHANGELOG.md`.
 - Untracked by design: `reference/` (DECISION-002) and local tooling state
 - Architecture documentation includes `docs/PRISM_MINIMAL_CORE.md` and

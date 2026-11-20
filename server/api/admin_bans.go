@@ -344,25 +344,47 @@ func (s *Server) handleAdminDeleteBan(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "unbanned"})
 }
 
-// accountHasMCBan reports whether an account is blocked from Minecraft by an
-// account, HWID or IP ban with mc/both scope.
-func (s *Server) accountHasMCBan(accountID int64) bool {
-	if banned, _, scope := s.db.IsAccountBanned(accountID); banned && (scope == "mc" || scope == "platform" || scope == "both") {
-		return true
+// mcBanInfo is the Minecraft-facing ban an account is currently under. It
+// carries the stored reason and duration so the proxy can show the player why
+// they were denied, rather than a generic message.
+type mcBanInfo struct {
+	Source          string
+	Reason          string
+	DurationMinutes int
+	ExpiresAt       *time.Time
+}
+
+func newMCBanInfo(source string, b database.BanRecord) mcBanInfo {
+	return mcBanInfo{Source: source, Reason: b.Reason, DurationMinutes: b.DurationMinutes, ExpiresAt: b.ExpiresAt}
+}
+
+// activeMCBan returns the first active account, HWID or IP ban that applies to
+// Minecraft (mc, platform or both scope). Enforcement looks at every device and
+// IP the account has used, while ban creation only targets the last-month
+// window; a ban record therefore stays effective for the identifiers it names.
+func (s *Server) activeMCBan(accountID int64) (mcBanInfo, bool) {
+	if b, ok := s.db.ActiveBanForScope("account", strconv.FormatInt(accountID, 10), "mc", "platform", "both"); ok {
+		return newMCBanInfo("account", b), true
 	}
 	devs, _ := s.db.DevicesByAccountSince(accountID, time.Now().UTC().AddDate(0, 0, -3650))
 	for _, d := range devs {
-		if banned, _, scope := s.db.IsHWIDBannedNew(d.DeviceID); banned && (scope == "mc" || scope == "platform" || scope == "both") {
-			return true
+		if b, ok := s.db.ActiveBanForScope("hwid", d.DeviceID, "mc", "platform", "both"); ok {
+			return newMCBanInfo("hwid", b), true
 		}
 		if legacy, _ := s.db.IsHWIDBanned(d.DeviceID); legacy {
-			return true
+			return mcBanInfo{Source: "hwid", Reason: "hardware banned"}, true
 		}
 	}
 	for _, ip := range distinctIPsForAccount(s.db, accountID, 3650) {
-		if banned, _, scope := s.db.IsIPBanned(ip); banned && (scope == "mc" || scope == "platform" || scope == "both") {
-			return true
+		if b, ok := s.db.ActiveBanForScope("ip", ip, "mc", "platform", "both"); ok {
+			return newMCBanInfo("ip", b), true
 		}
 	}
-	return false
+	return mcBanInfo{}, false
+}
+
+// accountHasMCBan reports whether an account is blocked from Minecraft.
+func (s *Server) accountHasMCBan(accountID int64) bool {
+	_, ok := s.activeMCBan(accountID)
+	return ok
 }

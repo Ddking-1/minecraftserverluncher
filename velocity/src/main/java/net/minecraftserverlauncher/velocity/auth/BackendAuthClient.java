@@ -32,12 +32,17 @@ public class BackendAuthClient {
                 .build();
     }
 
+    /** Result of a backend authorization check. reason is null when allowed. */
+    public record AuthResult(boolean valid, String reason) {
+    }
+
     /**
-     * Reports whether the backend considers the access token valid.
+     * Reports whether the backend considers the access token valid, and the
+     * ban reason when the backend denied it so the player can see why.
      */
-    public CompletableFuture<Boolean> validateAccessToken(String accessToken) {
+    public CompletableFuture<AuthResult> validateAccessToken(String accessToken) {
         if (accessToken == null || accessToken.isEmpty()) {
-            return CompletableFuture.completedFuture(false);
+            return CompletableFuture.completedFuture(new AuthResult(false, null));
         }
         String json = "{\"access_token\":\"" + escapeJson(accessToken) + "\"}";
         HttpRequest request = HttpRequest.newBuilder()
@@ -48,11 +53,61 @@ public class BackendAuthClient {
                 .POST(HttpRequest.BodyPublishers.ofString(json, StandardCharsets.UTF_8))
                 .build();
         return http.sendAsync(request, HttpResponse.BodyHandlers.ofString())
-                .thenApply(resp -> resp.statusCode() == 200
-                        && resp.body() != null
-                        && resp.body().contains("\"status\":\"ok\""))
-                .exceptionally(err -> false)
-                .completeOnTimeout(false, 5, TimeUnit.SECONDS);
+                .thenApply(resp -> {
+                    if (resp.statusCode() != 200 || resp.body() == null) {
+                        return new AuthResult(false, null);
+                    }
+                    if (resp.body().contains("\"status\":\"ok\"")) {
+                        return new AuthResult(true, null);
+                    }
+                    return new AuthResult(false, jsonString(resp.body(), "reason"));
+                })
+                .exceptionally(err -> new AuthResult(false, null))
+                .completeOnTimeout(new AuthResult(false, null), 5, TimeUnit.SECONDS);
+    }
+
+    /**
+     * Reads a string field from the small JSON object this backend returns.
+     * Kept dependency-free on purpose; the endpoint's schema is fixed.
+     */
+    private static String jsonString(String body, String field) {
+        String key = "\"" + field + "\":\"";
+        int start = body.indexOf(key);
+        if (start < 0) {
+            return null;
+        }
+        StringBuilder sb = new StringBuilder();
+        boolean escaped = false;
+        for (int i = start + key.length(); i < body.length(); i++) {
+            char c = body.charAt(i);
+            if (escaped) {
+                switch (c) {
+                    case 'n' -> sb.append('\n');
+                    case 'r' -> sb.append('\r');
+                    case 't' -> sb.append('\t');
+                    case '"', '\\', '/' -> sb.append(c);
+                    case 'u' -> {
+                        if (i + 4 < body.length()) {
+                            try {
+                                sb.append((char) Integer.parseInt(body.substring(i + 1, i + 5), 16));
+                                i += 4;
+                            } catch (NumberFormatException ignored) {
+                                // Malformed escape: keep the raw text.
+                            }
+                        }
+                    }
+                    default -> sb.append(c);
+                }
+                escaped = false;
+            } else if (c == '\\') {
+                escaped = true;
+            } else if (c == '"') {
+                break;
+            } else {
+                sb.append(c);
+            }
+        }
+        return sb.toString();
     }
 
     private static String escapeJson(String s) {

@@ -1,3 +1,24 @@
+## 2026-11-20 - BAN SCOPE ISOLATION PROVEN (feat/advanced-admin-panel)
+
+Status: GREEN. `go build ./...`, `go vet ./...`, `go test ./web/ ./api/` and `node --check` pass; the Velocity plugin builds with `./gradlew build` (Java 25).
+
+Fixed:
+- Login IP history and IP-ban enforcement now use the trusted-proxy client IP (`AUTH_TRUST_PROXY`, right-most X-Forwarded-For), not the socket address. Behind a reverse proxy every login used to record the proxy IP, so an IP ban would have hit every account.
+- Login scope matching uses the new `ActiveBanForScope`, so an older mc-scope record cannot mask a platform ban for the same target.
+- `/api/v1/proxy/auth` now returns the stored `reason`, `duration_minutes`, `expires_at` and ban `source` when it denies a Minecraft join; the Velocity plugin shows the reason to the player.
+- The admin ban toast reports how many HWID/IP identifiers were hit and warns when the last-30-day window had none, instead of a bare "banned". The real-mode audit list now shows the action, exact identifier, scope, duration and reason.
+
+Evidence (`TestAdminBanScopeIsolation`, plus the compiled server with curl):
+- Account ban on alice (both): alice 403, bob/carol/dave 200.
+- HWID ban on alice: alice-dev-1 and alice-dev-2 403, alice's unused new device 200, bob/carol 200, dave 403 (dave had used alice's device).
+- IP ban on alice: alice and carol (same IP) 403, bob and dave (other IPs) 200; details `accounts_last_30d` = 2 and `/api/admin/ip-accounts` count = 2; the UI preview showed `10.0.0.1 — 2 fiók használta`.
+- Missing HWID data: an account whose only device was 45 days old produced `counts.hwid = 0`, stayed able to log in, and the UI preview showed 0 devices.
+- mc-scope ban on alice: launcher login stayed 200, proxy returned `denied` with reason `Griefing spawn`, duration 90 and an expiry; `/api/admin/bans` stored the same scope, reason, duration and expiry.
+
+Open: real-mode role management, skin approval and password reset still have no backend endpoints.
+
+---
+
 ## 2026-11-20 - ADVANCED ADMIN PANEL: SPA REAL-MODE WIRING + A11Y/UX (feat/advanced-admin-panel)
 
 Status: GREEN for Go backend + SPA. go build ./..., go vet ./..., go test ./web/ ./api/, node --check on touched JS all pass. Real-mode browser smoke exercised advanced ban (IP account count + HWID), kick, mute, warn, and invalid-token error path with no console errors.

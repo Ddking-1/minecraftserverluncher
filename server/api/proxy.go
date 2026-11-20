@@ -6,6 +6,7 @@ package api
 import (
 	"net/http"
 	"strings"
+	"time"
 
 	"minecraftserverluncher/server/sessions"
 )
@@ -42,19 +43,28 @@ func (s *Server) handleProxyAuth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// A Minecraft-level ban is distinct from a system ban: the account may
-	// still log in to the launcher, but proxy joins are rejected.
-	banned, err := s.db.IsMinecraftBanned(accountID)
-	if err != nil {
+	// still log in to the launcher, but proxy joins are rejected. Return the
+	// stored reason and duration so the proxy can display them to the player.
+	if info, ok := s.activeMCBan(accountID); ok {
+		resp := map[string]any{"status": "denied", "source": info.Source}
+		if info.Reason != "" {
+			resp["reason"] = info.Reason
+		}
+		if info.DurationMinutes > 0 {
+			resp["duration_minutes"] = info.DurationMinutes
+		}
+		if info.ExpiresAt != nil {
+			resp["expires_at"] = info.ExpiresAt.UTC().Format(time.RFC3339)
+		}
+		writeJSON(w, http.StatusOK, resp)
+		return
+	}
+	// Legacy Minecraft-ban flag (set by older admin flows).
+	if banned, err := s.db.IsMinecraftBanned(accountID); err != nil {
 		writeError(w, http.StatusInternalServerError, "internal error")
 		return
-	}
-	if banned {
-		writeJSON(w, http.StatusOK, map[string]string{"status": "denied"})
-		return
-	}
-	// Advanced MC-scope bans (account, HWID and IP history).
-	if s.accountHasMCBan(accountID) {
-		writeJSON(w, http.StatusOK, map[string]string{"status": "denied"})
+	} else if banned {
+		writeJSON(w, http.StatusOK, map[string]string{"status": "denied", "reason": "banned from Minecraft"})
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})

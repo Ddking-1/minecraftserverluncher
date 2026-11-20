@@ -28,6 +28,9 @@ export const meta = {
 };
 
 const ACTION_LABEL = {
+  account: 'Letiltás',
+  hwid: 'HWID letiltás',
+  ip: 'IP letiltás',
   ban: 'Letiltás',
   unban: 'Tiltás feloldása',
   kick: 'Kirúgás',
@@ -146,6 +149,15 @@ function actionButton({ action, user, effectiveRole, actualUser, permission, ico
   return `<button type="button" class="icon-btn action-btn ${tone} ${allowed ? '' : 'is-denied'}" data-admin-action="${action}" data-user-id="${esc(user.id)}" data-username="${esc(user.username)}" ${allowed ? '' : 'disabled'} title="${esc(title)}" aria-label="${esc(title)}">
     ${icon(iconName, 16)}
   </button>`;
+}
+
+function banCountsLabel(result) {
+  const counts = (result && result.counts) || {};
+  const parts = [];
+  if ('account' in counts) parts.push('fiók');
+  if ('hwid' in counts) parts.push(`${counts.hwid} HWID`);
+  if ('ip' in counts) parts.push(`${counts.ip} IP`);
+  return parts.join(' · ');
 }
 
 function userRowHtml(user, effectiveRole, actualUser) {
@@ -318,7 +330,15 @@ function rejectedSkinsHtml(blacklist) {
   </section>`;
 }
 
-function auditHtml(audit) {
+function auditTarget(entry, users) {
+  if (/^\d+$/.test(entry.target || '')) {
+    const user = (users || []).find((u) => String(u.id) === entry.target);
+    if (user) return user.username;
+  }
+  return entry.target;
+}
+
+function auditHtml(audit, users) {
   return `<section class="panel admin-audit">
     <div class="panel-head">
       <div>
@@ -335,7 +355,7 @@ function auditHtml(audit) {
           (entry) => `<div class="audit-row">
             <span class="audit-icon">${icon('shield', 14)}</span>
             <div class="audit-copy">
-              <p><strong>${esc(entry.actor)}</strong> · ${esc(ACTION_LABEL[entry.action] || entry.action)} <span>${esc(entry.target)}</span></p>
+              <p><strong>${esc(entry.actor)}</strong> · ${esc(ACTION_LABEL[entry.action] || entry.action)} <span>${esc(auditTarget(entry, users))}</span></p>
               <span>${esc(entry.detail)} · ${esc(formatDate(entry.at))}</span>
             </div>
           </div>`,
@@ -363,7 +383,7 @@ function adminContentHtml(state, actualUser) {
     <div class="admin-grid">
       ${hasPermission(role, 'skins.approve') ? skinsHtml(state.queue) : ''}
       ${hasPermission(role, 'skins.approve') ? rejectedSkinsHtml(state.blacklist || []) : ''}
-      ${hasPermission(role, 'audit.view') ? auditHtml(state.audit) : ''}
+      ${hasPermission(role, 'audit.view') ? auditHtml(state.audit, state.users) : ''}
     </div>
   `;
 }
@@ -677,9 +697,15 @@ export function mount(root, ctx) {
       const params = await openAdvancedModal('ban', user);
       if (!params) return;
       try {
-        await state.adminApi.banUser(user.id, params);
+        const result = await state.adminApi.banUser(user.id, params);
         await refreshData();
-        toast(`${user.username} letiltva.`, { tone: 'warning', title: 'Letiltás' });
+        const counts = banCountsLabel(result);
+        const missed = (params.targets.includes('hwid') && result?.counts?.hwid === 0)
+          || (params.targets.includes('ip') && result?.counts?.ip === 0);
+        toast(`${user.username} letiltva${counts ? ` (${counts})` : ''}.${missed ? ' Az egyik azonosítóhoz nem volt adat az elmúlt 30 napból.' : ''}`, {
+          tone: 'warning',
+          title: 'Letiltás',
+        });
       } catch (error) {
         toast(error.message || 'A letiltás nem sikerült.', { tone: 'error' });
       }

@@ -13,6 +13,7 @@ import (
 	"log"
 	"net/http"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 
@@ -99,7 +100,7 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_ = s.db.RecordLoginIP(acc.ID, clientIPForTripwire(r))
+	_ = s.db.RecordLoginIP(acc.ID, s.clientIP(r))
 
 	pair, err := s.issueSession(w, acc.ID, req.DeviceID, req.DeviceName)
 	if err != nil {
@@ -180,18 +181,20 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Advanced ban checks (platform scope blocks login).
-	if banned, reason, scope := s.db.IsAccountBanned(acc.ID); banned && (scope == "platform" || scope == "both") {
-		writeJSON(w, http.StatusForbidden, map[string]string{"error": "account banned: " + reason})
+	// Advanced ban checks (platform scope blocks login). Scope is matched
+	// explicitly so an mc-scope record cannot mask a platform ban on the same
+	// target, and so an mc-only ban does not block the launcher.
+	if b, ok := s.db.ActiveBanForScope("account", strconv.FormatInt(acc.ID, 10), "platform", "both"); ok {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "account banned: " + b.Reason})
 		return
 	}
-	if banned, reason, scope := s.db.IsHWIDBannedNew(req.DeviceID); banned && (scope == "platform" || scope == "both") {
-		writeJSON(w, http.StatusForbidden, map[string]string{"error": "hardware banned: " + reason})
+	if b, ok := s.db.ActiveBanForScope("hwid", req.DeviceID, "platform", "both"); ok {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "hardware banned: " + b.Reason})
 		return
 	}
-	ip := clientIPForTripwire(r)
-	if banned, reason, scope := s.db.IsIPBanned(ip); banned && (scope == "platform" || scope == "both") {
-		writeJSON(w, http.StatusForbidden, map[string]string{"error": "ip banned: " + reason})
+	ip := s.clientIP(r)
+	if b, ok := s.db.ActiveBanForScope("ip", ip, "platform", "both"); ok {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "ip banned: " + b.Reason})
 		return
 	}
 
@@ -200,7 +203,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_ = s.db.RecordLoginIP(acc.ID, clientIPForTripwire(r))
+	_ = s.db.RecordLoginIP(acc.ID, s.clientIP(r))
 
 	// If the user has already accepted cookies, set a session cookie in
 	// addition to the bearer token. The cookie is httpOnly so the JS UI cannot

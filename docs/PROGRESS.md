@@ -1516,3 +1516,21 @@ Checks:
   persistent invalid-token alert.
 - Verified: go build/vet/test (web, api), node --check, browser smoke for ban,
   kick, mute, warn and invalid token with no console errors.
+
+## 2026-11-20 — Ban scope isolation verified (feat/advanced-admin-panel)
+
+- Added `TestAdminBanScopeIsolation`: three people plus a shared-HWID account,
+  real handler stack and SQLite, covering account, HWID and IP bans, missing
+  last-month data, IP account counts, and mc-scope reason/duration.
+- Fixed login IP capture to honour `AUTH_TRUST_PROXY` (right-most XFF); behind
+  a proxy the socket IP would have made IP bans hit everyone.
+- Added `ActiveBanForScope` so login scope checks cannot be masked by an older
+  ban record for the same target.
+- `/api/v1/proxy/auth` returns the stored ban reason, duration and expiry; the
+  Velocity plugin shows the reason to the player. `./gradlew build` passes.
+- Admin ban toast reports HWID/IP hit counts and warns when the 30-day window
+  had no identifier data.
+- Compiled-server curl run reproduced: account ban (alice only), HWID ban
+  (alice's two devices + dave who shared one; carol/bob allowed; new device
+  allowed), IP ban (alice + carol; bob/dave allowed; UI count 2), and mc-scope
+  reason `Griefing spawn` duration 90 through to the proxy.

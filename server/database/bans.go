@@ -187,6 +187,22 @@ func (db *DB) ActiveBansFor(banType, target string) ([]BanRecord, error) {
 	return out, rows.Err()
 }
 
+// ActiveBanForScope returns the first active ban for type/target whose scope
+// matches one of scopes. Callers that enforce a specific scope (for example
+// login only blocks platform/both) must not depend on insertion order when
+// several bans exist for the same target.
+func (db *DB) ActiveBanForScope(banType, target string, scopes ...string) (BanRecord, bool) {
+	bans, _ := db.ActiveBansFor(banType, target)
+	for _, b := range bans {
+		for _, scope := range scopes {
+			if b.Scope == scope {
+				return b, true
+			}
+		}
+	}
+	return BanRecord{}, false
+}
+
 // IsAccountBanned checks active account bans.
 func (db *DB) IsAccountBanned(accountID int64) (bool, string, string) {
 	target := fmt.Sprintf("%d", accountID)

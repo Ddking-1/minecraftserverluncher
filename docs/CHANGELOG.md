@@ -892,3 +892,20 @@ Owner: hostile-tester review of F2, F3, F5, F6, F7, F10.
   login records IPs; `/api/admin/users` reports `muted`.
 - Accessibility/UX: modal fade-in and Tab focus trap, Escape close, persistent
   invalid-token alert, audit labels, unsupported real-mode actions hidden.
+
+### Ban scope isolation + Minecraft ban reason (2026-11-20, `feat/advanced-admin-panel`)
+
+- Fixed login IP recording/enforcement behind a trusted proxy: forwarding
+  headers are used only with `AUTH_TRUST_PROXY`, using the right-most
+  `X-Forwarded-For` value like the rate limiter. Previously the socket address
+  was recorded, so a reverse-proxied deployment could IP-ban every account.
+- Added `ActiveBanForScope` and used it for login checks, so a stale mc-scope
+  ban cannot mask a platform ban for the same account/HWID/IP.
+- `/api/v1/proxy/auth` now returns the stored ban `reason`, `duration_minutes`,
+  `expires_at` and `source` when denying a join; the Velocity plugin displays
+  the reason instead of a generic message.
+- The admin ban toast reports how many HWID/IP identifiers were hit and warns
+  when the 30-day window contained none. The real-mode audit list shows the ban
+  action, the exact identifier, scope, duration and reason.
+- Added `TestAdminBanScopeIsolation` covering account, HWID and IP isolation,
+  shared hardware/IP, missing last-month data and MC reason/duration.
