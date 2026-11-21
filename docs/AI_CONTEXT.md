@@ -377,7 +377,7 @@ Remaining admin panel end-to-end tests completed on the real backend (http://127
 
 ## 2026-11-21 - Admin panel UI uniformity fix (feat/advanced-admin-panel)
 
-Status: In progress (commit pending). go build ./..., go vet ./..., go test ./web/ ./api/, node --check all pass.
+Status: In progress (committed (7706d30)). go build ./..., go vet ./..., go test ./web/ ./api/, node --check all pass.
 
 Problem: advanced admin modal used `.form-row` which had no CSS; `.modal` had no max-height/overflow; cookie consent had no styles; admin KPI/grid used fixed columns that did not adapt to display size, causing overlap/uneven layout.
 

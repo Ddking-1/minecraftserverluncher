@@ -1049,4 +1049,4 @@ Done:
 - pages.css: .admin-kpis and .admin-grid changed to auto-fit minmax grids.
 - Rebuilt Go server and restarted locally; verified modal renders correctly in browser.
 
-Branch: feat/advanced-admin-panel. Commit/push pending.
+Branch: feat/advanced-admin-panel. Committed and pushed (7706d30).
