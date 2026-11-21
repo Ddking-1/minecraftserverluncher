@@ -374,3 +374,15 @@ Graphical end-to-end testing performed on the real backend (http://127.0.0.1:808
 ## 2026-11-21 - Advanced admin panel tests completed (feat/advanced-admin-panel)
 
 Remaining admin panel end-to-end tests completed on the real backend (http://127.0.0.1:8080, admin token local-dev-admin-token, DB server/auth.db). Account deletion verified on a throwaway account (DELETE 200, removed from list, relogin 401). Invalid admin token banner verified (unauthorized, zeroed KPIs). Skin approve and reject both verified; pending list now excludes already-reviewed rejected skins (ListPendingSkinFiles filters reviewer=''). Unmute click verified (mute→unmute, audit entry). Search filtering verified by username and id. Backend audit entries added for unmute, unban, skin approve/reject, account deletion, role assign/revoke. Checks: go build ./..., go vet ./..., go test ./web/ ./api/, node --check pass.
+
+## 2026-11-21 - Admin panel UI uniformity fix (feat/advanced-admin-panel)
+
+Status: In progress (commit pending). go build ./..., go vet ./..., go test ./web/ ./api/, node --check all pass.
+
+Problem: advanced admin modal used `.form-row` which had no CSS; `.modal` had no max-height/overflow; cookie consent had no styles; admin KPI/grid used fixed columns that did not adapt to display size, causing overlap/uneven layout.
+
+Fix (CSS only, no JS/Go changes):
+- components.css: robust, scrollable, responsive `.modal`/`.modal-backdrop`; added `.form-row` styling (grid, inputs, focus, checkbox targets); added cookie-consent fixed card styles.
+- pages.css: `.admin-kpis` and `.admin-grid` changed from fixed columns to `repeat(auto-fit, minmax(...))` for dynamic responsiveness across resolutions and popups.
+
+Branch: feat/advanced-admin-panel. Embedded static requires Go rebuild + server restart (done locally).

@@ -1039,3 +1039,14 @@ Done:
 Checks: go build ./..., go vet ./..., go test ./web/ ./api/, node --check all pass.
 
 Branch: feat/advanced-admin-panel.
+
+## 2026-11-21 - Admin panel UI uniformity fix (feat/advanced-admin-panel)
+
+Status: GREEN. go build ./..., go vet ./..., go test ./web/ ./api/, node --check all pass.
+
+Done:
+- components.css: modal robust/scrollable/responsive; .form-row styling; cookie-consent fixed card styles.
+- pages.css: .admin-kpis and .admin-grid changed to auto-fit minmax grids.
+- Rebuilt Go server and restarted locally; verified modal renders correctly in browser.
+
+Branch: feat/advanced-admin-panel. Commit/push pending.

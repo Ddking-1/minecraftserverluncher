@@ -824,6 +824,202 @@
   color: var(--text);
   background: var(--surface-2);
 }
+
+/* ---------- modal: robust, scrollable, responsive ---------- */
+
+.modal-backdrop {
+  overflow: auto;
+}
+
+.modal {
+  max-height: min(92vh, 760px);
+  overflow-y: auto;
+  width: min(460px, calc(100vw - 32px));
+  margin: auto;
+}
+
+@media (max-width: 520px) {
+  .modal-backdrop {
+    padding: 12px;
+  }
+  .modal {
+    width: 100%;
+    max-height: 94vh;
+    padding: 18px;
+  }
+}
+
+/* ---------- form rows (advanced admin modal) ---------- */
+
+.form-row {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.form-row:last-child {
+  margin-bottom: 0;
+}
+
+.form-row > label,
+.form-row > span:first-child {
+  font-size: 12.5px;
+  font-weight: 650;
+  color: var(--text-soft);
+}
+
+.form-row input[type="text"],
+.form-row input[type="number"],
+.form-row input[type="password"],
+.form-row input[type="search"],
+.form-row select,
+.form-row textarea {
+  width: 100%;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 13.5px;
+  outline: 0;
+  transition: border-color var(--fast) var(--ease), box-shadow var(--fast) var(--ease), background var(--fast) var(--ease);
+}
+
+.form-row input:focus,
+.form-row select:focus,
+.form-row textarea:focus {
+  border-color: var(--accent-border);
+  background: var(--surface);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.form-row label:has(input[type="checkbox"]) {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 550;
+  color: var(--text-soft);
+  cursor: pointer;
+  margin-right: 14px;
+}
+
+.form-row label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.form-row:has(input[type="checkbox"]) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+}
+
+/* ---------- cookie consent (was missing styles) ---------- */
+
+[data-cookie-consent-host] {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 95;
+  width: min(420px, calc(100vw - 32px));
+  pointer-events: auto;
+}
+
+.cookie-consent-card {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.5;
+  animation: pageIn 260ms var(--ease) both;
+}
+
+.cookie-consent-card.is-done {
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 260ms var(--ease), transform 260ms var(--ease);
+  pointer-events: none;
+}
+
+.cookie-consent-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cookie-consent-head strong {
+  font-size: 15px;
+  font-weight: 750;
+}
+
+.cookie-consent-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  flex: 0 0 auto;
+}
+
+.cookie-consent-copy {
+  color: var(--text-soft);
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+.cookie-consent-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+
+.cookie-consent-list > div {
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.cookie-consent-list dt {
+  font-weight: 650;
+  color: var(--text-soft);
+}
+
+.cookie-consent-list dd {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.cookie-consent-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cookie-consent-actions .btn {
+  min-height: 36px;
+  font-size: 12.5px;
+}
+
+@media (max-width: 520px) {
+  [data-cookie-consent-host] {
+    right: 12px;
+    bottom: 12px;
+    width: calc(100vw - 24px);
+  }
+}
 /* appended styles */
 
 .password-criteria {

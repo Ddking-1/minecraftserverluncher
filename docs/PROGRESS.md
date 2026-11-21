@@ -1563,3 +1563,9 @@ Manual user action: None.
 - Added audit entries for unmute, unban, skin approve/reject, account deletion, role assign/revoke.
 - Updated docs/ADMIN_PANEL_TEST_CHECKLIST.md with results.
 - Checks: go build ./..., go vet ./..., go test ./web/ ./api/, node --check all pass.
+
+## 2026-11-21 - Admin panel UI uniformity fix
+
+- Fixed overlapping/uneven admin panel layout: styled missing `.form-row`, made `.modal` scrollable/responsive, added cookie-consent card styles, switched admin KPI/grid to auto-fit minmax.
+- Checks: go build ./..., go vet ./..., go test ./web/ ./api/, node --check all pass.
+- Branch: feat/advanced-admin-panel.

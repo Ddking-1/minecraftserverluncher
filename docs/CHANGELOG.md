@@ -929,3 +929,6 @@ Owner: hostile-tester review of F2, F3, F5, F6, F7, F10.
 - Added audit logging for unmute, unban, skin approve/reject, account deletion, role assign/revoke.
 - Frontend search now filters by username, email and user id.
 - Updated ADMIN_PANEL_TEST_CHECKLIST.md.
+
+## 2026-11-21
+- Admin panel UI uniformity fix: styled missing `.form-row`, made modal scrollable/responsive, added cookie-consent card styles, switched admin KPI/grid to auto-fit minmax for dynamic responsiveness across displays.
