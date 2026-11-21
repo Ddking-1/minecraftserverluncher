@@ -443,7 +443,10 @@
   font-weight: 700;
   letter-spacing: -0.025em;
   color: var(--text);
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  min-width: 0;
 }
 
 .stat-hint {
