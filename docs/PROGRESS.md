@@ -1544,3 +1544,14 @@ Checks:
 - admin.js unhidden password-reset and role select in real mode.
 - alpha-v2 selector .bat + web/launcher scripts; MC server capped at 2GB with G1GC tuning.
 - Backend binary rebuilt.
+
+## 2026-11-21 - Graphical admin panel test + checklist
+Agent/model: Buffy (Codebuff)
+Branch: feat/advanced-admin-panel
+Task: Graphically test admin panel functions one by one and document checklist + improvement notes.
+Completed: 2026-11-21
+Files: docs/ADMIN_PANEL_TEST_CHECKLIST.md
+Tests: Graphical UI walkthrough (ban/unban, kick, mute, warn, password reset, role change, audit). Backend build/vet/test previously green.
+Current status: Checklist committed and pushed (63e168f). Destructive/edge cases (delete account, invalid token banner, skin approve/reject) not tested.
+Next: Run remaining edge-case tests if required; address UX notes (cookie dialog, role-change audit/mapping, audit filtering).
+Manual user action: None.

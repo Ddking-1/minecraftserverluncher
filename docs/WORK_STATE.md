@@ -1017,3 +1017,8 @@ Done:
 
 Branch:
 feat/advanced-admin-panel
+
+## 2026-11-21 - Graphical admin panel test + checklist
+Status: GREEN (tests documented).
+Done: Graphical end-to-end test of admin panel; checklist + improvement notes in docs/ADMIN_PANEL_TEST_CHECKLIST.md; commit 63e168f pushed.
+Not tested: account deletion, invalid-token banner, skin approve/reject, unmute click, search filtering.

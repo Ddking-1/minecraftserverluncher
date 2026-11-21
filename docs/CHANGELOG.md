@@ -917,3 +917,7 @@ Owner: hostile-tester review of F2, F3, F5, F6, F7, F10.
 - Wired real admin adapter for roles, skin approval, password reset, audit.
 - Unhid role management and password reset in real mode.
 - Added alpha-v2 test selector and optimized MC server for 2GB RAM.
+
+## 2026-11-21
+- Added docs/ADMIN_PANEL_TEST_CHECKLIST.md with graphical test checklist, results and UX improvement notes.
+- Commit 63e168f on feat/advanced-admin-panel.

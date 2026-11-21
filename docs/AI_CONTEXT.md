@@ -367,3 +367,6 @@ Batch (2026-11-17): launcher GUI features F2/F3/F5/F6/F7/F10 implemented and ver
 
 ## 2026-11-21 update
 Real backend admin endpoints now cover role management, skin approval, password reset, and immutable audit history. SPA admin view enables these in real mode. Alpha v2 test harness added with web/launcher selector and 2GB-optimized MC server.
+
+## 2026-11-21 - Graphical admin panel test + checklist
+Graphical end-to-end testing performed on the real backend (http://127.0.0.1:8080, admin token local-dev-admin-token): ban/unban, kick, mute/unmute, warn, password reset, role change, audit log. Results documented in docs/ADMIN_PANEL_TEST_CHECKLIST.md. Commit 63e168f on feat/advanced-admin-panel.
