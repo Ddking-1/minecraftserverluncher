@@ -932,3 +932,7 @@ Owner: hostile-tester review of F2, F3, F5, F6, F7, F10.
 
 ## 2026-11-21
 - Admin panel UI uniformity fix: styled missing `.form-row`, made modal scrollable/responsive, added cookie-consent card styles, switched admin KPI/grid to auto-fit minmax for dynamic responsiveness across displays.
+
+## 2026-11-21
+- Responsive audit of admin panel across mobile/tablet/desktop/folded breakpoints: no page-level horizontal scroll; modals scroll within viewport.
+- Fixed overlay stacking: cookie-consent host z-index lowered below modal backdrop and toasts.

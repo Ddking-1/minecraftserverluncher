@@ -1050,3 +1050,14 @@ Done:
 - Rebuilt Go server and restarted locally; verified modal renders correctly in browser.
 
 Branch: feat/advanced-admin-panel. Committed and pushed (7706d30).
+
+## 2026-11-21 - Admin panel responsive audit + modal stacking fix (feat/advanced-admin-panel)
+
+Status: GREEN. go build ./..., go vet ./..., go test ./web/ ./api/, node --check all pass.
+
+Done:
+- Responsive audit across 320/360/480/768/1024x1366/1280/1366x768/1920x1080: no page-level horizontal scroll; modals scrollable within viewport; cookie consent card full-width on mobile.
+- Modal stacking: lowered cookie-consent host z-index from 95 to 70 so it stays below the modal backdrop (80) and toasts (90); verified with cookie consent visible behind an open ban modal.
+- Cleaned temporary screenshot artifacts; rebuilt and restarted the Go server on the new binary.
+
+Branch: feat/advanced-admin-panel.
