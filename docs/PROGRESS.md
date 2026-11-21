@@ -1555,3 +1555,11 @@ Tests: Graphical UI walkthrough (ban/unban, kick, mute, warn, password reset, ro
 Current status: Checklist committed and pushed (63e168f). Destructive/edge cases (delete account, invalid token banner, skin approve/reject) not tested.
 Next: Run remaining edge-case tests if required; address UX notes (cookie dialog, role-change audit/mapping, audit filtering).
 Manual user action: None.
+
+## 2026-11-21 - Advanced admin panel tests completed
+
+- Completed remaining admin panel end-to-end tests: account deletion, invalid token banner, skin approve/reject, unmute click, search filtering.
+- Fixed pending skin list to exclude already-reviewed rejected skins.
+- Added audit entries for unmute, unban, skin approve/reject, account deletion, role assign/revoke.
+- Updated docs/ADMIN_PANEL_TEST_CHECKLIST.md with results.
+- Checks: go build ./..., go vet ./..., go test ./web/ ./api/, node --check all pass.

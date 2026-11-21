@@ -1022,3 +1022,20 @@ feat/advanced-admin-panel
 Status: GREEN (tests documented).
 Done: Graphical end-to-end test of admin panel; checklist + improvement notes in docs/ADMIN_PANEL_TEST_CHECKLIST.md; commit 63e168f pushed.
 Not tested: account deletion, invalid-token banner, skin approve/reject, unmute click, search filtering.
+
+## 2026-11-21 - Advanced admin panel tests completed (feat/advanced-admin-panel)
+
+Status: GREEN. Remaining end-to-end tests completed on real backend.
+
+Done:
+- Account deletion verified on throwaway account (delete 200, list removal, relogin 401).
+- Invalid admin token banner verified.
+- Skin approve and reject verified; pending list now excludes already-reviewed rejected skins.
+- Unmute click verified (mute→unmute + audit).
+- Search filtering verified (username, id).
+- Audit entries added for unmute, unban, skin approve/reject, account deletion, role assign/revoke.
+- Fixed ListPendingSkinFiles SQL (reviewer filter).
+
+Checks: go build ./..., go vet ./..., go test ./web/ ./api/, node --check all pass.
+
+Branch: feat/advanced-admin-panel.

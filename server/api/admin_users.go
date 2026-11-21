@@ -71,6 +71,11 @@ func (s *Server) handleAdminDeleteUser(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid user id")
 		return
 	}
+	acc, _ := s.db.AccountByID(id)
+	target := strconv.FormatInt(id, 10)
+	if acc != nil {
+		target = acc.Username
+	}
 	if err := s.db.DeleteAccount(id); err != nil {
 		if errors.Is(err, database.ErrNotFound) {
 			writeError(w, http.StatusNotFound, "user not found")
@@ -79,6 +84,7 @@ func (s *Server) handleAdminDeleteUser(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "internal error")
 		return
 	}
+	_ = s.db.RecordAudit("admin", "accounts.delete", target, "fiók véglegesen törölve")
 	writeJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
 }
 
@@ -244,6 +250,9 @@ func (s *Server) handleAdminGrantRole(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "internal error")
 		return
 	}
+	if acc, err := s.db.AccountByID(id); err == nil {
+		_ = s.db.RecordAudit("admin", "roles.assign", acc.Username, "rang: "+strings.TrimSpace(req.Role))
+	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "granted"})
 }
 
@@ -268,6 +277,9 @@ func (s *Server) handleAdminRevokeRole(w http.ResponseWriter, r *http.Request) {
 		}
 		writeError(w, http.StatusInternalServerError, "internal error")
 		return
+	}
+	if acc, err := s.db.AccountByID(id); err == nil {
+		_ = s.db.RecordAudit("admin", "roles.revoke", acc.Username, "rang: "+role)
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "revoked"})
 }
@@ -388,6 +400,11 @@ func (s *Server) handleAdminSkinApproval(w http.ResponseWriter, r *http.Request)
 		writeError(w, http.StatusInternalServerError, "internal error")
 		return
 	}
+	detail := "elutasítva"
+	if req.Approved {
+		detail = "jóváhagyva"
+	}
+	_ = s.db.RecordAudit("admin", "skins.approve", id, detail)
 	writeJSON(w, http.StatusOK, map[string]any{"skin_id": id, "approved": req.Approved})
 }
 

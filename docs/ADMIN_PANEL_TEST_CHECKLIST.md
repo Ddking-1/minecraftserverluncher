@@ -6,10 +6,10 @@ Teszt környezet: lokális backend `http://127.0.0.1:8080`, admin token `local-d
 - [x] Admin token beállítása (Beállítás gomb) → "Valós backend aktív" jelzés megjelenik.
 - [x] Fiókok száma: 4 regisztrált, 4 aktív, 0 online (szimulált), 0 letiltva a kezdeti állapotban.
 - [x] Felhasználó táblázat: 4 sor (alice, bob, carol, dave), rang = Játékos, állapot = Online.
-- [x] Kereső mező jelen van (nem tesztelt szűrés).
+- [x] Kereső mező jelen van; szűrés tesztelve (név, azonosító).
 - [x] Audit napló kezdetben üres / csak új bejegyzések jelennek meg.
 - [x] Rang mátrix táblázat megjelenik, szimulált rang = Tulajdonos oszlop kiemelve.
-- [~] Érvénytelen token banner: nem tesztelve (token törlése → banner). Kódútvonal létezik (`admin-real.js`), de grafikusan nem ellenőriztük.
+- [x] Érvénytelen token banner: rossz token mellett "Backend hiba: unauthorized", nullás KPI-k; visszaállítva `local-dev-admin-token`.
 
 ## 2. Ban / Unban (Játékos letiltása)
 - [x] Ban modal megnyílik alice-nál.
@@ -40,7 +40,7 @@ Teszt környezet: lokális backend `http://127.0.0.1:8080`, admin token `local-d
 
 ## 5. Unmute (Némítás feloldása)
 - [x] "Némítás feloldása" gomb megjelenik bob-nál némítás után.
-- [~] Klikk nem tesztelt (a flow logikailag azonos a ban feloldással); backend végpont létezik.
+- [x] Klikk tesztelve (API): mute → unmute, állapot false-ra vált, audit bejegyzés (players.unmute).
 
 ## 6. Warn (Figyelmeztetés)
 - [x] Warn modal megnyílik dave-nál.
@@ -52,7 +52,7 @@ Teszt környezet: lokális backend `http://127.0.0.1:8080`, admin token `local-d
 - [x] Rang legördülő (Játékos/Tulajdonos/Admin/Moderátor/Support) megjelenik.
 - [x] dave rangjának módosítása (Moderátor kiválasztás) → állapot frissül (Admin lett a backend válasz alapján).
 - [x] Staff számláló frissül (0 → 1 staff).
-- [~] Audit bejegyzés role váltásról nem jelent meg a naplóban (lehet, hogy nem auditált művelet) — ellenőrizendő.
+- [x] Role váltás auditálva (roles.assign / roles.revoke bejegyzés) a javítás után.
 
 ## 8. Jelszó visszaállítás (Password reset)
 - [x] Jelszó visszaállítása modal megnyílik carol-nál.
@@ -63,15 +63,16 @@ Teszt környezet: lokális backend `http://127.0.0.1:8080`, admin token `local-d
 - [x] Audit bejegyzés: "admin · accounts.password-reset · carol · ideiglenes jelszó generálva".
 
 ## 9. Skin jóváhagyás
-- [~] Nincs függőben lévő skin a teszt DB-ben → "Nincs függőben lévő skin" üres állapot megjelenik.
-- [~] Elutasított skinek (blacklist) üres állapot megjelenik.
-- [ ] Approve/Reject flow nem tesztelhető (nincs tesztadat). Backend endpoint létezik (`admin-real.js` + `admin_moderation.go`).
+- [x] Pending skin feltöltése tesztelő fiókkal, pending lista 1 elem.
+- [x] Approve tesztelve: 200, approved:true, pending lista üres, audit bejegyzés (skins.approve, jóváhagyva).
+- [x] Reject tesztelve: 200, approved:false, skin eltűnik a pending listából (javított szűrés: csak nem áttekintett skinek), audit bejegyzés (skins.approve, elutasítva).
 
 ## 10. Egyéb
 - [x] Világos/sötét mód kapcsoló jelen van.
 - [x] Cookie/süti dialog megjelenik (zavaró overlay a teszt során).
-- [ ] Fiók végleges törlése (delete) nem tesztelt (destruktív).
-- [ ] Invalid token banner nem tesztelt.
+- [x] Fiók végleges törlése (delete) tesztelve throwaway fiókon: DELETE 200, eltűnt a listából, újra bejelentkezés 401, audit bejegyzés (accounts.delete).
+- [x] Invalid admin token banner tesztelve: rossz token mellett "Backend hiba: unauthorized", nullás KPI-k; visszaállítva `local-dev-admin-token`.
+- [x] Kereső szűrés tesztelve: név szerint (alice/bob), azonosító (id) frontend szűrés; üres találat esetén sorok elrejtése. E-mail szűrés backend email hiánya miatt nem tesztelhető.
 
 ---
 

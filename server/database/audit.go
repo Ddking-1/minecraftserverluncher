@@ -68,7 +68,7 @@ type PendingSkin struct {
 
 // ListPendingSkinFiles returns skin ids that are pending admin approval.
 func (db *DB) ListPendingSkinFiles() ([]PendingSkin, error) {
-	rows, err := db.sql.Query(`SELECT skin_id, approved, reviewer, reviewed_at FROM skin_file_approvals WHERE approved = 0 ORDER BY reviewed_at DESC`)
+	rows, err := db.sql.Query(`SELECT skin_id, approved, reviewer, reviewed_at FROM skin_file_approvals WHERE approved = 0 AND (reviewer = '' OR reviewer IS NULL) ORDER BY reviewed_at DESC`)
 	if err != nil {
 		return nil, fmt.Errorf("database: list pending skins: %w", err)
 	}

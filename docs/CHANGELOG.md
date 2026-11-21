@@ -921,3 +921,11 @@ Owner: hostile-tester review of F2, F3, F5, F6, F7, F10.
 ## 2026-11-21
 - Added docs/ADMIN_PANEL_TEST_CHECKLIST.md with graphical test checklist, results and UX improvement notes.
 - Commit 63e168f on feat/advanced-admin-panel.
+
+## 2026-11-21 - Advanced admin panel tests and fixes
+
+- Completed remaining admin panel end-to-end tests (account deletion, invalid token banner, skin approve/reject, unmute, search filtering).
+- Fixed ListPendingSkinFiles to exclude already-reviewed rejected skins.
+- Added audit logging for unmute, unban, skin approve/reject, account deletion, role assign/revoke.
+- Frontend search now filters by username, email and user id.
+- Updated ADMIN_PANEL_TEST_CHECKLIST.md.

@@ -163,7 +163,7 @@ function banCountsLabel(result) {
 function userRowHtml(user, effectiveRole, actualUser) {
   const isSelf = user.id === actualUser.id;
   const banned = user.status === 'banned';
-  return `<tr data-user-row data-username="${esc(user.username.toLowerCase())}" data-email="${esc(user.email.toLowerCase())}">
+  return `<tr data-user-row data-user-id="${esc(user.id)}" data-username="${esc(user.username.toLowerCase())}" data-email="${esc(user.email.toLowerCase())}">
     <td>
       <div class="table-user">
         ${avatar(user, 'sm')}
@@ -500,7 +500,7 @@ export function mount(root, ctx) {
     const needle = state.query.trim().toLowerCase();
     let visible = 0;
     content.querySelectorAll('[data-user-row]').forEach((row) => {
-      const match = !needle || row.dataset.username.includes(needle) || row.dataset.email.includes(needle);
+      const match = !needle || row.dataset.username.includes(needle) || row.dataset.email.includes(needle) || (row.dataset.userId || '').includes(needle);
       row.hidden = !match;
       if (match) visible += 1;
     });

@@ -29,6 +29,11 @@ func (s *Server) handleAdminUnmuteUser(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid user id")
 		return
 	}
+	acc, _ := s.db.AccountByID(id)
+	target := strconv.FormatInt(id, 10)
+	if acc != nil {
+		target = acc.Username
+	}
 	var req struct {
 		Targets []string `json:"targets"`
 	}
@@ -52,6 +57,7 @@ func (s *Server) handleAdminUnmuteUser(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+	_ = s.db.RecordAudit("admin", "players.unmute", target, "némítás feloldva")
 	writeJSON(w, http.StatusOK, map[string]string{"status": "unmuted"})
 }
 

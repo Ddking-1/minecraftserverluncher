@@ -370,3 +370,7 @@ Real backend admin endpoints now cover role management, skin approval, password 
 
 ## 2026-11-21 - Graphical admin panel test + checklist
 Graphical end-to-end testing performed on the real backend (http://127.0.0.1:8080, admin token local-dev-admin-token): ban/unban, kick, mute/unmute, warn, password reset, role change, audit log. Results documented in docs/ADMIN_PANEL_TEST_CHECKLIST.md. Commit 63e168f on feat/advanced-admin-panel.
+
+## 2026-11-21 - Advanced admin panel tests completed (feat/advanced-admin-panel)
+
+Remaining admin panel end-to-end tests completed on the real backend (http://127.0.0.1:8080, admin token local-dev-admin-token, DB server/auth.db). Account deletion verified on a throwaway account (DELETE 200, removed from list, relogin 401). Invalid admin token banner verified (unauthorized, zeroed KPIs). Skin approve and reject both verified; pending list now excludes already-reviewed rejected skins (ListPendingSkinFiles filters reviewer=''). Unmute click verified (mute→unmute, audit entry). Search filtering verified by username and id. Backend audit entries added for unmute, unban, skin approve/reject, account deletion, role assign/revoke. Checks: go build ./..., go vet ./..., go test ./web/ ./api/, node --check pass.
