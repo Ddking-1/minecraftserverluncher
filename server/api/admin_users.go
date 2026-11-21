@@ -512,3 +512,19 @@ func (s *Server) handleAdminListPendingSkins(w http.ResponseWriter, r *http.Requ
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"skins": out, "total": len(out)})
 }
+
+// handleAdminListRejectedSkins returns skin files an admin rejected (blacklist).
+func (s *Server) handleAdminListRejectedSkins(w http.ResponseWriter, r *http.Request) {
+	if !s.adminAuthorized(w, r) {
+		return
+	}
+	ids, err := s.db.ListRejectedSkinFiles()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+	if ids == nil {
+		ids = []string{}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"skins": ids, "total": len(ids)})
+}

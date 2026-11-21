@@ -89,3 +89,25 @@ func (db *DB) ListPendingSkinFiles() ([]PendingSkin, error) {
 	}
 	return out, rows.Err()
 }
+
+// ListRejectedSkinFiles returns skin ids that an admin rejected (approved=0
+// with a reviewer set).
+func (db *DB) ListRejectedSkinFiles() ([]string, error) {
+	rows, err := db.sql.Query(`SELECT skin_id FROM skin_file_approvals WHERE approved = 0 AND reviewer != '' AND reviewer IS NOT NULL ORDER BY reviewed_at DESC`)
+	if err != nil {
+		return nil, fmt.Errorf("database: list rejected skins: %w", err)
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("database: scan rejected skin: %w", err)
+		}
+		out = append(out, id)
+	}
+	if out == nil {
+		out = []string{}
+	}
+	return out, rows.Err()
+}

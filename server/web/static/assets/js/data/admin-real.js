@@ -24,7 +24,7 @@ export function createRealAdminApi(token) {
     id: String(u.id),
     username: u.username || '',
     email: '',
-    role: 'player',
+    role: (Array.isArray(u._roles) && (u._roles.includes('owner') ? 'owner' : u._roles.includes('admin') ? 'admin' : u._roles.includes('moderator') ? 'moderator' : u._roles.includes('support') ? 'support' : 'player')) || 'player',
     status: u.banned ? 'banned' : (u.minecraft_banned ? 'banned' : 'active'),
     online: true,
     muted: !!u.muted,
@@ -90,7 +90,10 @@ export function createRealAdminApi(token) {
         };
       });
     },
-    async blacklist() { return []; },
+    async blacklist() {
+      const data = await req('/api/admin/skins/rejected');
+      return (data && data.skins) || [];
+    },
     async audit() {
       const data = await req('/api/admin/audit?limit=50');
       const entries = (data && data.entries) || [];
@@ -175,17 +178,18 @@ export function createRealAdminApi(token) {
       return req(`/api/admin/users/${userId}`, { method: 'DELETE', headers: headers() });
     },
     async setRole(userId, role) {
-      const isAdminRole = role !== 'player';
-      if (isAdminRole) {
+      const map = { player: null, support: 'support', moderator: 'moderator', admin: 'admin', owner: 'owner' };
+      for (const r of ['admin', 'moderator', 'support', 'owner']) {
+        try { await req(`/api/admin/users/${userId}/roles/${r}`, { method: 'DELETE', headers: headers() }); } catch (e) { /* ignore */ }
+      }
+      const target = map[role];
+      if (target) {
         return req(`/api/admin/users/${userId}/roles`, {
           method: 'POST',
           headers: jsonHeaders(),
-          body: JSON.stringify({ role: 'admin' }),
+          body: JSON.stringify({ role: target }),
         });
       }
-      try {
-        await req(`/api/admin/users/${userId}/roles/admin`, { method: 'DELETE', headers: headers() });
-      } catch (e) { /* ignore */ }
       return { status: 'revoked' };
     },
     async reviewSkin(id, decision) {
@@ -195,7 +199,13 @@ export function createRealAdminApi(token) {
         body: JSON.stringify({ approved: decision === 'approved' }),
       });
     },
-    async removeFromBlacklist() { return; },
+    async removeFromBlacklist(id) {
+      return req(`/api/admin/skins/${id}/approve`, {
+        method: 'POST',
+        headers: jsonHeaders(),
+        body: JSON.stringify({ approved: true }),
+      });
+    },
     async resetPassword(userId) {
       const data = await req(`/api/admin/users/${userId}/reset-password`, {
         method: 'POST',

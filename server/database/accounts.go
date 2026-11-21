@@ -385,10 +385,16 @@ CREATE INDEX IF NOT EXISTS idx_audit_log_action ON audit_log(action);
 			}
 		}
 	}
-	// Seed the default admin role + permission so per-user RBAC works out of
-	// the box (idempotent).
-	if _, err := db.sql.Exec(`INSERT OR IGNORE INTO roles (name, description, created_at) VALUES ('admin', 'Administrator role', ?)`, nowText()); err != nil {
-		return fmt.Errorf("database: seed admin role: %w", err)
+	// Seed the default roles so per-user RBAC works out of the box (idempotent).
+	for _, r := range []struct{ name, desc string }{
+		{"admin", "Administrator role"},
+		{"moderator", "Moderator role"},
+		{"support", "Support role"},
+		{"owner", "Owner role"},
+	} {
+		if _, err := db.sql.Exec(`INSERT OR IGNORE INTO roles (name, description, created_at) VALUES (?, ?, ?)`, r.name, r.desc, nowText()); err != nil {
+			return fmt.Errorf("database: seed role %s: %w", r.name, err)
+		}
 	}
 	if _, err := db.sql.Exec(`INSERT OR IGNORE INTO permissions (name, description, created_at) VALUES ('admin', 'Administrator permission', ?)`, nowText()); err != nil {
 		return fmt.Errorf("database: seed admin permission: %w", err)

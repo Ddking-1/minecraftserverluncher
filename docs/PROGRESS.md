@@ -1576,3 +1576,10 @@ Manual user action: None.
 - Responsive dialog audit across mobile/tablet/desktop/folded breakpoints: no overlap/clipping.
 - Checks: go build ./..., go vet ./..., go test ./..., node --check all pass.
 - Branch: feat/advanced-admin-panel.
+
+## 2026-11-21 - Real backend for previously mock-only admin actions
+- Audited admin UI/API: bans/roles/skins/password/kick/mute/warn already had real endpoints; skin blacklist (rejected skins) and non-admin role assignment were mock-only/stubbed.
+- Added DB method ListRejectedSkinFiles + handler GET /api/admin/skins/rejected; wired real adapter blacklist()/removeFromBlacklist() (removal re-approves via existing approve endpoint).
+- Seeded moderator/support/owner roles; improved real adapter setRole to revoke all then grant mapped role; mapUser now reflects actual role.
+- Checks: go build, go vet, go test ./..., node --check all pass. Verified grant/revoke role, rejected-skins list/removal end-to-end.
+- Branch: feat/advanced-admin-panel.
