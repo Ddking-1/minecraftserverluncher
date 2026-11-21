@@ -40,7 +40,10 @@ export function debounce(fn, wait = 200) {
 const numberFormatter = new Intl.NumberFormat('hu-HU');
 
 export function formatNumber(value) {
-  return numberFormatter.format(Number(value) || 0);
+  // Insert a zero-width space after each thousands separator so very large
+  // values can wrap at group boundaries instead of overflowing or breaking
+  // mid-digit.
+  return numberFormatter.format(Number(value) || 0).replace(/\u00A0/g, '\u00A0\u200B');
 }
 
 export function formatHours(value) {

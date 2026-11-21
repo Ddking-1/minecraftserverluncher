@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### Overflow fix refinement (2026-11-21, branch `feat/advanced-admin-panel`)
+
+- `formatNumber` now inserts a zero-width space after each NBSP thousands separator, so very large values (e.g. `999 999 999 999 coin`) wrap at group boundaries instead of overflowing their card or breaking mid-digit.
+- Player detail balance now uses `formatNumber` instead of a raw `Intl.NumberFormat` call, matching the rest of the UI.
+- `.kpi-card strong` gains `white-space: normal`, `overflow-wrap: anywhere`, `word-break: break-word` and `min-width: 0` for robust wrapping.
+- `.detail-showcase` now stacks vertically below 980 px (was 760 px), keeping the facts column from collapsing to ~77 px.
+- Verified at 1026x921 and 1324x931 on dashboard and player detail: no text overflow; go build/vet, go test ./web/, node --check pass.
+
+
 ### Alpha web UI foundation (2026-11-18, task branch `feat/web-ui-foundation`)
 
 - Added the multi-page alpha web application under `server/web/static`: a

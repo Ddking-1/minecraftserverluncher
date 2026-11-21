@@ -1583,3 +1583,9 @@ Manual user action: None.
 - Seeded moderator/support/owner roles; improved real adapter setRole to revoke all then grant mapped role; mapUser now reflects actual role.
 - Checks: go build, go vet, go test ./..., node --check all pass. Verified grant/revoke role, rejected-skins list/removal end-to-end.
 - Branch: feat/advanced-admin-panel.
+
+## 2026-11-21 - Overflow fix refinement (feat/advanced-admin-panel)
+
+- formatNumber inserts ZWS after NBSP thousands separators; player detail balance uses it.
+- .kpi-card strong wrap rules; .detail-showcase stacks below 980 px.
+- Verified at 1026x921 and 1324x931; go build/vet, go test ./web/, node --check pass.

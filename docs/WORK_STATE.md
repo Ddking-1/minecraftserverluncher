@@ -1061,3 +1061,12 @@ Done:
 - Cleaned temporary screenshot artifacts; rebuilt and restarted the Go server on the new binary.
 
 Branch: feat/advanced-admin-panel.
+
+## 2026-11-21 - Overflow fix refinement (feat/advanced-admin-panel)
+
+Status: GREEN. go build ./..., go vet ./..., go test ./web/, node --check pass; overflow audit at 1026x921 and 1324x931 on dashboard and player detail shows no text overflow.
+
+Done:
+- `formatNumber` inserts ZWS after NBSP thousands separators; players detail balance uses it.
+- `.kpi-card strong` wrap rules; `.detail-showcase` stacks below 980 px.
+- Rebuilt and restarted auth-server.exe; verified new CSS/JS served.

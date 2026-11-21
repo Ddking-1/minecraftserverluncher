@@ -1,5 +1,5 @@
 import { api } from '../data/api.js';
-import { debounce, esc, formatDate, formatHours, relativeTime } from '../core/dom.js';
+import { debounce, esc, formatDate, formatHours, formatNumber, relativeTime } from '../core/dom.js';
 import { icon } from '../core/icons.js';
 import { getCurrentServer } from '../core/server-context.js';
 import { roleBadge, statModulesHtml, avatar, statusDot, emptyState } from '../components/ui.js';
@@ -70,7 +70,7 @@ function detailHtml(player) {
       </div>
       <div class="detail-facts">
         <div class="detail-fact"><span>Játszott idő</span><strong>${esc(formatHours(player.stats.core.playtimeHours))}</strong></div>
-        <div class="detail-fact"><span>Egyenleg</span><strong>${esc(new Intl.NumberFormat('hu-HU').format(player.stats.economy.balance))} coin</strong></div>
+        <div class="detail-fact"><span>Egyenleg</span><strong>${esc(formatNumber(player.stats.economy.balance))} coin</strong></div>
         <div class="detail-fact"><span>Farm szint</span><strong>${esc(player.stats.farm.level)}. szint</strong></div>
       </div>
     </div>

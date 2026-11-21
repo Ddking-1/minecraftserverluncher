@@ -386,3 +386,7 @@ Fix (CSS only, no JS/Go changes):
 - pages.css: `.admin-kpis` and `.admin-grid` changed from fixed columns to `repeat(auto-fit, minmax(...))` for dynamic responsiveness across resolutions and popups.
 
 Branch: feat/advanced-admin-panel. Embedded static requires Go rebuild + server restart (done locally).
+
+## 2026-11-21 - Overflow fix refinement
+
+Refined the large-number overflow fix on `feat/advanced-admin-panel`: `formatNumber` now inserts a ZWS after NBSP thousands separators, player detail balance uses it, `.kpi-card strong` gained wrap rules, and `.detail-showcase` stacks below 980 px. Verified at 1026x921 and 1324x931. Checks: go build/vet, go test ./web/, node --check pass.
