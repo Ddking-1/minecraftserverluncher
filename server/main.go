@@ -44,6 +44,7 @@ func main() {
 		Storage:     skinStorage,
 		History:     skins.NewThreadSafeSkinHistory(),
 		RateLimiter: skinRateLimiter,
+		DB:          db,
 	}
 
 	apiServer := api.NewServer(db, cfg, skinHandler)

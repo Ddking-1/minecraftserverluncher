@@ -88,15 +88,19 @@ public final class LauncherVelocityPlugin {
             player.disconnect(Component.text("Not authorized"));
             return;
         }
-        boolean valid;
+        BackendAuthClient.AuthResult result;
         try {
-            valid = authClient.validateAccessToken(token.get()).get(5, TimeUnit.SECONDS);
+            result = authClient.validateAccessToken(token.get()).get(5, TimeUnit.SECONDS);
         } catch (Exception e) {
             logger.warn("Player {} authorization failed: {}", player.getUsername(), e.toString());
-            valid = false;
+            result = new BackendAuthClient.AuthResult(false, null);
         }
-        if (!valid) {
-            player.disconnect(Component.text("Session not authorized"));
+        if (!result.valid()) {
+            // A ban reason comes from the admin ban record so the player sees
+            // the same text the admin entered; otherwise stay generic.
+            String reason = result.reason();
+            player.disconnect(Component.text(
+                    reason != null && !reason.isBlank() ? "Banned: " + reason : "Session not authorized"));
             return;
         }
         authorized.add(player.getUniqueId());

@@ -86,6 +86,13 @@ func (h *SkinHandler) handleUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// New skins start as pending approval: non-owners cannot read them until an
+	// admin approves. Owners always read their own skins. Back-compat skins
+	// without a row remain approved.
+	if h.DB != nil {
+		_ = h.DB.SetSkinFileApproval(id, false, "")
+	}
+
 	if h.History != nil {
 		evicted, err := h.History.AddSkin(id, true)
 		if err != nil {

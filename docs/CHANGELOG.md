@@ -2,6 +2,84 @@
 
 ## Unreleased
 
+### Overflow fix refinement (2026-11-21, branch `feat/advanced-admin-panel`)
+
+- `formatNumber` now inserts a zero-width space after each NBSP thousands separator, so very large values (e.g. `999 999 999 999 coin`) wrap at group boundaries instead of overflowing their card or breaking mid-digit.
+- Player detail balance now uses `formatNumber` instead of a raw `Intl.NumberFormat` call, matching the rest of the UI.
+- `.kpi-card strong` gains `white-space: normal`, `overflow-wrap: anywhere`, `word-break: break-word` and `min-width: 0` for robust wrapping.
+- `.detail-showcase` now stacks vertically below 980 px (was 760 px), keeping the facts column from collapsing to ~77 px.
+- Verified at 1026x921 and 1324x931 on dashboard and player detail: no text overflow; go build/vet, go test ./web/, node --check pass.
+
+
+### Alpha web UI foundation (2026-11-18, task branch `feat/web-ui-foundation`)
+
+- Added the multi-page alpha web application under `server/web/static`: a
+  build-free vanilla ES-module SPA with `/login`, `/register`, `/dashboard`,
+  `/players`, `/admin` and a not-found view, history routing, route guards and
+  a responsive Qt-friendly app shell.
+- Added a dark/light design system with localStorage persistence and an early
+  theme restore script, plus responsive layouts from desktop down to 640 px.
+- Added the dashboard with self statistics, modular economy/farm/core stat
+  registries, leaderboards, activity, account state and skin upload with an
+  immediate interactive canvas rotation preview (drag, arrow keys, reset and
+  outer-layer toggle).
+- Added player search/details, a permission-aware admin panel with role and
+  skin-queue management, user search, audit log and a UI-only granular
+  permission simulator (owner/admin/moderator/support/player).
+- Prepared multi-server support through `config.servers` and
+  `core/server-context.js`; one server is enabled for the alpha, so the
+  switcher is hidden while `?server=`/`?instance=` launcher handoff works.
+- Replaced the legacy static HTML/JS bundle with a new `index.html` and embedded
+  SPA serving in `server/web/web.go` (index fallback for app routes, 404 for
+  missing assets, 301 legacy redirects, GET/HEAD only). Rewrote `web_test.go`
+  for the new contract.
+- Added `docs/WEB_FRONTEND.md` with the architecture, extension recipes, test
+  evidence, security notes and known limitations.
+- Fixed a missing favicon link: `server/web/static/index.html` now references
+  `/assets/img/favicon.svg`, so browsers do not request a missing favicon.ico;
+  `web_test.go` asserts the link and the embedded SVG asset.
+- Fixed the app-shell scroll confusion: the body is no longer the scroll container;
+  `.app-shell` is the non-scrolling frame, the sidebar is a full-height rail with
+  its own scroll, and `.main-scroll` is the only vertical scroll container for
+  content. Auth and plain shells keep their own internal scroll. Verified against
+  the real Go handler across ultra-wide (2560x720), 16:9 (1920x1080) and narrow
+  portrait (384x720) — the document no longer scrolls, the menu no longer travels
+  with the content, and main content scrolls instead. Because the frontend is
+  embedded with `//go:embed static`, the live test binary had to be rebuilt from
+  `server/` with `go build -o _local_test/go-server/server.exe .` before the CSS
+  changes reached the live handler (the old pre-built binary was still serving the
+  previous embedded copy).
+- Completed a button state review and filled visual gaps without adding new
+  mechanics: tactile `:active` feedback on icon buttons, an ARIA-backed toggle
+  style (`[aria-pressed="true"]`) as a backup for the class-based style, explicit
+  `:focus-visible` rings on buttons/icon buttons/selects/input wraps, and a
+  loading-spinner dim so pending buttons stay clearly disabled.
+- Fixed responsive grid/text overflow so blocks stay together and long text
+  truncates instead of slipping the layout on unusual aspect ratios: the standard
+  `overflow: hidden; text-overflow: ellipsis` pattern was added where needed
+- Fixed skin alpha channel handling: `server/skins/processor.go` `ProcessSkin` now
+  normalizes alpha so body-region pixels (head, body, arms, legs) are forced opaque,
+  the overlay layer (hat/jacket) keeps its alpha, and transparent corners outside the
+  skin template get minimal alpha (1/255) to avoid rendering holes. This prevents
+  uploaded skins from rendering invisible players. Only 64x64 and 64x32 PNGs are
+  accepted; non-PNG files and wrong dimensions are rejected. Verified with the
+  corrupted skins in `Downloads/corupt mc skins/` — a blaze skin's opaque pixels
+  went from 48 to 704 after processing, and 64x64 RGBA skins now render body parts
+  correctly.  (skin-facts dd, detail-fact strong/span, hero-meta-item strong/meta-sub,
+  table-muted, activity-copy span), and flex/grid parents that hold nowrap
+  children got `min-width: 0` so they can shrink.
+- Updated `docs/WEB_FRONTEND.md` with the app-shell scroll architecture, the
+  button state model and the responsive grid/text overflow fixes, plus the live
+  verification notes and one known preview-tab transform limitation (the local
+  Chromium preview tab did not apply the off-canvas sidebar transform in this
+  session; the CSS rule and class toggling are correct, and the drawer is expected
+  to work in a normal browser and in Qt WebEngine).
+- Verified through the real Go handler (Go 1.26.5, compiled from `server/`):
+  `go vet ./web/...`, `go build ./web/...` and `go test -count=1 ./web/...` pass,
+  and the embedded SPA serves correctly on `http://127.0.0.1:8090` (five app
+  routes, embedded assets, legacy 301s, asset 404s, 405 on POST, CSP header,
+  favicon 204 + SVG 200).
+
 ### PR #8 ported: library/asset resolution is implemented (2026-11-17)
 
 - Merged the still-relevant half of PR #8 through the task branch
@@ -761,3 +839,109 @@ Owner: hostile-tester review of F2, F3, F5, F6, F7, F10.
 ### Cleanup (2026-11-17)
 
 - Removed completely unused `launcher/gui/SplashScreen.cpp` and `SplashScreen.h` (no references anywhere in code or tests).
+
+### Skin approval + password reset (2026-11-19)
+
+- Web alpha: skin upload auto-applies to user/web/server; new skins enter admin
+  review queue; approve makes them auto-accepted, reject blocks them for everyone
+  and resets affected users to the default skin. Admin queue shows interactive 3D
+  preview; rejected-skins sub-panel allows revoking a decision.
+- Web alpha: password reset button per user generates a random 12-char temp
+  password and forces a change on next login; new change-password view and
+  register view show 5 security criteria (8+ chars, number, uppercase, 10+ chars,
+  special char) with a strength meter.
+- Backend: new skin uploads insert a pending approval row so non-owner reads
+  fail closed; back-compat skins without a row stay approved.
+
+### Advanced admin panel (2026-11-20)
+
+- Added duration/reason/scope/targeted ban support for accounts, HWIDs and IPs.
+- Added IP usage tracking and IP->accounts admin view.
+- Updated admin dashboard UI with ban modal and user details.
+
+### Advanced admin panel hardening (2026-11-20)
+
+- Hardened ban validation and session revocation.
+- Added ban list/delete endpoints.
+- Enforced MC-scope HWID/IP bans in proxy authorization.
+- Fixed authorization gaps on approval endpoints.
+- Improved admin UI usability and accessibility.
+
+## 2026-11-20 - ADVANCED MODERATION ACTIONS (KICK/MUTE/WARN)
+
+- Added kick, mute, warn and unmute admin endpoints with the same duration, reason, scope (mc/platform/both) and account/HWID/IP targeting pattern as bans.
+- Reused the bans table for moderation actions (ban_type kick/mute/warn) and added unmute recovery.
+- Kick revokes sessions for platform/both scopes; mute/warn are recorded and queryable.
+- Updated legacy admin UI with Kick, Mute, Warn, Unmute actions and a reusable action modal.
+- Added accessibility improvements (labels, dialog role, escape handling).
+
+## 2026-11-20 - SPA ADMIN ADVANCED ACTIONS & ACCESSIBILITY
+
+- Ported the advanced ban/kick/mute/warn modal (duration, reason, scope, account/HWID/IP targets) into the SPA admin view.
+- Added warn action button and unmute/unban flows in the SPA admin view.
+- Extended the mock data layer with a bans collection and advanced action methods.
+- Improved table header accessibility (scope="col") and modal ARIA attributes.
+
+## 2026-11-20 - SPA ADMIN REAL BACKEND WIRING & IP/HWID BAN PREVIEW
+
+- Wired the SPA admin panel to the real /api/admin/* endpoints using an X-Admin-Token stored in localStorage, with a token bar to set/clear it.
+- Added admin-real.js adapter mirroring the mock api.admin surface (users, summary, audit from bans, ban/unban/kick/mute/warn/unmute, delete).
+- Advanced ban modal now fetches user details and shows device-HWID count and per-IP account counts for the last 30 days.
+- Real-mode smoke verified: ban request with admin token updates the audit list; no console errors.
+
+### Advanced admin panel (2026-11-20, task branch `feat/advanced-admin-panel`)
+
+- Advanced moderation modal for ban, kick, mute and warn: duration, reason,
+  scope (MC/platform/both) and account/HWID/IP targets with 30-day IP account
+  counts and HWID preview.
+- SPA admin view now talks to the real `/api/admin/*` endpoints through an
+  `X-Admin-Token` adapter while keeping the mock-data fallback.
+- Backend: advanced ban/unban/details/IP-accounts/ban-list/delete plus
+  kick/mute/warn/unmute handlers; proxy enforces MC-scope account/HWID/IP bans;
+  login records IPs; `/api/admin/users` reports `muted`.
+- Accessibility/UX: modal fade-in and Tab focus trap, Escape close, persistent
+  invalid-token alert, audit labels, unsupported real-mode actions hidden.
+
+### Ban scope isolation + Minecraft ban reason (2026-11-20, `feat/advanced-admin-panel`)
+
+- Fixed login IP recording/enforcement behind a trusted proxy: forwarding
+  headers are used only with `AUTH_TRUST_PROXY`, using the right-most
+  `X-Forwarded-For` value like the rate limiter. Previously the socket address
+  was recorded, so a reverse-proxied deployment could IP-ban every account.
+- Added `ActiveBanForScope` and used it for login checks, so a stale mc-scope
+  ban cannot mask a platform ban for the same account/HWID/IP.
+- `/api/v1/proxy/auth` now returns the stored ban `reason`, `duration_minutes`,
+  `expires_at` and `source` when denying a join; the Velocity plugin displays
+  the reason instead of a generic message.
+- The admin ban toast reports how many HWID/IP identifiers were hit and warns
+  when the 30-day window contained none. The real-mode audit list shows the ban
+  action, the exact identifier, scope, duration and reason.
+- Added `TestAdminBanScopeIsolation` covering account, HWID and IP isolation,
+  shared hardware/IP, missing last-month data and MC reason/duration.
+
+## 2026-11-21
+- Added immutable audit_log table and endpoints; audit survives ban deletion.
+- Added admin password reset backend endpoint.
+- Added pending skins list endpoint.
+- Wired real admin adapter for roles, skin approval, password reset, audit.
+- Unhid role management and password reset in real mode.
+- Added alpha-v2 test selector and optimized MC server for 2GB RAM.
+
+## 2026-11-21
+- Added docs/ADMIN_PANEL_TEST_CHECKLIST.md with graphical test checklist, results and UX improvement notes.
+- Commit 63e168f on feat/advanced-admin-panel.
+
+## 2026-11-21 - Advanced admin panel tests and fixes
+
+- Completed remaining admin panel end-to-end tests (account deletion, invalid token banner, skin approve/reject, unmute, search filtering).
+- Fixed ListPendingSkinFiles to exclude already-reviewed rejected skins.
+- Added audit logging for unmute, unban, skin approve/reject, account deletion, role assign/revoke.
+- Frontend search now filters by username, email and user id.
+- Updated ADMIN_PANEL_TEST_CHECKLIST.md.
+
+## 2026-11-21
+- Admin panel UI uniformity fix: styled missing `.form-row`, made modal scrollable/responsive, added cookie-consent card styles, switched admin KPI/grid to auto-fit minmax for dynamic responsiveness across displays.
+
+## 2026-11-21
+- Responsive audit of admin panel across mobile/tablet/desktop/folded breakpoints: no page-level horizontal scroll; modals scroll within viewport.
+- Fixed overlay stacking: cookie-consent host z-index lowered below modal backdrop and toasts.

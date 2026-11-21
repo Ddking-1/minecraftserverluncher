@@ -1,4 +1,69 @@
-﻿# WORK STATE
+## 2026-11-20 - BAN SCOPE ISOLATION PROVEN (feat/advanced-admin-panel)
+
+Status: GREEN. `go build ./...`, `go vet ./...`, `go test ./web/ ./api/` and `node --check` pass; the Velocity plugin builds with `./gradlew build` (Java 25).
+
+Fixed:
+- Login IP history and IP-ban enforcement now use the trusted-proxy client IP (`AUTH_TRUST_PROXY`, right-most X-Forwarded-For), not the socket address. Behind a reverse proxy every login used to record the proxy IP, so an IP ban would have hit every account.
+- Login scope matching uses the new `ActiveBanForScope`, so an older mc-scope record cannot mask a platform ban for the same target.
+- `/api/v1/proxy/auth` now returns the stored `reason`, `duration_minutes`, `expires_at` and ban `source` when it denies a Minecraft join; the Velocity plugin shows the reason to the player.
+- The admin ban toast reports how many HWID/IP identifiers were hit and warns when the last-30-day window had none, instead of a bare "banned". The real-mode audit list now shows the action, exact identifier, scope, duration and reason.
+
+Evidence (`TestAdminBanScopeIsolation`, plus the compiled server with curl):
+- Account ban on alice (both): alice 403, bob/carol/dave 200.
+- HWID ban on alice: alice-dev-1 and alice-dev-2 403, alice's unused new device 200, bob/carol 200, dave 403 (dave had used alice's device).
+- IP ban on alice: alice and carol (same IP) 403, bob and dave (other IPs) 200; details `accounts_last_30d` = 2 and `/api/admin/ip-accounts` count = 2; the UI preview showed `10.0.0.1 — 2 fiók használta`.
+- Missing HWID data: an account whose only device was 45 days old produced `counts.hwid = 0`, stayed able to log in, and the UI preview showed 0 devices.
+- mc-scope ban on alice: launcher login stayed 200, proxy returned `denied` with reason `Griefing spawn`, duration 90 and an expiry; `/api/admin/bans` stored the same scope, reason, duration and expiry.
+
+Open: real-mode role management, skin approval and password reset still have no backend endpoints.
+
+---
+
+## 2026-11-20 - ADVANCED ADMIN PANEL: SPA REAL-MODE WIRING + A11Y/UX (feat/advanced-admin-panel)
+
+Status: GREEN for Go backend + SPA. go build ./..., go vet ./..., go test ./web/ ./api/, node --check on touched JS all pass. Real-mode browser smoke exercised advanced ban (IP account count + HWID), kick, mute, warn, and invalid-token error path with no console errors.
+
+Done:
+- Modal visibility/focus: openAdvancedModal now adds is-visible class and traps Tab focus (Escape closes), matching confirmDialog.
+- Real-mode data: users mapped with online=true so kick is exercisable against the backend; `/api/admin/users` now returns `muted` and the SPA maps it so mute/unmute reflects reality.
+- Real mode elevates the effective UI role to owner because the admin token is the authoritative credential; a logged-in player with a valid token no longer sees access denied.
+- Password reset is hidden for real-backend users (no backend endpoint yet) instead of failing.
+- Audit list labels kick/mute/warn/unban actions; invalid-token responses render a persistent role="alert" banner in addition to the toast.
+- A11y/UX: focus trap in advanced modal, visible modal backdrop, consistent keyboard navigation; no console errors in smoke.
+
+Branch: feat/advanced-admin-panel.
+
+---
+
+# WORK STATE
+
+## Active task (2026-11-18) — WEB UI FOUNDATION
+
+Status:
+UNMERGED task branch. A complete multi-page alpha web frontend was added under
+`server/web/static` (vanilla ES-module SPA, no build step) and the existing Go
+web package now embeds it with SPA fallback, legacy redirects and method checks.
+The UI includes dark/light themes, login/register/dashboard/players/admin views,
+player search, an interactive canvas skin preview, multi-server context,
+modular statistics, granular permissions and a UI-only rank simulator.
+
+Branch:
+`feat/web-ui-foundation` (created from `master`; not committed/pushed yet at the
+time this entry was written). Do not continue on `master` for this task.
+
+Verification:
+Browser-tested in Chromium in dark and light mode at 1280x720, 1024x700,
+800x600 and 640x700, plus 640x700 and 800x600 through the real Go origin.
+Final console run has no JavaScript errors or failed network requests. The Go
+web package was compiled and its tests passed (\`gofmt\`, \`go vet\`, 
+\`go build ./web/...\`, \`go test -count=1 ./web/...\`), and the embedded SPA
+was verified through the real Go handler on \`http://127.0.0.1:8090\` with the
+favicon, CSP and legacy-redirect behavior. See \`docs/WEB_FRONTEND.md\`.
+
+Known limitation / next step:
+Replace the alpha mock provider with the real authenticated Go API and enforce
+the permission model server-side. Merge the task branch after review. No
+deployment is part of this task.
 
 Current phase:
 PHASE 3 — LAUNCHER FEATURE COMPLETION + BACKEND ROBUSTNESS (COMPLETE)
@@ -32,6 +97,50 @@ upload/preview, login/logout, session restore, settings save, crash-log viewer)
 component is gone. Merged state re-verified on the owner's machine: Qt 6.6.3
 `msvc2019_64` + MSVC 14.52 + CMake 3.30.5 + Ninja, full build and CTest 31/31
 passing.
+
+## 2026-11-18 - SKIN ALPHA CHANNEL FIX (feat/web-ui-foundation)
+
+Status:
+GREEN. `cd server && go test -count=1 ./...` passes (api, auth, cache, config,
+database, devices, pterodactyl, sessions, skins, web). `go vet ./...` and 
+`go build ./...` clean.
+
+DONE:
+- `server/skins/processor.go`: `ProcessSkin` now normalizes alpha channels via 
+  `normalizeSkinAlpha()`. Body region pixels (head, body, arms, legs) are forced 
+  to full opacity. Overlay layer (hat/jacket) keeps its alpha. Transparent 
+  corners outside the skin template get minimal alpha (1/255) to avoid holes.
+- Live server rebuilt and tested: blaze-64x32.png opaque pixels went from 48 to 
+  704 after processing. 64x64 RGBA skins now render body parts correctly.
+- Invalid skins still rejected: 128x128, 32x32, corrupted PNGs, non-PNG files.
+- Documentation: `docs/SKIN_SYSTEM.md` updated with alpha channel handling section.
+
+Branch:
+`feat/web-ui-foundation` (commit ddb577b, pushed).
+
+## 2026-11-18 - COOKIE CONSENT + ANALYTICS (feat/web-ui-foundation)
+
+Status:
+GREEN. `cd server && go test -count=1 ./...` passes. `go vet ./...` and 
+`go build ./...` clean.
+
+DONE:
+- Frontend: `core/cookie-consent.js` (popup + localStorage state) and 
+  `core/analytics.js` (consent-gated event tracking) added.
+- Cookie consent popup appears before the app renders if the user has not made 
+  a choice; no analytics or non-essential cookies are set before acceptance.
+- Backend: `POST /api/v1/cookie-consent` sets `alpha_consent` (1 year) and 
+  `alpha_visit` (1 hour, httpOnly) cookies. `POST /api/v1/analytics/event` 
+  only accepts events when the consent cookie is "accepted" (returns 204 otherwise).
+- Login sets an `alpha_session` cookie (httpOnly, same expiry as access token) 
+  only when the user has already accepted cookies — in addition to the bearer 
+  token the UI already sends.
+- Live server rebuilt and verified at 127.0.0.1:8090: consent acceptance 
+  returns Set-Cookie headers; analytics without consent returns 204; analytics 
+  with consent returns 200.
+
+Branch:
+`feat/web-ui-foundation` (commit 2c7ce5d, pushed).
 
 CI runners (2026-11-17): `launcher.yml` targets a new self-hosted Windows
 runner on the development machine (`windows-local-<host>`, labels
@@ -801,3 +910,163 @@ Remaining:
 ## 2026-11-17 — CLEANUP (SplashScreen)
 
 Removed unused `launcher/gui/SplashScreen.cpp/.h`. No references; build/tests unaffected.
+
+## Active task (2026-11-19) — SKIN APPROVAL + PASSWORD RESET
+
+Status:
+GREEN. Skin approval flow and password reset implemented in the alpha web SPA plus a
+backend pending-approval row for new skin uploads. Branch not committed/pushed yet.
+
+Branch:
+`feat/skin-approval-password-reset` (created from `master`).
+
+Done:
+- Mock DB v2: skinWhitelist/skinBlacklist, mustChangePassword seed field + migration.
+- api.js: skinHash, passwordStrength/passwordStrengthScore, updateSkin (auto-apply +
+  pending queue for new skins, refuses blacklisted skins), reviewSkin (whitelist/
+  blacklist + reset all affected users on reject), rejectedSkins/removeFromBlacklist/
+  removeFromWhitelist/whitelist/blacklist, admin.resetPassword (random 12-char temp),
+  api.changePassword, selfProfile/login carry mustChangePassword.
+- Admin view: 3D SkinViewer preview in queue, rejected-skins panel with revoke,
+  password-reset button per user, init/destroy viewers.
+- Login view: mustChangePassword -> /change-password redirect.
+- Register view: 5 criteria + strength meter.
+- New change-password view (5 criteria).
+- main.js: change-password route.
+- components.css: password-criteria, password-meter, skin-3d-preview, rejected-list.
+- skins_handler.go: pending approval row inserted after upload (fail-closed read).
+
+Checks:
+- JS syntax: all touched files pass `node --check`.
+- Go: `go vet ./...` and `go test ./...` pass (all packages).
+- Browser verified end-to-end (login, register, admin, change-password, password reset flow).
+
+Known limitation / next step:
+Replace the alpha mock provider with the authenticated Go API and enforce permissions
+server-side. Merge after review.
+
+## Active task (2026-11-20) — ADVANCED ADMIN PANEL
+
+Status:
+In progress on branch feat/advanced-admin-panel. Backend + UI changes added; Go
+build/tests could not be run locally (no Go toolchain in this environment).
+
+Branch:
+feat/advanced-admin-panel
+
+Done:
+- Database: bans + account_login_ips tables and helpers.
+- API: advanced ban/unban/details/IP-accounts endpoints and login enforcement.
+- Admin UI: ban modal, details modal, invites management.
+
+Next:
+- Run `cd server && go test ./...` in an environment with Go.
+- Verify end-to-end ban flows.
+
+## Active task update (2026-11-20) — ADVANCED ADMIN PANEL HARDENING
+
+Status:
+Second hardening pass completed; still no Go toolchain available for build/tests.
+
+Done:
+- Validation, session revocation, ban list/delete, proxy enforcement, auth fixes, UI improvements.
+
+Next:
+- Run `cd server && go test ./...` in Go-capable environment.
+- Manual end-to-end verification of bans/unbans and proxy auth.
+
+## 2026-11-20 - ADVANCED MODERATION ACTIONS
+
+Status:
+GREEN. Backend build, vet, and tests pass. Live E2E verified kick/mute/warn/unmute.
+
+Done:
+- Kick/mute/warn/unmute endpoints and validation.
+- Legacy admin UI extended with new actions and modal.
+- Documentation updated.
+
+Branch:
+feat/advanced-admin-panel
+
+## 2026-11-20 - SPA ADMIN ADVANCED ACTIONS
+
+- Ported advanced ban/kick/mute/warn modal into SPA admin view (duration, reason, scope, targets).
+- Added warn action and unmute/unban flows.
+- Extended mock API with bans collection and advanced methods.
+- Improved a11y (table scope, modal ARIA).
+
+## 2026-11-20 - SPA real backend wiring
+- SPA admin view now supports real backend mode via stored admin token.
+- Advanced ban modal shows HWID count and per-IP account counts (last 30 days).
+- Verified real-mode ban end-to-end (no console errors).
+
+## 2026-11-21 - REAL BACKEND ADMIN ENDPOINTS + IMMUTABLE AUDIT + ALPHA V2
+
+Status:
+GREEN. go build/vet/test pass; node --check pass.
+
+Done:
+- Added immutable `audit_log` table + RecordAudit/ListAudit DB methods; DELETE bans no longer erases audit.
+- Added `POST /api/admin/users/{id}/reset-password` (temp password, bcrypt hash, session revoke) returning {username, temp_password}.
+- Added `GET /api/admin/audit` and `GET /api/admin/skins/pending` endpoints.
+- Wired admin-real.js: setRole, reviewSkin, skinsQueue, resetPassword, audit now call real backend.
+- Removed _real gating in admin.js role select and password-reset button.
+- Rebuilt backend binary into _local_test/backend.
+- Created alpha-v2/ with run_alpha.bat selector (web vs launcher), run_web.ps1, run_launcher.ps1 (MC max 2GB RAM optimized JVM flags).
+- Created root run_alpha_test.bat.
+
+Branch:
+feat/advanced-admin-panel
+
+## 2026-11-21 - Graphical admin panel test + checklist
+Status: GREEN (tests documented).
+Done: Graphical end-to-end test of admin panel; checklist + improvement notes in docs/ADMIN_PANEL_TEST_CHECKLIST.md; commit 63e168f pushed.
+Not tested: account deletion, invalid-token banner, skin approve/reject, unmute click, search filtering.
+
+## 2026-11-21 - Advanced admin panel tests completed (feat/advanced-admin-panel)
+
+Status: GREEN. Remaining end-to-end tests completed on real backend.
+
+Done:
+- Account deletion verified on throwaway account (delete 200, list removal, relogin 401).
+- Invalid admin token banner verified.
+- Skin approve and reject verified; pending list now excludes already-reviewed rejected skins.
+- Unmute click verified (mute→unmute + audit).
+- Search filtering verified (username, id).
+- Audit entries added for unmute, unban, skin approve/reject, account deletion, role assign/revoke.
+- Fixed ListPendingSkinFiles SQL (reviewer filter).
+
+Checks: go build ./..., go vet ./..., go test ./web/ ./api/, node --check all pass.
+
+Branch: feat/advanced-admin-panel.
+
+## 2026-11-21 - Admin panel UI uniformity fix (feat/advanced-admin-panel)
+
+Status: GREEN. go build ./..., go vet ./..., go test ./web/ ./api/, node --check all pass.
+
+Done:
+- components.css: modal robust/scrollable/responsive; .form-row styling; cookie-consent fixed card styles.
+- pages.css: .admin-kpis and .admin-grid changed to auto-fit minmax grids.
+- Rebuilt Go server and restarted locally; verified modal renders correctly in browser.
+
+Branch: feat/advanced-admin-panel. Committed and pushed (7706d30).
+
+## 2026-11-21 - Admin panel responsive audit + modal stacking fix (feat/advanced-admin-panel)
+
+Status: GREEN. go build ./..., go vet ./..., go test ./web/ ./api/, node --check all pass.
+
+Done:
+- Responsive audit across 320/360/480/768/1024x1366/1280/1366x768/1920x1080: no page-level horizontal scroll; modals scrollable within viewport; cookie consent card full-width on mobile.
+- Modal stacking: lowered cookie-consent host z-index from 95 to 70 so it stays below the modal backdrop (80) and toasts (90); verified with cookie consent visible behind an open ban modal.
+- Cleaned temporary screenshot artifacts; rebuilt and restarted the Go server on the new binary.
+
+Branch: feat/advanced-admin-panel.
+
+## 2026-11-21 - Overflow fix refinement (feat/advanced-admin-panel)
+
+Status: GREEN. go build ./..., go vet ./..., go test ./web/, node --check pass; overflow audit at 1026x921 and 1324x931 on dashboard and player detail shows no text overflow.
+
+Done:
+- `formatNumber` inserts ZWS after NBSP thousands separators; players detail balance uses it.
+- `.kpi-card strong` wrap rules; `.detail-showcase` stacks below 980 px.
+- Rebuilt and restarted auth-server.exe; verified new CSS/JS served.

@@ -64,13 +64,13 @@ type Account struct {
 
 // Device is a client device associated with an account.
 type Device struct {
-	ID        int64
-	AccountID int64
-	DeviceID  string // client-generated stable device identifier
+	ID         int64
+	AccountID  int64
+	DeviceID   string // client-generated stable device identifier
 	DeviceName string
-	PublicKey string // optional registered device key (reserved)
-	CreatedAt time.Time
-	LastSeen  time.Time
+	PublicKey  string // optional registered device key (reserved)
+	CreatedAt  time.Time
+	LastSeen   time.Time
 }
 
 // Session is a login session bound to an account and (optionally) a device.
@@ -178,7 +178,7 @@ func (db *DB) Ping() error { return db.sql.Ping() }
 
 // SQL returns the underlying database handle for advanced operations such as
 // connection pool tuning. The wrapper still owns migration and model methods.
-func (db *DB) SQL() *sql.DB { return db.sql }	// QueryContext executes a query with the request context.
+func (db *DB) SQL() *sql.DB { return db.sql } // QueryContext executes a query with the request context.
 func (db *DB) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
 	return db.sql.QueryContext(ctx, query, args...)
 }
@@ -191,7 +191,6 @@ func (db *DB) ExecContext(ctx context.Context, query string, args ...any) (sql.R
 // pingContextContext is unused but present to satisfy the context import
 // until it is needed by a real context-aware helper.
 var _ = func() { _ = context.Background() }
-
 
 // migrate applies the schema idempotently.
 func (db *DB) migrate() error {
@@ -335,6 +334,40 @@ CREATE TABLE IF NOT EXISTS skin_file_approvals (
     reviewer    TEXT    NOT NULL DEFAULT '',
     reviewed_at TEXT    NOT NULL DEFAULT ''
 );
+
+CREATE TABLE IF NOT EXISTS account_login_ips (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    ip         TEXT    NOT NULL,
+    seen_at    TEXT    NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_login_ips_account ON account_login_ips(account_id);
+CREATE INDEX IF NOT EXISTS idx_login_ips_ip ON account_login_ips(ip);
+
+CREATE TABLE IF NOT EXISTS bans (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    ban_type         TEXT    NOT NULL,
+    scope            TEXT    NOT NULL DEFAULT 'both',
+    target           TEXT    NOT NULL,
+    account_id       INTEGER,
+    reason           TEXT    NOT NULL DEFAULT '',
+    duration_minutes INTEGER NOT NULL DEFAULT 0,
+    expires_at       TEXT,
+    created_at       TEXT    NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_bans_type_target ON bans(ban_type, target);
+CREATE INDEX IF NOT EXISTS idx_bans_account ON bans(account_id);
+
+CREATE TABLE IF NOT EXISTS audit_log (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    actor      TEXT    NOT NULL DEFAULT '',
+    action     TEXT    NOT NULL,
+    target     TEXT    NOT NULL DEFAULT '',
+    detail     TEXT    NOT NULL DEFAULT '',
+    created_at TEXT    NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_audit_log_created ON audit_log(created_at);
+CREATE INDEX IF NOT EXISTS idx_audit_log_action ON audit_log(action);
 `
 	if _, err := db.sql.Exec(schema); err != nil {
 		return fmt.Errorf("database: migrate: %w", err)
@@ -352,10 +385,16 @@ CREATE TABLE IF NOT EXISTS skin_file_approvals (
 			}
 		}
 	}
-	// Seed the default admin role + permission so per-user RBAC works out of
-	// the box (idempotent).
-	if _, err := db.sql.Exec(`INSERT OR IGNORE INTO roles (name, description, created_at) VALUES ('admin', 'Administrator role', ?)`, nowText()); err != nil {
-		return fmt.Errorf("database: seed admin role: %w", err)
+	// Seed the default roles so per-user RBAC works out of the box (idempotent).
+	for _, r := range []struct{ name, desc string }{
+		{"admin", "Administrator role"},
+		{"moderator", "Moderator role"},
+		{"support", "Support role"},
+		{"owner", "Owner role"},
+	} {
+		if _, err := db.sql.Exec(`INSERT OR IGNORE INTO roles (name, description, created_at) VALUES (?, ?, ?)`, r.name, r.desc, nowText()); err != nil {
+			return fmt.Errorf("database: seed role %s: %w", r.name, err)
+		}
 	}
 	if _, err := db.sql.Exec(`INSERT OR IGNORE INTO permissions (name, description, created_at) VALUES ('admin', 'Administrator permission', ?)`, nowText()); err != nil {
 		return fmt.Errorf("database: seed admin permission: %w", err)
@@ -1102,7 +1141,6 @@ func (db *DB) RemoveAccountRole(accountID, roleID int64) error {
 	}
 	return nil
 }
-
 
 // AccountRoles returns every role assigned to an account, ordered by name.
 func (db *DB) AccountRoles(accountID int64) ([]Role, error) {

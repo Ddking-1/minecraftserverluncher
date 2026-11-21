@@ -1079,11 +1079,49 @@ docs/SECURITY.md, docs/BACKLOG.md (feature candidates). linux-ci green.
 
 2026-11-17: API/DB/auth security audit (no critical findings).
 
-## 2026-11-17 — LAUNCHER GUI FEATURES F2/F3/F5/F6/F7/F10
+## 2026-11-18 — WEB UI SCROLL / BUTTON / GRID FIXES (PRIMARY USER REQUEST)
 
-Agent/model: Buffy (Codebuff) - code agent
-Branch: docs/launcher-gui-features (merged to master)
-Task: Implement and verify the six remaining launcher GUI features: crash popup (F2), modpack import with real extraction (F3), RAM slider (F5), offline mode (F6), crash log viewer (F7), news panel (F10).
+Agent/model: Buffy (Freebuff) - code agent
+Branch: feat/web-ui-foundation
+Task: Fix the three primary frontend problems reported for the `feat/web-ui-foundation` branch, verified against the real Go handler at `http://127.0.0.1:8090` across wide, 16:9 and narrow viewports:
+1. App-body scroll confusion — when scrolling, it felt like the menu was scrolling instead of the content. This was the main issue and was made usable.
+2. Button state review and comfort — review what states a button can be in and improve the visible feedback without adding new mechanics.
+3. Responsive grid blocks slipping and long text overflowing — grid/flex blocks and text in cards, facts, tables and meta rows slipping apart or overflowing on unusual aspect ratios.
+
+Started: 2026-11-18
+Completed: 2026-11-18
+
+Files:
+- server/web/static/assets/css/base.css — body is now `overflow: hidden` (was `overflow-x: hidden`, which made `overflow-y` resolve to `auto` and scrolled the whole document); added consistent focus-visible ring for buttons, icon buttons, selects and input wraps; added aria-pressed and disabled spinner handling.
+- server/web/static/assets/css/layout.css — app shell is now the non-scrolling frame (`min-height: 100vh; overflow: hidden`); sidebar is a full-height rail with its own `overflow-y: auto`; app-body is `height: 100vh`; main-scroll is the only vertical scroll container (`flex: 1; min-width: 0; min-height: 0; overflow-y: auto`); auth-layout and plain-shell get internal scroll; auth columns constrained to `height: 100vh`.
+- server/web/static/assets/css/components.css — icon buttons get `:active` feedback; toggle buttons style `[aria-pressed="true"]` directly as a backup for the class-based style; tab, lb-row, player-row get `:active`/`:focus-visible` states.
+- server/web/static/assets/css/pages.css — long-text blocks get `overflow: hidden; text-overflow: ellipsis` and flex/grid parents get `min-width: 0` so they can shrink (skin-facts dd, detail-fact strong/span, hero-meta-item strong/meta-sub, table-muted, activity-copy span, kpi-card div, detail-fact).
+- docs/WEB_FRONTEND.md — updated with the app-shell scroll architecture, the button state model and the responsive grid/text overflow fixes, plus the live verification notes and the one known preview-tab transform limitation.
+- docs/PROGRESS.md (this entry), docs/CHANGELOG.md.
+
+Tests:
+- `cd server && go vet ./web/...` -> clean.
+- `cd server && go build ./web/...` -> compiles.
+- `cd server && go test -count=1 ./web/...` -> pass (ok minecraftserverluncher/server/web).
+- Because the frontend is embedded with `//go:embed static`, the live test binary had to be rebuilt from `server/` with `go build -o _local_test/go-server/server.exe .` — the old pre-built `_local_test/go-server/server.exe` was still serving the previous embedded copy and had to be replaced with the rebuilt one before the CSS changes reached the live handler.
+- Live verification through the rebuilt Go handler at `http://127.0.0.1:8090` against the real handler (not a static file server):
+  - `GET /assets/css/base.css` now returns `overflow: hidden` on `body` (was `overflow-x: hidden`).
+  - Dashboard on 2560x720 (ultra-wide, 3.56:1): body and app-shell are `overflow: hidden` at viewport height; `.main-scroll` is `overflow-y: auto` and is the scroll container; sidebar is a sticky rail that does not scroll with the content.
+  - Dashboard on 1920x1080 (16:9): same shell behavior.
+  - Dashboard on 384x720 (narrow portrait, mobile breakpoint): sidebar is a fixed drawer, `.main-scroll` scrolls the content.
+  - Players, admin and not-found/app routes render with the same shell behavior; the admin data table still scrolls horizontally inside its own `.table-wrap`.
+  - Console: no JavaScript errors during these navigations.
+
+Known limitation observed in this environment only: the local Chromium-based preview tab did not always apply CSS transforms to the off-canvas `.sidebar` in this session — the `transform: translateX(-102%)` rule is present in the stylesheet and is correct, and the drawer class toggling (`is-open`, `nav-open`) works, but the preview's computed transform stayed identity for the sidebar. The drawer behavior itself is expected to work in a normal browser and in Qt WebEngine and was verified visually in earlier runs through a static server. This is a preview-tab rendering limitation, not a code change.
+
+Current status:
+DONE. The three primary issues are fixed and verified against the real Go handler across wide, 16:9 and narrow viewports. Go checks are green. Documentation updated.
+
+Next:
+The two secondary UX items mentioned earlier (admin role simulator UI-only cleanup and the skin-stage hint) are still only at the planning/partial stage and were deliberately not touched in this pass because the user prioritized the scroll/button/grid fixes first. The drawer transform behavior should still be confirmed visually in a normal browser or Qt WebEngine, since the local preview tab did not apply the transform in this session.
+
+Manual user action:
+None required for the code or docs. The user should still visually confirm the mobile drawer in a normal browser or the launcher's Qt WebEngine before relying on it, because the local preview tab did not render the sidebar transform in this session.
 Started: 2026-11-17
 Completed: 2026-11-17
 
@@ -1332,3 +1370,222 @@ remains BLOCKED on DECISION-004/005.
 Manual user action:
 None for GitHub. Optional: add `C:\Program Files\GitHub CLI` to PATH so `gh`
 works from a plain shell.
+
+## 2026-11-18 — ALPHA WEB UI FOUNDATION (TASK BRANCH, UNMERGED)
+
+Agent/model: Buffy (Freebuff) - code agent
+Branch: feat/web-ui-foundation
+Task: Design and implement the foundations of a modern, multi-page Minecraft
+  server web application for Qt 6 WebEngine and modern browsers, with dark/light
+  themes, dedicated views, interactive skin preview, player search, granular
+  admin permissions and a modular multi-server/statistics structure.
+Started: 2026-11-18
+Completed: 2026-11-18
+
+Files:
+- server/web/static/index.html — new SPA shell, boot screen, early theme restore.
+- server/web/static/assets/css/ — tokens, base, layout, components, pages.
+- server/web/static/assets/js/ — config, core modules, mock API/data, stat
+  registry, shell/auth/skin components and the five route views.
+- server/web/static/assets/img/ — two bundled 64x64 demo skins and favicon.
+- server/web/web.go — embedded SPA serving, app-route fallback, legacy 301s,
+  asset 404s and GET/HEAD handling.
+- server/web/web_test.go — rewritten tests for the new serving contract.
+- Deleted the legacy admin.html, dashboard.html, skin-manager.html, app.js,
+  i18n.js, style.css and theme.js.
+- docs/WEB_FRONTEND.md (new), docs/AI_CONTEXT.md, docs/WORK_STATE.md,
+  docs/CHANGELOG.md and this entry.
+
+Tests / checks:
+- Browser (Chromium preview) dark and light review of login, register,
+  dashboard, players, admin, 403, role simulator, matrix and skin panel.
+- Viewports 1280x720, 1024x700, 800x600, 640x700; fixed a real 640 px horizontal
+  overflow caused by the shared `.page` grid track.
+- Invalid and valid login, registration validation/success, demo login, logout,
+  route guards.
+- Skin upload/preview, save, drag/keyboard rotation, reset, overlay toggle;
+  player search; admin rank simulations (owner/admin/moderator/support/player),
+  user search, role assignment/restore, skin approve/reject.
+- Final browser console: no JavaScript errors or failed network requests.
+  Synthetic pointer-capture exceptions were fixed with guarded capture calls.
+- NOT RUN: `gofmt`, `go build ./...`, `go test ./web/...` — the `go` toolchain is
+  not installed/on PATH on this machine. `web.go` and `web_test.go` were
+  reviewed only. Browser tests used the PowerShell static dev server, so the Go
+  handler, embed bundle and CSP middleware were not exercised.
+
+Current status:
+Frontend implementation, Go checks and browser verification are complete on
+feat/web-ui-foundation. On the development machine the Go web package passed
+\`gofmt\`, \`go vet\`, \`go build ./web/...\` and \`go test -count=1 ./web/...\`,
+and the embedded SPA was verified through the real Go handler on
+\`http://127.0.0.1:8090\` (five routes, embedded assets, favicon, CSP and legacy
+redirects). The data/session layer remains an alpha mock; the Go backend and its
+authorization are the next integration boundary.
+
+Next:
+Replace the mock provider with the authenticated API, enforce granular
+permissions server-side, then review and merge the task branch.
+
+## 2026-11-18 - SKIN ALPHA CHANNEL FIX (feat/web-ui-foundation)
+
+Status: GREEN. Skin processor alpha normalization implemented and tested.
+
+Done:
+- `server/skins/processor.go`: `ProcessSkin` now calls `normalizeSkinAlpha()` to 
+  force body region pixels opaque, preserve overlay alpha, and give minimal alpha 
+  to transparent corners.
+- Tested with real corrupted skins: blaze-64x32.png opaque pixels 48→704, 
+  64x64 RGBA skins fixed, invalid skins still rejected.
+- Live server rebuilt and verified at 127.0.0.1:8090.
+- `docs/SKIN_SYSTEM.md` updated with alpha channel handling section.
+- `docs/WORK_STATE.md` updated.
+
+Tests: `go test -count=1 ./...` passes (all packages), `go vet ./...` clean, 
+`go build ./...` clean.
+
+Manual user action: none required.
+
+## 2026-11-19 - SKIN APPROVAL + PASSWORD RESET (feat/skin-approval-password-reset)
+
+Status: GREEN. Skin approval flow and password reset implemented in the alpha web SPA
+plus a backend pending-approval row for new skin uploads.
+
+Done:
+- `server/web/static/assets/js/data/mock-db.js`: DB_VERSION 2, `skinWhitelist`/
+  `skinBlacklist`, `mustChangePassword` seed field and migration.
+- `server/web/static/assets/js/data/api.js`: `skinHash`, `passwordStrength`/
+  `passwordStrengthScore`, `updateSkin` (auto-apply + pending queue for new skins),
+  `reviewSkin` (whitelist/blacklist + reset all affected users on reject),
+  `rejectedSkins`/`removeFromBlacklist`/`removeFromWhitelist`/`whitelist`/`blacklist`,
+  `admin.resetPassword` (random 12-char temp password, mustChangePassword=true),
+  `api.changePassword`, `selfProfile`/`login` carry `mustChangePassword`.
+  `updateSkin` now refuses blacklisted skins.
+- `server/web/static/assets/js/views/dashboard.js`: toast updated (auto-apply).
+- `server/web/static/assets/js/views/admin.js`: 3D SkinViewer preview in queue,
+  rejected-skins panel with revoke, password-reset button per user, init/destroy viewers.
+- `server/web/static/assets/js/views/login.js`: mustChangePassword -> /change-password redirect.
+- `server/web/static/assets/js/views/register.js`: 5 criteria + strength meter.
+- `server/web/static/assets/js/views/change-password.js`: new view (5 criteria).
+- `server/web/static/assets/js/main.js`: change-password route + import.
+- `server/web/static/assets/css/components.css`: password-criteria, password-meter,
+  skin-3d-preview, rejected-list styles.
+- `server/api/skins_handler.go`: pending approval row inserted after upload so
+  non-owner reads fail closed; back-compat skins without a row stay approved.
+
+Checks:
+- JS syntax: all touched files pass `node --check`.
+- Go: `go vet ./...` and `go test ./...` pass (all packages).
+- Browser: login, register (5 criteria checklist), admin (3D canvas, password reset,
+  rejected skins panel, blacklist revoke), change-password (5 criteria) verified;
+  password reset + Nova login redirect to /change-password verified end-to-end.
+
+### Advanced admin panel (2026-11-20)
+
+- Backend: new `bans` and `account_login_ips` tables; advanced ban endpoint
+  `POST /api/admin/users/{id}/ban` supports duration, reason, scope (mc/platform/both)
+  and targets (account, all HWIDs seen in last 30 days, IPs used in last 30 days).
+  Returns affected IP account count. Unban, user details and IP->accounts endpoints added.
+- Login/register now record IP observations; platform-scope bans block login;
+  MC-scope bans block proxy joins.
+- Admin UI: ban modal (duration/reason/scope/targets), user details modal,
+  unban/delete/details actions, invites management.
+
+### Advanced admin panel hardening (2026-11-20)
+
+- Added validation for ban targets, duration, reason length and lookback.
+- Ban now revokes sessions for platform/both scopes across affected IP accounts.
+- Added ban list and delete endpoints; exposed GET/DELETE /api/admin/bans.
+- Proxy authorization now honors account, HWID and IP MC-scope bans.
+- User list now includes banned/MC-banned/approved status.
+- Fixed missing admin authorization on account approval and skin approval handlers.
+- Improved admin UI: status column, bans/HWID panels, structured details, accessibility.
+
+## 2026-11-20 - ADVANCED MODERATION ACTIONS
+
+- Extended advanced admin controls to kick, mute, and warn with duration, reason, scope, and device/IP targeting.
+- Added unmute recovery and live E2E verification.
+
+## 2026-11-20 — Advanced admin panel finished (feat/advanced-admin-panel)
+
+- Backend advanced ban/kick/mute/warn/unmute with duration, reason, scope and
+  account/HWID/IP targets; MC-scope bans enforced in the proxy; login IP tracked.
+- SPA admin panel wired to `/api/admin/*` with `X-Admin-Token`, token bar and a
+  shared advanced modal (IP account counts + HWID preview); mock fallback kept.
+- Final fixes: modal visibility + Tab focus trap, real-mode `muted` state,
+  real-mode owner elevation, unsupported password reset hidden, audit labels,
+  persistent invalid-token alert.
+- Verified: go build/vet/test (web, api), node --check, browser smoke for ban,
+  kick, mute, warn and invalid token with no console errors.
+
+## 2026-11-20 — Ban scope isolation verified (feat/advanced-admin-panel)
+
+- Added `TestAdminBanScopeIsolation`: three people plus a shared-HWID account,
+  real handler stack and SQLite, covering account, HWID and IP bans, missing
+  last-month data, IP account counts, and mc-scope reason/duration.
+- Fixed login IP capture to honour `AUTH_TRUST_PROXY` (right-most XFF); behind
+  a proxy the socket IP would have made IP bans hit everyone.
+- Added `ActiveBanForScope` so login scope checks cannot be masked by an older
+  ban record for the same target.
+- `/api/v1/proxy/auth` returns the stored ban reason, duration and expiry; the
+  Velocity plugin shows the reason to the player. `./gradlew build` passes.
+- Admin ban toast reports HWID/IP hit counts and warns when the 30-day window
+  had no identifier data.
+- Compiled-server curl run reproduced: account ban (alice only), HWID ban
+  (alice's two devices + dave who shared one; carol/bob allowed; new device
+  allowed), IP ban (alice + carol; bob/dave allowed; UI count 2), and mc-scope
+  reason `Griefing spawn` duration 90 through to the proxy.
+
+## 2026-11-21 - Real backend admin endpoints + immutable audit + alpha v2
+
+- audit_log table + RecordAudit/ListAudit; ban deletion no longer erases history.
+- Admin password reset endpoint + real adapter wiring.
+- Skin approval queue endpoint + real adapter wiring.
+- Role management real adapter wiring (admin role grant/revoke).
+- admin.js unhidden password-reset and role select in real mode.
+- alpha-v2 selector .bat + web/launcher scripts; MC server capped at 2GB with G1GC tuning.
+- Backend binary rebuilt.
+
+## 2026-11-21 - Graphical admin panel test + checklist
+Agent/model: Buffy (Codebuff)
+Branch: feat/advanced-admin-panel
+Task: Graphically test admin panel functions one by one and document checklist + improvement notes.
+Completed: 2026-11-21
+Files: docs/ADMIN_PANEL_TEST_CHECKLIST.md
+Tests: Graphical UI walkthrough (ban/unban, kick, mute, warn, password reset, role change, audit). Backend build/vet/test previously green.
+Current status: Checklist committed and pushed (63e168f). Destructive/edge cases (delete account, invalid token banner, skin approve/reject) not tested.
+Next: Run remaining edge-case tests if required; address UX notes (cookie dialog, role-change audit/mapping, audit filtering).
+Manual user action: None.
+
+## 2026-11-21 - Advanced admin panel tests completed
+
+- Completed remaining admin panel end-to-end tests: account deletion, invalid token banner, skin approve/reject, unmute click, search filtering.
+- Fixed pending skin list to exclude already-reviewed rejected skins.
+- Added audit entries for unmute, unban, skin approve/reject, account deletion, role assign/revoke.
+- Updated docs/ADMIN_PANEL_TEST_CHECKLIST.md with results.
+- Checks: go build ./..., go vet ./..., go test ./web/ ./api/, node --check all pass.
+
+## 2026-11-21 - Admin panel UI uniformity fix
+
+- Fixed overlapping/uneven admin panel layout: styled missing `.form-row`, made `.modal` scrollable/responsive, added cookie-consent card styles, switched admin KPI/grid to auto-fit minmax.
+- Checks: go build ./..., go vet ./..., go test ./web/ ./api/, node --check all pass.
+- Branch: feat/advanced-admin-panel.
+
+## 2026-11-21 - Advanced ban/moderation workflow verified end-to-end
+- Verified ban dialog flow (duration, reason, scope, account/HWID/IP targets) against real backend; ban persisted with audit log and reflected in user state; unban restored state.
+- Validated unauthorized (401) and invalid input (400) handling; IP account-count context and 30-day HWID collection confirmed.
+- Responsive dialog audit across mobile/tablet/desktop/folded breakpoints: no overlap/clipping.
+- Checks: go build ./..., go vet ./..., go test ./..., node --check all pass.
+- Branch: feat/advanced-admin-panel.
+
+## 2026-11-21 - Real backend for previously mock-only admin actions
+- Audited admin UI/API: bans/roles/skins/password/kick/mute/warn already had real endpoints; skin blacklist (rejected skins) and non-admin role assignment were mock-only/stubbed.
+- Added DB method ListRejectedSkinFiles + handler GET /api/admin/skins/rejected; wired real adapter blacklist()/removeFromBlacklist() (removal re-approves via existing approve endpoint).
+- Seeded moderator/support/owner roles; improved real adapter setRole to revoke all then grant mapped role; mapUser now reflects actual role.
+- Checks: go build, go vet, go test ./..., node --check all pass. Verified grant/revoke role, rejected-skins list/removal end-to-end.
+- Branch: feat/advanced-admin-panel.
+
+## 2026-11-21 - Overflow fix refinement (feat/advanced-admin-panel)
+
+- formatNumber inserts ZWS after NBSP thousands separators; player detail balance uses it.
+- .kpi-card strong wrap rules; .detail-showcase stacks below 980 px.
+- Verified at 1026x921 and 1324x931; go build/vet, go test ./web/, node --check pass.

@@ -1,0 +1,138 @@
+/* Design tokens: single source of truth for colour, type and rhythm. */
+:root {
+  color-scheme: dark;
+
+  --font-sans: "Segoe UI Variable Text", "Segoe UI", Inter, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Segoe UI Variable Display", "Segoe UI Semibold", "Segoe UI", Inter, -apple-system, sans-serif;
+  --font-mono: "Cascadia Code", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+
+  --bg: #070b11;
+  --bg-soft: #0a1018;
+  --surface: #0e151f;
+  --surface-2: #121c28;
+  --surface-3: #172333;
+  --surface-hover: #182638;
+  --surface-inverse: #f3f7fc;
+
+  --border: rgba(148, 163, 184, 0.12);
+  --border-strong: rgba(148, 163, 184, 0.22);
+  --border-focus: rgba(52, 211, 153, 0.55);
+
+  --text: #edf4fc;
+  --text-soft: #a8b7c9;
+  --text-muted: #77899f;
+  --text-faint: #5b6c80;
+
+  --accent: #34d399;
+  --accent-hover: #4ade80;
+  --accent-strong: #10b981;
+  --accent-ink: #04140d;
+  --accent-soft: rgba(52, 211, 153, 0.11);
+  --accent-border: rgba(52, 211, 153, 0.32);
+  --accent-glow: rgba(52, 211, 153, 0.22);
+
+  --cyan: #22d3ee;
+  --blue: #60a5fa;
+  --violet: #a78bfa;
+  --gold: #f5c451;
+  --danger: #f87171;
+  --danger-strong: #ef4444;
+  --danger-soft: rgba(248, 113, 113, 0.11);
+  --danger-border: rgba(248, 113, 113, 0.3);
+  --warning: #fbbf24;
+  --warning-soft: rgba(251, 191, 36, 0.11);
+  --warning-border: rgba(251, 191, 36, 0.28);
+  --info: #60a5fa;
+  --info-soft: rgba(96, 165, 250, 0.11);
+
+  --gradient-accent: linear-gradient(135deg, #34d399 0%, #22d3ee 100%);
+  --gradient-panel: linear-gradient(160deg, rgba(24, 38, 56, 0.72) 0%, rgba(14, 21, 31, 0.9) 100%);
+  --gradient-brand: radial-gradient(circle at 22% 18%, rgba(52, 211, 153, 0.2), transparent 46%),
+    radial-gradient(circle at 82% 86%, rgba(34, 211, 238, 0.12), transparent 48%),
+    linear-gradient(155deg, #0a1119 0%, #060a10 70%);
+
+  --bg-glow-a: rgba(52, 211, 153, 0.07);
+  --bg-glow-b: rgba(96, 165, 250, 0.05);
+  --grid-line: rgba(148, 163, 184, 0.055);
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.28);
+  --shadow-sm: 0 8px 24px -16px rgba(0, 0, 0, 0.55);
+  --shadow-md: 0 24px 64px -32px rgba(0, 0, 0, 0.65);
+  --shadow-lg: 0 40px 120px -48px rgba(0, 0, 0, 0.8);
+  --shadow-accent: 0 12px 36px -18px rgba(52, 211, 153, 0.55);
+
+  --radius-xs: 8px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+  --radius-2xl: 30px;
+  --radius-full: 999px;
+
+  --sidebar-w: 268px;
+  --topbar-h: 74px;
+  --content-max: 1460px;
+
+  --ease: cubic-bezier(0.22, 0.68, 0.28, 1);
+  --fast: 140ms;
+  --normal: 220ms;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+
+  --bg: #f2f6fb;
+  --bg-soft: #e9f0f7;
+  --surface: #ffffff;
+  --surface-2: #f6f9fc;
+  --surface-3: #edf3f9;
+  --surface-hover: #f1f7fd;
+  --surface-inverse: #0c1725;
+
+  --border: rgba(15, 23, 42, 0.09);
+  --border-strong: rgba(15, 23, 42, 0.17);
+  --border-focus: rgba(15, 157, 104, 0.5);
+
+  --text: #0c1725;
+  --text-soft: #43566c;
+  --text-muted: #6a7d92;
+  --text-faint: #8595a7;
+
+  --accent: #0f9d68;
+  --accent-hover: #0b8a5c;
+  --accent-strong: #0a7a51;
+  --accent-ink: #ffffff;
+  --accent-soft: rgba(15, 157, 104, 0.09);
+  --accent-border: rgba(15, 157, 104, 0.28);
+  --accent-glow: rgba(15, 157, 104, 0.16);
+
+  --cyan: #0891b2;
+  --blue: #2563eb;
+  --violet: #7c3aed;
+  --gold: #b45309;
+  --danger: #dc2626;
+  --danger-strong: #b91c1c;
+  --danger-soft: rgba(220, 38, 38, 0.07);
+  --danger-border: rgba(220, 38, 38, 0.24);
+  --warning: #b45309;
+  --warning-soft: rgba(180, 83, 9, 0.08);
+  --warning-border: rgba(180, 83, 9, 0.22);
+  --info: #2563eb;
+  --info-soft: rgba(37, 99, 235, 0.08);
+
+  --gradient-accent: linear-gradient(135deg, #0f9d68 0%, #0e9aa7 100%);
+  --gradient-panel: linear-gradient(160deg, #ffffff 0%, #f8fbfe 100%);
+  --gradient-brand: radial-gradient(circle at 22% 18%, rgba(52, 211, 153, 0.24), transparent 46%),
+    radial-gradient(circle at 82% 86%, rgba(34, 211, 238, 0.14), transparent 48%),
+    linear-gradient(155deg, #0b131c 0%, #060a10 70%);
+
+  --bg-glow-a: rgba(15, 157, 104, 0.06);
+  --bg-glow-b: rgba(37, 99, 235, 0.05);
+  --grid-line: rgba(15, 23, 42, 0.045);
+
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow-sm: 0 10px 26px -18px rgba(15, 23, 42, 0.22);
+  --shadow-md: 0 26px 60px -36px rgba(15, 23, 42, 0.3);
+  --shadow-lg: 0 40px 110px -50px rgba(15, 23, 42, 0.34);
+  --shadow-accent: 0 14px 34px -20px rgba(15, 157, 104, 0.42);
+}

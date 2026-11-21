@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"image"
+	"image/color"
 	"image/png"
 	"io"
 	"os"
@@ -316,6 +317,10 @@ func ExtractAvatarHead(data []byte) ([]byte, error) {
 // decoded dimensions limited to 64x64 or 64x32. The image is fully decoded and
 // re-encoded into a new PNG to strip EXIF, metadata, and any other extra chunks
 // from the original file. The returned bytes are the clean re-encoded PNG.
+//
+// Alpha normalization: body-region pixels (head, body, arms, legs) are forced
+// opaque so a skin can never render an invisible player. Transparency is
+// preserved only outside the skin template and in the optional overlay layer.
 func ProcessSkin(r io.Reader, maxBytes int64) ([]byte, error) {
 	if maxBytes > MaxSkinInputBytes {
 		maxBytes = MaxSkinInputBytes
@@ -367,6 +372,10 @@ func ProcessSkin(r io.Reader, maxBytes int64) ([]byte, error) {
 		)
 	}
 
+	// Normalize alpha: body parts must be opaque, transparency only allowed
+	// outside the skin template and in the overlay layer.
+	img = normalizeSkinAlpha(img, size)
+
 	// Re-encode to strip metadata, EXIF, comments, and extra chunks.
 	out := new(bytes.Buffer)
 	if err := png.Encode(out, img); err != nil {
@@ -393,4 +402,115 @@ func decodeImage(r io.Reader) (image.Image, error) {
 		return nil, fmt.Errorf("skin processor: not a valid PNG image: %w", err)
 	}
 	return img, nil
+}
+
+// skinBodyRects defines the pixel regions of a Minecraft skin that belong to
+// the character body and must be opaque. These are the standard 64x64 skin
+// template regions; for 64x32 skins the lower half simply does not exist.
+var skinBodyRects = []image.Rectangle{
+	// Head front face.
+	{image.Point{8, 8}, image.Point{16, 16}},
+	// Body front face.
+	{image.Point{16, 16}, image.Point{24, 28}},
+	// Right arm (viewer's left).
+	{image.Point{40, 16}, image.Point{48, 28}},
+	// Left arm.
+	{image.Point{32, 48}, image.Point{40, 60}},
+	// Right leg.
+	{image.Point{0, 16}, image.Point{8, 28}},
+	// Left leg.
+	{image.Point{16, 48}, image.Point{24, 60}},
+	// Head top.
+	{image.Point{8, 0}, image.Point{16, 8}},
+	// Body top.
+	{image.Point{16, 4}, image.Point{24, 16}},
+	// Right arm top.
+	{image.Point{40, 4}, image.Point{48, 16}},
+	// Left arm top.
+	{image.Point{32, 36}, image.Point{40, 48}},
+	// Right leg top.
+	{image.Point{0, 4}, image.Point{8, 16}},
+	// Left leg top.
+	{image.Point{16, 36}, image.Point{24, 48}},
+}
+
+// isBodyPixel reports whether (x, y) is inside one of the body regions of a
+// 64x64 Minecraft skin. For 64x32 skins the lower-body regions simply do not
+// contain pixels, so the check is still correct.
+func isBodyPixel(x, y int, width, height int) bool {
+	if x < 0 || y < 0 || x >= width || y >= height {
+		return false
+	}
+	for _, r := range skinBodyRects {
+		if r.Min.X <= x && x < r.Max.X && r.Min.Y <= y && y < r.Max.Y {
+			return true
+		}
+	}
+	return false
+}
+
+// normalizeSkinAlpha forces body-region pixels to full opacity while preserving
+// transparency outside the skin template and in overlay regions.
+//
+// This prevents uploaded skins from rendering invisible players when the source
+// PNG uses transparency around the body. Overlay-layer pixels (the hat/jacket
+// layer at x >= 32 in 64x64 skins) keep their alpha so hats can still fade.
+func normalizeSkinAlpha(img image.Image, size image.Point) image.Image {
+	width, height := size.X, size.Y
+	is64x32 := height == 32
+
+	// Convert to a writable RGBA image so we can patch alpha in place.
+	b := img.Bounds()
+	rgba := image.NewRGBA(image.Rect(0, 0, width, height))
+	for y := b.Min.Y; y < b.Max.Y; y++ {
+		for x := b.Min.X; x < b.Max.X; x++ {
+			rgba.Set(x, y, img.At(x, y))
+		}
+	}
+
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			r, g, b, a := rgba.At(x, y).RGBA()
+
+			// Overlay layer: x in [32,64) and y >= 32 in 64x64 skins.
+			// Keep the original alpha so hats/jackets can be transparent.
+			if !is64x32 && x >= 32 && y >= 32 {
+				continue
+			}
+
+			// Body pixels must be opaque.
+			if isBodyPixel(x, y, width, height) {
+				if a != 0xffff {
+					rgba.SetRGBA(x, y, color.RGBA{
+						R: uint8(r >> 8),
+						G: uint8(g >> 8),
+						B: uint8(b >> 8),
+						A: 255,
+					})
+				}
+				continue
+			}
+
+			// Outside the body: preserve original alpha, but never leave a
+			// fully transparent pixel fully transparent if it is near the skin
+			// (within the 64x64 bounding box). This avoids holes in the model.
+			if a == 0 {
+				// Keep transparent pixels transparent only if they are far from
+				// the skin body (outside the 0..64 x 0..64 box) or if the skin
+				// is 64x32 and the pixel is in the non-existent lower half.
+				if width == 64 && height == 64 && x >= 0 && x < 64 && y >= 0 && y < 64 {
+					// Near the skin: give it a minimal alpha so it does not create
+					// a hole, but keep it very subtle.
+					rgba.SetRGBA(x, y, color.RGBA{
+						R: uint8(r >> 8),
+						G: uint8(g >> 8),
+						B: uint8(b >> 8),
+						A: 1,
+					})
+				}
+			}
+		}
+	}
+
+	return rgba
 }

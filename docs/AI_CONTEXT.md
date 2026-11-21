@@ -12,6 +12,34 @@ Minecraft 1.21.11
 Fabric 0.19.2
 Java 24
 
+## Web frontend foundation (task branch, 2026-11-18)
+
+An alpha web UI now lives in `server/web/static` and is embedded by
+`server/web/web.go`. It is a build-free vanilla ES-module SPA with dedicated
+routes `/login`, `/register`, `/dashboard`, `/players` and `/admin`, a dark/light
+theme persisted in `localStorage`, a custom interactive canvas skin viewer, a
+multi-server context (one enabled server for now, launcher handoff via
+`?server=`/`?instance=`) and a registry for plugin statistic modules. The admin
+screen has a granular role/permission model and a UI-only simulator; the client
+is not an authorization boundary.
+
+This work is on `feat/web-ui-foundation` and is **not merged into `master`** yet.
+It uses a local mock data/session provider (`data/api.js`) for the alpha; the
+next integration step is replacing it with the authenticated Go API. See
+`docs/WEB_FRONTEND.md` for the architecture, test evidence and limitations.
+
+A follow-up task branch `feat/skin-approval-password-reset` extends the alpha
+web UI with a skin approval flow (auto-apply, pending admin review, whitelist/
+blacklist, 3D preview, rejected-skins revocation) and a password reset flow
+(random temp password + forced change, 5-criteria strength meter). Backend:
+new skin uploads insert a pending approval row. See `docs/WORK_STATE.md`.
+The Go toolchain was available on the development machine for this task, so the
+Go web package was compiled and its tests passed (`gofmt`, `go vet`,
+`go build ./web/...`, `go test -count=1 ./web/...`), and the embedded SPA was
+verified through the real Go handler on `http://127.0.0.1:8090` including the
+favicon, CSP and legacy-redirect behavior. Browser tests used the compiled Go
+server, not only the static PowerShell server.
+
 ## Current phase
 
 PHASE 3 — LAUNCHER FEATURE COMPLETION + BACKEND ROBUSTNESS (COMPLETE)
@@ -144,6 +172,12 @@ NOT "full Prism Launcher + custom layer". See `docs/DECISIONS.md` DECISION-001.
 - Remote: `origin` — private GitHub repository `Ddking-1/minecraftserverluncher`
 - Tracked: governance/state documentation plus the backend under `server/` and
   the launcher core under `launcher/`, all on `master`
+- Active task branch: `feat/advanced-admin-panel` — advanced admin moderation
+  (ban/kick/mute/warn with duration, reason, scope, account/HWID/IP targets),
+  SPA real-backend wiring with `X-Admin-Token`, a11y/UX fixes, and proven
+  account/HWID/IP ban-scope isolation (`TestAdminBanScopeIsolation`). The
+  proxy returns the stored ban reason/duration and Velocity displays it. See
+  `docs/WORK_STATE.md` and `docs/CHANGELOG.md`.
 - Untracked by design: `reference/` (DECISION-002) and local tooling state
 - Architecture documentation includes `docs/PRISM_MINIMAL_CORE.md` and
   `docs/PRISM_ARCHITECTURE_REVIEW.md` (DECISION-003/004/005)
@@ -318,3 +352,41 @@ Batch (2026-11-17): launcher GUI features F2/F3/F5/F6/F7/F10 implemented and ver
   and emits the friendly text.
 
 - Cleanup: removed unused SplashScreen component (no references); build/tests unaffected.
+
+- Advanced admin panel: ban records (account/hwid/ip) with duration, reason and
+  scope (mc/platform/both); login IP tracking; platform bans block login,
+  MC bans block proxy joins. New admin endpoints and updated admin UI.
+
+- Admin hardening: validated bans, ban list/delete, proxy MC-scope HWID/IP enforcement,
+  user status fields, auth fixes, improved admin UI.
+
+- Advanced moderation: kick, mute, warn and unmute endpoints now mirror advanced ban controls.
+
+## 2026-11-20 - SPA admin advanced actions
+- Ported advanced ban/kick/mute/warn modal into SPA admin view.
+
+## 2026-11-21 update
+Real backend admin endpoints now cover role management, skin approval, password reset, and immutable audit history. SPA admin view enables these in real mode. Alpha v2 test harness added with web/launcher selector and 2GB-optimized MC server.
+
+## 2026-11-21 - Graphical admin panel test + checklist
+Graphical end-to-end testing performed on the real backend (http://127.0.0.1:8080, admin token local-dev-admin-token): ban/unban, kick, mute/unmute, warn, password reset, role change, audit log. Results documented in docs/ADMIN_PANEL_TEST_CHECKLIST.md. Commit 63e168f on feat/advanced-admin-panel.
+
+## 2026-11-21 - Advanced admin panel tests completed (feat/advanced-admin-panel)
+
+Remaining admin panel end-to-end tests completed on the real backend (http://127.0.0.1:8080, admin token local-dev-admin-token, DB server/auth.db). Account deletion verified on a throwaway account (DELETE 200, removed from list, relogin 401). Invalid admin token banner verified (unauthorized, zeroed KPIs). Skin approve and reject both verified; pending list now excludes already-reviewed rejected skins (ListPendingSkinFiles filters reviewer=''). Unmute click verified (mute→unmute, audit entry). Search filtering verified by username and id. Backend audit entries added for unmute, unban, skin approve/reject, account deletion, role assign/revoke. Checks: go build ./..., go vet ./..., go test ./web/ ./api/, node --check pass.
+
+## 2026-11-21 - Admin panel UI uniformity fix (feat/advanced-admin-panel)
+
+Status: In progress (committed (7706d30)). go build ./..., go vet ./..., go test ./web/ ./api/, node --check all pass.
+
+Problem: advanced admin modal used `.form-row` which had no CSS; `.modal` had no max-height/overflow; cookie consent had no styles; admin KPI/grid used fixed columns that did not adapt to display size, causing overlap/uneven layout.
+
+Fix (CSS only, no JS/Go changes):
+- components.css: robust, scrollable, responsive `.modal`/`.modal-backdrop`; added `.form-row` styling (grid, inputs, focus, checkbox targets); added cookie-consent fixed card styles.
+- pages.css: `.admin-kpis` and `.admin-grid` changed from fixed columns to `repeat(auto-fit, minmax(...))` for dynamic responsiveness across resolutions and popups.
+
+Branch: feat/advanced-admin-panel. Embedded static requires Go rebuild + server restart (done locally).
+
+## 2026-11-21 - Overflow fix refinement
+
+Refined the large-number overflow fix on `feat/advanced-admin-panel`: `formatNumber` now inserts a ZWS after NBSP thousands separators, player detail balance uses it, `.kpi-card strong` gained wrap rules, and `.detail-showcase` stacks below 980 px. Verified at 1026x921 and 1324x931. Checks: go build/vet, go test ./web/, node --check pass.

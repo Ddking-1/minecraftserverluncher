@@ -60,7 +60,7 @@ func NewServer(db *database.DB, cfg *config.Config, skinHandler *SkinHandler) *S
 		devices:     devices.NewService(db),
 		cfg:         cfg,
 		SkinHandler: skinHandler,
-		limiter:     NewRateLimiter(Config{
+		limiter: NewRateLimiter(Config{
 			RequestsPerMinute: cfg.RateLimitPerMinute,
 			TrustProxy:        cfg.TrustProxy,
 		}),
@@ -144,6 +144,8 @@ func (s *Server) Handler() http.Handler {
 	public.HandleFunc("POST /api/v1/auth/logout-all", s.handleLogoutAll)
 	public.HandleFunc("POST /api/v1/auth/forgot", s.handleForgotPassword)
 	public.HandleFunc("POST /api/v1/auth/reset", s.handleResetPassword)
+	public.HandleFunc("POST /api/v1/cookie-consent", s.handleCookieConsent)
+	public.HandleFunc("POST /api/v1/analytics/event", s.handleAnalyticsEvent)
 	public.HandleFunc("GET /api/v1/updates/manifest", s.handleUpdatesManifest)
 	public.HandleFunc("GET /api/v1/capabilities", s.handleCapabilities)
 	public.HandleFunc("GET /api/v1/news", s.handleNews)
@@ -199,7 +201,21 @@ func (s *Server) Handler() http.Handler {
 	admin.HandleFunc("DELETE /api/admin/users/{id}/roles/{role}", s.handleAdminRevokeRole)
 	admin.HandleFunc("POST /api/admin/users/{id}/permissions", s.handleAdminGrantPermission)
 	admin.HandleFunc("POST /api/admin/users/{id}/approve", s.handleAdminAccountApproval)
+	admin.HandleFunc("POST /api/admin/users/{id}/reset-password", s.handleAdminResetPassword)
+	admin.HandleFunc("POST /api/admin/users/{id}/ban", s.handleAdminBanUser)
+	admin.HandleFunc("POST /api/admin/users/{id}/unban", s.handleAdminUnbanUser)
+	admin.HandleFunc("POST /api/admin/users/{id}/kick", s.handleAdminKickUser)
+	admin.HandleFunc("POST /api/admin/users/{id}/mute", s.handleAdminMuteUser)
+	admin.HandleFunc("POST /api/admin/users/{id}/warn", s.handleAdminWarnUser)
+	admin.HandleFunc("POST /api/admin/users/{id}/unmute", s.handleAdminUnmuteUser)
+	admin.HandleFunc("GET /api/admin/users/{id}/details", s.handleAdminUserDetails)
+	admin.HandleFunc("GET /api/admin/ip-accounts", s.handleAdminIPAccounts)
+	admin.HandleFunc("GET /api/admin/bans", s.handleAdminListBans)
+	admin.HandleFunc("GET /api/admin/audit", s.handleAdminAudit)
+	admin.HandleFunc("DELETE /api/admin/bans/{id}", s.handleAdminDeleteBan)
 	admin.HandleFunc("POST /api/admin/skins/{id}/approve", s.handleAdminSkinApproval)
+	admin.HandleFunc("GET /api/admin/skins/pending", s.handleAdminListPendingSkins)
+	admin.HandleFunc("GET /api/admin/skins/rejected", s.handleAdminListRejectedSkins)
 	admin.HandleFunc("GET /api/admin/tripwires", s.handleAdminTripwires)
 	admin.HandleFunc("GET /api/admin/invites", s.handleAdminListInvites)
 	admin.HandleFunc("POST /api/admin/invites", s.handleAdminAddInvite)
@@ -224,6 +240,11 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("/api/v1/news", wrap(publicGroup))
 	mux.Handle("/api/v1/proxy/", wrap(publicGroup))
 	mux.Handle("/api/v1/webhooks/", wrap(publicGroup))
+	// Cookie consent and analytics are public endpoints: the consent popup must
+	// be reachable before the user is authenticated, and analytics events must be
+	// accepted from any origin that has consent (the consent cookie gates them).
+	mux.Handle("/api/v1/cookie-consent", wrap(publicGroup))
+	mux.Handle("/api/v1/analytics/event", wrap(publicGroup))
 	mux.Handle("/api/v1/account/", wrap(protectedGroup))
 	// "/api/v1/skins" is an exact pattern; "/api/v1/skins/" is the prefix that
 	// also covers the sub-paths. Both are needed: Go's mux does not redirect a
@@ -318,12 +339,12 @@ func (s *Server) CachedStats(key string, compute func() (any, error)) (any, erro
 // ---- request/response types ----
 
 type registerRequest struct {
-	Username        string `json:"username"`
-	Password        string `json:"password"`
-	DeviceID        string `json:"device_id"`
-	DeviceName      string `json:"device_name"`
-	Website         string `json:"website"`       // honeypot; must be empty
-	TurnstileToken  string `json:"turnstile_token"` // CAPTCHA token (optional in dev)
+	Username       string `json:"username"`
+	Password       string `json:"password"`
+	DeviceID       string `json:"device_id"`
+	DeviceName     string `json:"device_name"`
+	Website        string `json:"website"`         // honeypot; must be empty
+	TurnstileToken string `json:"turnstile_token"` // CAPTCHA token (optional in dev)
 }
 
 type loginRequest struct {
@@ -331,7 +352,7 @@ type loginRequest struct {
 	Password       string `json:"password"`
 	DeviceID       string `json:"device_id"`
 	DeviceName     string `json:"device_name"`
-	Website        string `json:"website"`        // honeypot; must be empty
+	Website        string `json:"website"`         // honeypot; must be empty
 	TurnstileToken string `json:"turnstile_token"` // CAPTCHA token (optional in dev)
 }
 

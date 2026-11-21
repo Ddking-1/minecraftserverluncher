@@ -13,6 +13,7 @@ import (
 	"log"
 	"net/http"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 
@@ -99,6 +100,8 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	_ = s.db.RecordLoginIP(acc.ID, s.clientIP(r))
+
 	pair, err := s.issueSession(w, acc.ID, req.DeviceID, req.DeviceName)
 	if err != nil {
 		return
@@ -167,7 +170,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if the device ID is banned
+	// Legacy HWID ban check.
 	isBanned, err := s.db.IsHWIDBanned(req.DeviceID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "internal error")
@@ -178,10 +181,46 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Advanced ban checks (platform scope blocks login). Scope is matched
+	// explicitly so an mc-scope record cannot mask a platform ban on the same
+	// target, and so an mc-only ban does not block the launcher.
+	if b, ok := s.db.ActiveBanForScope("account", strconv.FormatInt(acc.ID, 10), "platform", "both"); ok {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "account banned: " + b.Reason})
+		return
+	}
+	if b, ok := s.db.ActiveBanForScope("hwid", req.DeviceID, "platform", "both"); ok {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "hardware banned: " + b.Reason})
+		return
+	}
+	ip := s.clientIP(r)
+	if b, ok := s.db.ActiveBanForScope("ip", ip, "platform", "both"); ok {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "ip banned: " + b.Reason})
+		return
+	}
+
 	pair, err := s.issueSession(w, acc.ID, req.DeviceID, req.DeviceName)
 	if err != nil {
 		return
 	}
+
+	_ = s.db.RecordLoginIP(acc.ID, s.clientIP(r))
+
+	// If the user has already accepted cookies, set a session cookie in
+	// addition to the bearer token. The cookie is httpOnly so the JS UI cannot
+	// read it; the UI still sends the bearer token in the Authorization header.
+	if s.ConsultCookieConsent(r) {
+		sessionCookie := &http.Cookie{
+			Name:     "alpha_session",
+			Path:     "/",
+			HttpOnly: true,
+			Secure:   r.TLS != nil,
+			SameSite: http.SameSiteLaxMode,
+			Expires:  time.Now().Add(time.Duration(pair.ExpiresIn) * time.Second),
+			Value:    pair.AccessToken,
+		}
+		http.SetCookie(w, sessionCookie)
+	}
+
 	writeJSON(w, http.StatusOK, pair)
 }
 
@@ -263,5 +302,3 @@ func (s *Server) handleStartServer(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "server started"})
 }
-
-
