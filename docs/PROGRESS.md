@@ -1569,3 +1569,10 @@ Manual user action: None.
 - Fixed overlapping/uneven admin panel layout: styled missing `.form-row`, made `.modal` scrollable/responsive, added cookie-consent card styles, switched admin KPI/grid to auto-fit minmax.
 - Checks: go build ./..., go vet ./..., go test ./web/ ./api/, node --check all pass.
 - Branch: feat/advanced-admin-panel.
+
+## 2026-11-21 - Advanced ban/moderation workflow verified end-to-end
+- Verified ban dialog flow (duration, reason, scope, account/HWID/IP targets) against real backend; ban persisted with audit log and reflected in user state; unban restored state.
+- Validated unauthorized (401) and invalid input (400) handling; IP account-count context and 30-day HWID collection confirmed.
+- Responsive dialog audit across mobile/tablet/desktop/folded breakpoints: no overlap/clipping.
+- Checks: go build ./..., go vet ./..., go test ./..., node --check all pass.
+- Branch: feat/advanced-admin-panel.
